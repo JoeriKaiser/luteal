@@ -1,0 +1,30 @@
+[
+    {
+        "merged": "fr.luteal.app-debug-65:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "fr.luteal.app-main-67:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "fr.luteal.app-debug-65:/drawable_ic_launcher_background.xml.flat",
+        "source": "fr.luteal.app-main-67:/drawable/ic_launcher_background.xml"
+    },
+    {
+        "merged": "fr.luteal.app-debug-65:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "fr.luteal.app-main-67:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    },
+    {
+        "merged": "fr.luteal.app-debug-65:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "fr.luteal.app-main-67:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "/home/joeri/.gradle/daemon/8.7/fr.luteal.app-debug-65:/xml_backup_rules.xml.flat",
+        "source": "/home/joeri/.gradle/daemon/8.7/fr.luteal.app-main-67:/xml/backup_rules.xml"
+    },
+    {
+        "merged": "/home/joeri/.gradle/daemon/8.7/fr.luteal.app-debug-65:/xml_locales_config.xml.flat",
+        "source": "/home/joeri/.gradle/daemon/8.7/fr.luteal.app-main-67:/xml/locales_config.xml"
+    },
+    {
+        "merged": "/home/joeri/.gradle/daemon/8.7/fr.luteal.app-debug-65:/xml_data_extraction_rules.xml.flat",
+        "source": "/home/joeri/.gradle/daemon/8.7/fr.luteal.app-main-67:/xml/data_extraction_rules.xml"
+    }
+]
