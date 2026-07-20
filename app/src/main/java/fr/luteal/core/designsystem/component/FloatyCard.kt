@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -12,10 +13,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import fr.luteal.core.designsystem.theme.FloatyLavender
-import fr.luteal.core.designsystem.theme.LavenderGlow
-import fr.luteal.core.designsystem.theme.RoseQuartz
+import fr.luteal.core.designsystem.theme.CelestialCyan
+import fr.luteal.core.designsystem.theme.GlassmorphicCardBg
+import fr.luteal.core.designsystem.theme.OrbitLavender
 
 @Composable
 fun FloatyCard(
@@ -24,20 +26,24 @@ fun FloatyCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val cardShape = RoundedCornerShape(28.dp)
+
     val borderGradient = Brush.linearGradient(
         colors = listOf(
-            RoseQuartz.copy(alpha = 0.6f),
-            FloatyLavender.copy(alpha = 0.4f),
-            LavenderGlow.copy(alpha = 0.6f)
+            CelestialCyan.copy(alpha = 0.45f),
+            OrbitLavender.copy(alpha = 0.30f),
+            Color.White.copy(alpha = 0.15f)
         )
     )
 
-    val surfaceColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
-
     val cardModifier = modifier
-        .shadow(elevation = 8.dp, shape = cardShape)
+        .shadow(
+            elevation = 12.dp,
+            shape = cardShape,
+            ambientColor = CelestialCyan.copy(alpha = 0.2f),
+            spotColor = OrbitLavender.copy(alpha = 0.3f)
+        )
         .clip(cardShape)
-        .background(surfaceColor, shape = cardShape)
+        .background(GlassmorphicCardBg)
         .border(width = 1.dp, brush = borderGradient, shape = cardShape)
         .then(
             if (onClick != null) {
@@ -48,7 +54,7 @@ fun FloatyCard(
         )
 
     Column(
-        modifier = cardModifier,
+        modifier = cardModifier.padding(20.dp),
         content = content
     )
 }

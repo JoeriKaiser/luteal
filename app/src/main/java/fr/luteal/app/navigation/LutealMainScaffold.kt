@@ -3,10 +3,15 @@ package fr.luteal.app.navigation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CalendarMonth
@@ -35,6 +40,11 @@ import fr.luteal.core.designsystem.component.CyclePhaseBadge
 import fr.luteal.core.designsystem.component.FloatyBackground
 import fr.luteal.core.designsystem.component.FloatyCard
 import fr.luteal.core.designsystem.component.WhimsicalButton
+import fr.luteal.core.designsystem.theme.CelestialCyan
+import fr.luteal.core.designsystem.theme.LunarSilver
+import fr.luteal.core.designsystem.theme.MidnightCosmos
+import fr.luteal.core.designsystem.theme.NebulaIndigo
+import fr.luteal.core.designsystem.theme.StarlightGold
 import fr.luteal.core.model.CyclePhase
 
 @Composable
@@ -51,10 +61,12 @@ fun LutealMainScaffold() {
     FloatyBackground {
         Scaffold(
             containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                    tonalElevation = 8.dp
+                    containerColor = NebulaIndigo.copy(alpha = 0.90f),
+                    tonalElevation = 12.dp,
+                    windowInsets = WindowInsets.navigationBars
                 ) {
                     navItems.forEachIndexed { index, item ->
                         NavigationBarItem(
@@ -73,7 +85,11 @@ fun LutealMainScaffold() {
                                 )
                             },
                             colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                                selectedIconColor = MidnightCosmos,
+                                selectedTextColor = StarlightGold,
+                                indicatorColor = StarlightGold,
+                                unselectedIconColor = LunarSilver.copy(alpha = 0.6f),
+                                unselectedTextColor = LunarSilver.copy(alpha = 0.6f)
                             )
                         )
                     }
@@ -84,7 +100,8 @@ fun LutealMainScaffold() {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .padding(16.dp),
+                    .statusBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.Top,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -107,47 +124,46 @@ private data class NavigationTabItem(
 @Composable
 private fun CycleTabContent() {
     Text(
-        text = "Suivi du Cycle",
+        text = "Suivi du Cycle Céleste",
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurface
+        color = LunarSilver
     )
 
-    Spacer(modifier = Modifier.height(16.dp))
+    Spacer(modifier = Modifier.height(14.dp))
 
     CyclePhaseBadge(phase = CyclePhase.LUTEAL)
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(20.dp))
 
     FloatyCard(
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text = "Cycle En Cours",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Jour 21 • Phase Lutéale activée",
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Prochaines règles estimées dans 7 jours.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            WhimsicalButton(
-                onClick = {},
-                text = "Ajouter une note",
-                icon = Icons.Rounded.Add,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        Text(
+            text = "Cycle Astronomique En Cours",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = CelestialCyan
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Jour 21 • Phase Lutéale activée",
+            style = MaterialTheme.typography.bodyLarge,
+            color = LunarSilver
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Prochaines règles estimées dans 7 jours.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = LunarSilver.copy(alpha = 0.7f)
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        WhimsicalButton(
+            onClick = {},
+            text = "Consigner une observation",
+            icon = Icons.Rounded.Add,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -157,44 +173,43 @@ private fun SymptomsTabContent() {
         text = "Journal des Symptômes",
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurface
+        color = LunarSilver
     )
 
-    Spacer(modifier = Modifier.height(16.dp))
+    Spacer(modifier = Modifier.height(14.dp))
 
     CyclePhaseBadge(phase = CyclePhase.FOLLICULAR)
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(20.dp))
 
     FloatyCard(
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text = "Symptômes d'Aujourd'hui",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Aucun symptôme sévère enregistré",
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Suivez vos émotions, douleurs et énergie au quotidien.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            WhimsicalButton(
-                onClick = {},
-                text = "Consigner un symptôme",
-                icon = Icons.Rounded.Add,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        Text(
+            text = "Symptômes & Troubles Consignés",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = CelestialCyan
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Aucun symptôme critique enregistré",
+            style = MaterialTheme.typography.bodyLarge,
+            color = LunarSilver
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Suivez vos émotions, symptômes de SPM/TDPM et énergie au quotidien.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = LunarSilver.copy(alpha = 0.7f)
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        WhimsicalButton(
+            onClick = {},
+            text = "Ajouter une note de suivi",
+            icon = Icons.Rounded.Add,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -204,44 +219,43 @@ private fun DuoSyncTabContent() {
         text = "Synchronisation Duo",
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurface
+        color = LunarSilver
     )
 
-    Spacer(modifier = Modifier.height(16.dp))
+    Spacer(modifier = Modifier.height(14.dp))
 
     CyclePhaseBadge(phase = CyclePhase.OVULATORY)
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(20.dp))
 
     FloatyCard(
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text = "Statut Duo Sync",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Mode Partenaire: Connecté en local (P2P)",
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Vos données de phase sont partagées en toute confidentialité.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            WhimsicalButton(
-                onClick = {},
-                text = "Synchroniser maintenant",
-                icon = Icons.Rounded.Refresh,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        Text(
+            text = "Statut de Synchronisation Duo",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = CelestialCyan
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Mode Partenaire: Connecté en local (Offline-first)",
+            style = MaterialTheme.typography.bodyLarge,
+            color = LunarSilver
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Vos données de phase sont partagées en toute confidentialité avec votre partenaire.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = LunarSilver.copy(alpha = 0.7f)
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        WhimsicalButton(
+            onClick = {},
+            text = "Synchroniser avec le partenaire",
+            icon = Icons.Rounded.Refresh,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -251,43 +265,42 @@ private fun SettingsTabContent() {
         text = "Paramètres de l'Application",
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurface
+        color = LunarSilver
     )
 
-    Spacer(modifier = Modifier.height(16.dp))
+    Spacer(modifier = Modifier.height(14.dp))
 
     CyclePhaseBadge(phase = CyclePhase.MENSTRUAL)
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(20.dp))
 
     FloatyCard(
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text = "Préférences & Confidencialité",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Stockage local chiffré activé",
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Gérez le suivi des troubles (SPM, TDPM) et le mode de synchronisation.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            WhimsicalButton(
-                onClick = {},
-                text = "Enregistrer la configuration",
-                icon = Icons.Rounded.Settings,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        Text(
+            text = "Préférences & Confidencialité",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = CelestialCyan
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Stockage local chiffré activé",
+            style = MaterialTheme.typography.bodyLarge,
+            color = LunarSilver
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Gérez le suivi des troubles (SPM, TDPM) et le mode de synchronisation.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = LunarSilver.copy(alpha = 0.7f)
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        WhimsicalButton(
+            onClick = {},
+            text = "Enregistrer la configuration",
+            icon = Icons.Rounded.Settings,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }

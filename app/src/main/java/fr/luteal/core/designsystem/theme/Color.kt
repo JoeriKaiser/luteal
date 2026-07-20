@@ -6,80 +6,76 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-// Primary
-val RoseQuartz = Color(0xFFE89BA7)
-val RoseQuartzDark = Color(0xFFC76D7C)
+// Celestial Primary & Accents
+val LunarSilver = Color(0xFFE2E8F0)
+val StarlightGold = Color(0xFFFFD166)
+val CelestialCyan = Color(0xFF4CC9F0)
+val OrbitLavender = Color(0xFF9D4EDD)
+val NebulaBlue = Color(0xFF3A86EF)
+val CosmicMint = Color(0xFF06D6A0)
 
-// Secondary
-val FloatyLavender = Color(0xFFB8A4DC)
-val LavenderGlow = Color(0xFFD4C8F0)
+// Deep Space Backgrounds
+val MidnightCosmos = Color(0xFF090B15)
+val NebulaIndigo = Color(0xFF0E1225)
+val StarlightDarkSurface = Color(0xFF14182E)
+val GlassmorphicCardBg = Color(0xDD181D36)
 
-// Tertiary
-val WarmPeach = Color(0xFFF7C59F)
-val MintSoftGlow = Color(0xFFA8E6CF)
-
-// Background
-val NebularDust = Color(0xFFFAF7FA)
-val NebularDustDark = Color(0xFF1C1720)
-
-// Surface
-val SurfaceFloatyLight = Color(0xFFFFFFFF)
-val SurfaceFloatyDark = Color(0xFF26202B)
-
-// Accent / Phase colors
-val MenstrualColor = Color(0xFFE57373)
-val FollicularColor = Color(0xFF81C784)
-val OvulatoryColor = Color(0xFFFFD54F)
-val LutealColor = Color(0xFFBA68C8)
+// Moon Phase & Cycle Colors (Astronomical metaphors)
+val EclipseCrimson = Color(0xFFEF476F)  // Phase Menstruelle / Nouvelle Lune
+val AuroraCyan = Color(0xFF06D6A0)      // Phase Folliculaire / Premier Croissant
+val SolarAmber = Color(0xFFFFD166)      // Phase Ovulatoire / Pleine Lune
+val GalaxyIndigo = Color(0xFF9D4EDD)    // Phase Lutéale / Dernier Quartier
 
 @Immutable
 data class PhaseColors(
-    val menstrual: Color = MenstrualColor,
-    val follicular: Color = FollicularColor,
-    val ovulatory: Color = OvulatoryColor,
-    val luteal: Color = LutealColor
+    val menstrual: Color = EclipseCrimson,
+    val follicular: Color = AuroraCyan,
+    val ovulatory: Color = SolarAmber,
+    val luteal: Color = GalaxyIndigo
 )
 
 val LocalPhaseColors = staticCompositionLocalOf { PhaseColors() }
 
-val LightColorScheme = lightColorScheme(
-    primary = RoseQuartz,
-    onPrimary = Color.White,
-    primaryContainer = LavenderGlow,
-    onPrimaryContainer = RoseQuartzDark,
-    secondary = FloatyLavender,
-    onSecondary = Color.White,
-    secondaryContainer = LavenderGlow,
-    onSecondaryContainer = Color(0xFF382056),
-    tertiary = WarmPeach,
-    onTertiary = Color(0xFF4A2800),
-    tertiaryContainer = MintSoftGlow,
-    onTertiaryContainer = Color(0xFF003829),
-    background = NebularDust,
-    onBackground = Color(0xFF1C1720),
-    surface = SurfaceFloatyLight,
-    onSurface = Color(0xFF1C1720),
-    surfaceVariant = NebularDust,
-    onSurfaceVariant = Color(0xFF49454F)
+// Astronomy Dark Scheme (Default)
+val DarkColorScheme = darkColorScheme(
+    primary = StarlightGold,
+    onPrimary = MidnightCosmos,
+    primaryContainer = Color(0xFF2A2744),
+    onPrimaryContainer = StarlightGold,
+    secondary = CelestialCyan,
+    onSecondary = MidnightCosmos,
+    secondaryContainer = Color(0xFF16324D),
+    onSecondaryContainer = CelestialCyan,
+    tertiary = OrbitLavender,
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFF361952),
+    onTertiaryContainer = OrbitLavender,
+    background = MidnightCosmos,
+    onBackground = LunarSilver,
+    surface = StarlightDarkSurface,
+    onSurface = LunarSilver,
+    surfaceVariant = NebulaIndigo,
+    onSurfaceVariant = Color(0xFFCBD5E1)
 )
 
-val DarkColorScheme = darkColorScheme(
-    primary = RoseQuartzDark,
+// Astronomy Light Scheme (Soft Moonlight)
+val LightColorScheme = lightColorScheme(
+    primary = Color(0xFF1E293B),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFF5A2A34),
-    onPrimaryContainer = RoseQuartz,
-    secondary = FloatyLavender,
-    onSecondary = Color(0xFF281347),
-    secondaryContainer = Color(0xFF3E2C5E),
-    onSecondaryContainer = LavenderGlow,
-    tertiary = WarmPeach,
-    onTertiary = Color(0xFF4A2800),
-    tertiaryContainer = Color(0xFF5C3C1A),
-    onTertiaryContainer = WarmPeach,
-    background = NebularDustDark,
-    onBackground = Color(0xFFE6E1E5),
-    surface = SurfaceFloatyDark,
-    onSurface = Color(0xFFE6E1E5),
-    surfaceVariant = Color(0xFF322A38),
-    onSurfaceVariant = Color(0xFFCAC4D0)
+    primaryContainer = Color(0xFFE2E8F0),
+    onPrimaryContainer = Color(0xFF0F172A),
+    secondary = NebulaBlue,
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFDBEAFE),
+    onSecondaryContainer = Color(0xFF1E40AF),
+    tertiary = OrbitLavender,
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFF3E8FF),
+    onTertiaryContainer = Color(0xFF6B21A8),
+    background = Color(0xFFF8FAFC),
+    onBackground = Color(0xFF0F172A),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF0F172A),
+    surfaceVariant = Color(0xFFF1F5F9),
+    onSurfaceVariant = Color(0xFF475569)
 )

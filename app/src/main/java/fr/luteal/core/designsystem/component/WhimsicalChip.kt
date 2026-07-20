@@ -1,11 +1,8 @@
 package fr.luteal.core.designsystem.component
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
@@ -16,17 +13,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import fr.luteal.core.designsystem.theme.FloatyLavender
-import fr.luteal.core.designsystem.theme.RoseQuartz
+import fr.luteal.core.designsystem.theme.CelestialCyan
+import fr.luteal.core.designsystem.theme.LunarSilver
+import fr.luteal.core.designsystem.theme.MidnightCosmos
 
 @Composable
 fun WhimsicalChip(
@@ -36,78 +32,33 @@ fun WhimsicalChip(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null
 ) {
-    val animatedBgColor by animateColorAsState(
-        targetValue = if (selected) {
-            RoseQuartz.copy(alpha = 0.25f)
-        } else {
-            MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
-        },
-        animationSpec = tween(durationMillis = 250),
-        label = "chip_bg_color"
-    )
-
-    val animatedContentColor by animateColorAsState(
-        targetValue = if (selected) {
-            MaterialTheme.colorScheme.onSurface
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
-        animationSpec = tween(durationMillis = 250),
-        label = "chip_content_color"
-    )
-
-    val borderBrush = if (selected) {
-        Brush.horizontalGradient(
-            colors = listOf(
-                RoseQuartz,
-                FloatyLavender
-            )
-        )
-    } else {
-        Brush.horizontalGradient(
-            colors = listOf(
-                MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-            )
-        )
-    }
-
-    val chipShape = CircleShape
+    val chipBg = if (selected) CelestialCyan.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.06f)
+    val chipBorder = if (selected) CelestialCyan else Color.White.copy(alpha = 0.20f)
+    val contentColor = if (selected) CelestialCyan else LunarSilver
 
     Row(
         modifier = modifier
-            .shadow(
-                elevation = if (selected) 4.dp else 0.dp,
-                shape = chipShape,
-                ambientColor = RoseQuartz,
-                spotColor = FloatyLavender
-            )
-            .clip(chipShape)
-            .background(color = animatedBgColor, shape = chipShape)
-            .border(
-                width = if (selected) 1.5.dp else 1.dp,
-                brush = borderBrush,
-                shape = chipShape
-            )
+            .clip(CircleShape)
+            .background(chipBg)
+            .border(width = 1.dp, color = chipBorder, shape = CircleShape)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.Center,
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (icon != null) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = animatedContentColor,
+                tint = contentColor,
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(6.dp))
         }
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-            color = animatedContentColor
+            style = MaterialTheme.typography.labelMedium,
+            color = contentColor,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
         )
     }
 }
