@@ -24,6 +24,24 @@
 
 ---
 
+## 🔬 Research & Domain Explorations
+
+The app is designed to be highly cycle-aware, medical-literate, and partner-supportive. The following domain areas require ongoing research and refinement before feature implementations:
+
+### 1. Premenstrual Disorders & Gynecological Research
+- **PMDD / TDPM (*Trouble Dysphorique Prémenstruel*):** Detailed symptom tracking across luteal phase days, monitoring severe emotional distress, anxiety, and mood swings. Alignment with clinical tracking patterns.
+- **PMS / SPM (*Syndrome Prémenstruel*):** Physical & emotional symptom clusters occurring prior to menstruation.
+- **Endometriosis (*Endométriose*) & PCOS (*SOPK*):** Pelvic pain tracking, flare-up logs, irregular cycle prediction adjustments, and symptom intensity correlation.
+- **Perimenopause & Cycle Irregularity:** Tracking protocols for non-standard or missing cycles.
+
+### 2. Duo Sync & Partner UX Research
+- **Privacy Boundaries & Granularity:** Granular sharing permissions allowing the primary tracker to share phase status, mood indicators, or support tips with their partner without exposing private notes or raw bleeding details.
+- **Empathetic Partner Guidance:** Phase-specific contextual advice for partners to foster mutual support and awareness (especially during luteal/PMDD phases).
+
+### 3. Encrypted Backend Sync Research
+- **Golang E2EE Sync Protocol:** Researching end-to-end encrypted delta-sync protocols for offline-first Room database synchronization with the modern Golang backend server.
+---
+
 ## 🎨 Design System: Astronomy & Celestial Theme
 
 ### Palette & Aesthetics
