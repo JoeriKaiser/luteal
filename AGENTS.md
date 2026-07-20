@@ -1,11 +1,11 @@
 # AGENTS.md — Technical Guidelines & Project Constraints
 
-## 📌 Project Overview
+## Project Overview
 **Luteal** is a modern Android menstrual cycle tracking app designed for individuals and couples. It features offline-first local tracking and optional encrypted synchronization designed to pair with a modern Golang backend.
 
 ---
 
-## 🇫🇷 Constraints & Requirements
+## Constraints & Requirements
 
 ### 1. French Language First
 - **Default Locale:** French (`fr`) is the primary and mandatory default language for all strings, date formatters, and UI copy.
@@ -24,7 +24,7 @@
 
 ---
 
-## 🔬 Research & Domain Explorations
+## Research & Domain Explorations
 
 The app is designed to be highly cycle-aware, medical-literate, and partner-supportive. The following domain areas require ongoing research and refinement before feature implementations:
 
@@ -40,9 +40,10 @@ The app is designed to be highly cycle-aware, medical-literate, and partner-supp
 
 ### 3. Encrypted Backend Sync Research
 - **Golang E2EE Sync Protocol:** Researching end-to-end encrypted delta-sync protocols for offline-first Room database synchronization with the modern Golang backend server.
+
 ---
 
-## 🎨 Design System: Astronomy & Celestial Theme
+## Design System: Astronomy & Celestial Theme
 
 ### Palette & Aesthetics
 - **Theme Concept:** Cosmic / Celestial / Astronomy palette (avoiding gendered clichés or traditional pink tropes).
@@ -62,7 +63,7 @@ The app is designed to be highly cycle-aware, medical-literate, and partner-supp
 
 ---
 
-## 🛠️ Technology Stack & Dependencies
+## Technology Stack & Dependencies
 
 - **Language & Runtime:** Kotlin 2.0.0, Java 21 toolchain.
 - **Build Tooling:** Android Gradle Plugin 8.5.0+, Gradle 8.7, Version Catalog (`gradle/libs.versions.toml`).
@@ -73,7 +74,7 @@ The app is designed to be highly cycle-aware, medical-literate, and partner-supp
 
 ---
 
-## 📂 Package Structure
+## Package Structure
 
 ```
 fr.luteal
@@ -97,7 +98,8 @@ fr.luteal
 
 ---
 
-## ⚡ Developer & Subagent Rules
+## Developer & Subagent Rules
 1. **Verification Gate:** Run `./gradlew installDebug --no-daemon` or `./gradlew assembleDebug --no-daemon` before yielding changes.
 2. **French Strings:** Maintain French as default in both `res/values/strings.xml` and `res/values-fr/strings.xml`.
 3. **Architecture:** Keep business logic in `core/model` and `core/data/repository`. UI components in `core/designsystem` must remain decoupled from specific database entities.
+4. **No Emojis:** Do not include emojis in code, documentation, headers, or UI strings unless explicitly requested.
