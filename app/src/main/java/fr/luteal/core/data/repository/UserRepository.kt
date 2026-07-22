@@ -1,6 +1,7 @@
 package fr.luteal.core.data.repository
 
 import fr.luteal.core.data.datastore.UserPreferences
+import fr.luteal.core.model.DuoSharingField
 import fr.luteal.core.model.SyncMode
 import fr.luteal.core.model.UserProfile
 import fr.luteal.core.model.UserRole
@@ -11,5 +12,7 @@ interface UserRepository {
     fun getUserPreferences(): Flow<UserPreferences>
     suspend fun updateSyncMode(mode: SyncMode)
     suspend fun updateUserRole(role: UserRole)
+    suspend fun updateDuoSharing(field: DuoSharingField, enabled: Boolean)
     suspend fun setCouplePairing(pairingCode: String?, partnerName: String?)
+    suspend fun completeOnboarding(role: UserRole, disorderTracking: Map<String, Boolean>)
 }

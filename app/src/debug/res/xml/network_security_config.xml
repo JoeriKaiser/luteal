@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+      Debug / dev build only: permit cleartext HTTP to a local folicular
+      server. The base URL is developer-targeted at runtime: the emulator
+      loopback alias (http://10.0.2.2:8080), an adb-reversed
+      http://127.0.0.1:8080, or the host's LAN IP. Because the LAN IP varies,
+      cleartext is permitted broadly here; this config exists only in the debug
+      source set. The release build declares no network permission and ships no
+      cleartext allowance.
+    -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

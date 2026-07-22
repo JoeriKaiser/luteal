@@ -7,13 +7,18 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import fr.luteal.core.data.seed.TestDataSeeder
+import fr.luteal.core.data.seed.TestDataSeederImpl
 import fr.luteal.core.data.datastore.UserPreferencesDataStore
 import fr.luteal.core.data.repository.CycleRepository
 import fr.luteal.core.data.repository.CycleRepositoryImpl
+import fr.luteal.core.data.repository.DailyEntryRepository
+import fr.luteal.core.data.repository.DailyEntryRepositoryImpl
 import fr.luteal.core.data.repository.SymptomRepository
 import fr.luteal.core.data.repository.SymptomRepositoryImpl
 import fr.luteal.core.data.repository.UserRepository
 import fr.luteal.core.data.repository.UserRepositoryImpl
+import java.time.Clock
 import javax.inject.Singleton
 
 @Module
@@ -28,6 +33,12 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun bindDailyEntryRepository(
+        dailyEntryRepositoryImpl: DailyEntryRepositoryImpl
+    ): DailyEntryRepository
+
+    @Binds
+    @Singleton
     abstract fun bindSymptomRepository(
         symptomRepositoryImpl: SymptomRepositoryImpl
     ): SymptomRepository
@@ -37,8 +48,20 @@ abstract class RepositoryModule {
     abstract fun bindUserRepository(
         userRepositoryImpl: UserRepositoryImpl
     ): UserRepository
+    @Binds
+    @Singleton
+    abstract fun bindTestDataSeeder(
+        testDataSeederImpl: TestDataSeederImpl
+    ): TestDataSeeder
+
 
     companion object {
+        @Provides
+        @Singleton
+        fun provideClock(): Clock {
+            return Clock.systemUTC()
+        }
+
         @Provides
         @Singleton
         fun provideUserPreferencesDataStore(

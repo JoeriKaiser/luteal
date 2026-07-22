@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Luteal — Variations Demi-Cercles</title>
+  <style>
+    :root {
+      --bg-linen: #F7F4ED;
+      --surface-light: #FCFAF5;
+      --evergreen: #235B4E;
+      --indigo: #5D587E;
+      --stone: #EDE9DF;
+      --quiet-ink: #646B66;
+      --warm-ink: #252B27;
+      --border-light: #E5E0D8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg-linen);
+      color: var(--warm-ink);
+      padding: 2rem 1rem;
+    }
+
+    header {
+      max-width: 960px;
+      margin: 0 auto 2.5rem;
+      text-align: center;
+    }
+    header h1 {
+      font-size: 1.75rem;
+      color: var(--evergreen);
+      margin-bottom: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 2rem;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--surface-light);
+      border: 1px solid var(--border-light);
+      border-radius: 16px;
+      padding: 1.5rem;
+    }
+    .card h2 {
+      font-size: 1.15rem;
+      color: var(--evergreen);
+      margin-bottom: 0.25rem;
+    }
+    .card .subtitle {
+      font-size: 0.875rem;
+      color: var(--quiet-ink);
+      margin-bottom: 1.25rem;
+    }
+
+    .preview-row {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+      justify-content: center;
+      background: #EFECE4;
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+    }
+
+    .icon-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .icon-box span { font-size: 0.75rem; color: var(--quiet-ink); }
+
+    .icon-frame {
+      width: 80px;
+      height: 80px;
+      background: var(--bg-linen);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      overflow: hidden;
+    }
+    .icon-frame.circle { border-radius: 50%; }
+    .icon-frame.squircle { border-radius: 22px; }
+
+    .icon-frame svg { width: 100%; height: 100%; }
+
+    .description { font-size: 0.875rem; color: var(--quiet-ink); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Luteal — Variations en Demi-Cercles</h1>
+    <p>Formes géométriques nettes en demi-cercle (180°) pour l'icône Duo.</p>
+  </header>
+
+  <div class="grid">
+
+    <!-- Option 3A -->
+    <div class="card">
+      <h2>Option 3A : Demi-cercles Entrelacés (Ligne de séparation centrale)</h2>
+      <div class="subtitle">Deux demi-cercles nets (180°) séparés par un léger canal vertical (4px)</div>
+
+      <div class="preview-row">
+        <div class="icon-box">
+          <div class="icon-frame circle">
+            <svg viewBox="0 0 108 108">
+              <rect width="108" height="108" fill="#F7F4ED"/>
+              <!-- Left Semicircle (Evergreen #235B4E) -->
+              <path d="M52,26 A28,28 0 0,0 52,82" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+              <!-- Right Semicircle (Indigo #5D587E) -->
+              <path d="M56,26 A28,28 0 0,1 56,82" fill="none" stroke="#5D587E" stroke-width="6" stroke-linecap="round"/>
+              <!-- Center node -->
+              <circle cx="54" cy="54" r="4" fill="#235B4E"/>
+            </svg>
+          </div>
+          <span>Cercle</span>
+        </div>
+        <div class="icon-box">
+          <div class="icon-frame squircle">
+            <svg viewBox="0 0 108 108">
+              <rect width="108" height="108" fill="#F7F4ED"/>
+              <path d="M52,26 A28,28 0 0,0 52,82" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+              <path d="M56,26 A28,28 0 0,1 56,82" fill="none" stroke="#5D587E" stroke-width="6" stroke-linecap="round"/>
+              <circle cx="54" cy="54" r="4" fill="#235B4E"/>
+            </svg>
+          </div>
+          <span>Squircle</span>
+        </div>
+      </div>
+
+      <div class="description">
+        Deux demi-cercles parfaits à 180° se faisant face, séparés au centre.
+      </div>
+    </div>
+
+    <!-- Option 3B -->
+    <div class="card">
+      <h2>Option 3B : Demi-cercles Fermés (Formes en D)</h2>
+      <div class="subtitle">Deux demi-cercles fermés sur leur diamètre flat</div>
+
+      <div class="preview-row">
+        <div class="icon-box">
+          <div class="icon-frame circle">
+            <svg viewBox="0 0 108 108">
+              <rect width="108" height="108" fill="#F7F4ED"/>
+              <!-- Left Closed Semicircle -->
+              <path d="M51,26 A28,28 0 0,0 51,82 Z" fill="none" stroke="#235B4E" stroke-width="5" stroke-linejoin="round"/>
+              <!-- Right Closed Semicircle -->
+              <path d="M57,26 A28,28 0 0,1 57,82 Z" fill="none" stroke="#5D587E" stroke-width="5" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <span>Cercle</span>
+        </div>
+        <div class="icon-box">
+          <div class="icon-frame squircle">
+            <svg viewBox="0 0 108 108">
+              <rect width="108" height="108" fill="#F7F4ED"/>
+              <path d="M51,26 A28,28 0 0,0 51,82 Z" fill="none" stroke="#235B4E" stroke-width="5" stroke-linejoin="round"/>
+              <path d="M57,26 A28,28 0 0,1 57,82 Z" fill="none" stroke="#5D587E" stroke-width="5" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <span>Squircle</span>
+        </div>
+      </div>
+
+      <div class="description">
+        Les demi-cercles incluent leur ligne droite verticale (diamètre), formant deux silhouettes en "D" dos-à-dos ou face-à-face.
+      </div>
+    </div>
+
+    <!-- Option 3C -->
+    <div class="card">
+      <h2>Option 3C : Demi-cercles Décalés Verticalement (Équilibre dynamique)</h2>
+      <div class="subtitle">Un demi-cercle relevé et un demi-cercle abaissé</div>
+
+      <div class="preview-row">
+        <div class="icon-box">
+          <div class="icon-frame circle">
+            <svg viewBox="0 0 108 108">
+              <rect width="108" height="108" fill="#F7F4ED"/>
+              <!-- Left Semicircle shifted UP -->
+              <path d="M52,20 A26,26 0 0,0 52,72" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+              <!-- Right Semicircle shifted DOWN -->
+              <path d="M56,36 A26,26 0 0,1 56,88" fill="none" stroke="#5D587E" stroke-width="6" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span>Cercle</span>
+        </div>
+        <div class="icon-box">
+          <div class="icon-frame squircle">
+            <svg viewBox="0 0 108 108">
+              <rect width="108" height="108" fill="#F7F4ED"/>
+              <path d="M52,20 A26,26 0 0,0 52,72" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+              <path d="M56,36 A26,26 0 0,1 56,88" fill="none" stroke="#5D587E" stroke-width="6" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span>Squircle</span>
+        </div>
+      </div>
+
+      <div class="description">
+        Les deux demi-cercles de 180° glissent le long de l'axe central pour créer un mouvement cyclique.
+      </div>
+    </div>
+
+    <!-- Option 3D -->
+    <div class="card">
+      <h2>Option 3D : Demi-cercle Unique + Diamètre (Instrument Minimal)</h2>
+      <div class="subtitle">Un demi-cercle supérieur et inférieur formant une boussole / cadran</div>
+
+      <div class="preview-row">
+        <div class="icon-box">
+          <div class="icon-frame circle">
+            <svg viewBox="0 0 108 108">
+              <rect width="108" height="108" fill="#F7F4ED"/>
+              <!-- Top Semicircle -->
+              <path d="M26,54 A28,28 0 0,1 82,54" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+              <!-- Horizontal axis line -->
+              <line x1="22" y1="54" x2="86" y2="54" stroke="#EDE9DF" stroke-width="3" stroke-linecap="round"/>
+              <!-- Bottom Semicircle -->
+              <path d="M26,54 A28,28 0 0,0 82,54" fill="none" stroke="#5D587E" stroke-width="6" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span>Cercle</span>
+        </div>
+        <div class="icon-box">
+          <div class="icon-frame squircle">
+            <svg viewBox="0 0 108 108">
+              <rect width="108" height="108" fill="#F7F4ED"/>
+              <path d="M26,54 A28,28 0 0,1 82,54" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+              <line x1="22" y1="54" x2="86" y2="54" stroke="#EDE9DF" stroke-width="3" stroke-linecap="round"/>
+              <path d="M26,54 A28,28 0 0,0 82,54" fill="none" stroke="#5D587E" stroke-width="6" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span>Squircle</span>
+        </div>
+      </div>
+
+      <div class="description">
+        Demi-cercle supérieur (Evergreen) et inférieur (Indigo) séparés par une ligne d'horizon.
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

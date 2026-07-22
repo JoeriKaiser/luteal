@@ -4,6 +4,7 @@ import fr.luteal.core.data.datastore.UserPreferences
 import fr.luteal.core.data.datastore.UserPreferencesDataStore
 import fr.luteal.core.data.entity.UserProfileEntity
 import fr.luteal.core.data.local.UserProfileDao
+import fr.luteal.core.model.DuoSharingField
 import fr.luteal.core.model.SyncMode
 import fr.luteal.core.model.UserProfile
 import fr.luteal.core.model.UserRole
@@ -43,6 +44,18 @@ class UserRepositoryImpl @Inject constructor(
         if (currentProfile != null) {
             userProfileDao.insertOrUpdateUserProfile(currentProfile.copy(role = role.name))
         }
+    }
+
+    override suspend fun updateDuoSharing(field: DuoSharingField, enabled: Boolean) {
+        userPreferencesDataStore.setDuoSharing(field, enabled)
+    }
+
+    override suspend fun completeOnboarding(role: UserRole, disorderTracking: Map<String, Boolean>) {
+        updateUserRole(role)
+        for ((disorderId, enabled) in disorderTracking) {
+            userPreferencesDataStore.setDisorderTracking(disorderId, enabled)
+        }
+        userPreferencesDataStore.setCompletedOnboarding(true)
     }
 
     override suspend fun setCouplePairing(pairingCode: String?, partnerName: String?) {

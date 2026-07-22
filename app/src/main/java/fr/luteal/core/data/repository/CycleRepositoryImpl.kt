@@ -1,7 +1,9 @@
 package fr.luteal.core.data.repository
 
 import fr.luteal.core.data.entity.CycleEntity
+import fr.luteal.core.data.entity.SyncStateEntity
 import fr.luteal.core.data.local.CycleDao
+import fr.luteal.core.data.local.SyncStateDao
 import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.model.Cycle
 import fr.luteal.core.model.PeriodDay
@@ -9,13 +11,17 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import org.json.JSONObject
+import java.time.Clock
 import java.time.LocalDate
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class CycleRepositoryImpl @Inject constructor(
-    private val cycleDao: CycleDao
+    private val cycleDao: CycleDao,
+    private val syncStateDao: SyncStateDao,
+    private val clock: Clock
 ) : CycleRepository {
 
     override fun getCycles(): Flow<List<Cycle>> {
@@ -30,12 +36,63 @@ class CycleRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getCyclesOnce(): List<Cycle> {
+        return cycleDao.getAllCyclesOnce().map { it.toDomain() }
+    }
+
     override suspend fun saveCycle(cycle: Cycle) {
+        upsertCycle(cycle)
+        markDirty(cycle.id)
+    }
+
+    override suspend fun upsertCycle(cycle: Cycle) {
         cycleDao.insertCycle(cycle.toEntity())
     }
 
     override suspend fun deleteCycle(id: String) {
+        val now = clock.millis()
+        val existingState = syncStateDao.getState(id)
         cycleDao.deleteCycle(id)
+        val stateToSave = existingState?.copy(
+            clientRev = UUID.randomUUID().toString(),
+            updatedAtEpochMillis = now,
+            deletedAtEpochMillis = now,
+            dirty = true,
+            lastPushError = null
+        ) ?: SyncStateEntity(
+            entityId = id,
+            entityType = SyncStateEntity.TYPE_CYCLE,
+            clientRev = UUID.randomUUID().toString(),
+            createdAtEpochMillis = now,
+            updatedAtEpochMillis = now,
+            deletedAtEpochMillis = now,
+            dirty = true,
+            lastPushError = null
+        )
+        syncStateDao.upsert(stateToSave)
+    }
+
+    /**
+     * Records a fresh envelope for a locally edited cycle: a new client_rev on
+     * every edit (the conflict tiebreak), created_at preserved across edits,
+     * updated_at bumped to now, and the dirty flag set so the sync worker
+     * pushes it. This is a local Room write only - it never waits on network.
+     */
+    private suspend fun markDirty(cycleId: String) {
+        val now = clock.millis()
+        val existing = syncStateDao.getState(cycleId)
+        syncStateDao.upsert(
+            SyncStateEntity(
+                entityId = cycleId,
+                entityType = SyncStateEntity.TYPE_CYCLE,
+                clientRev = UUID.randomUUID().toString(),
+                createdAtEpochMillis = existing?.createdAtEpochMillis ?: now,
+                updatedAtEpochMillis = now,
+                deletedAtEpochMillis = null,
+                dirty = true,
+                lastPushError = null
+            )
+        )
     }
 
     private fun CycleEntity.toDomain(): Cycle {
@@ -60,7 +117,6 @@ class CycleRepositoryImpl @Inject constructor(
             isSynced = false
         )
     }
-
     private fun List<PeriodDay>.toJson(): String {
         val array = JSONArray()
         for (day in this) {

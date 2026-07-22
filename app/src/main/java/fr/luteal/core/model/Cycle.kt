@@ -21,6 +21,4 @@ data class Cycle(
             ChronoUnit.DAYS.between(startDate, LocalDate.now()).toInt() + 1
         }
 
-    val predictedNextStartDate: LocalDate
-        get() = startDate.plusDays(averageLengthDays.toLong())
 }

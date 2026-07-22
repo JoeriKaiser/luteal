@@ -8,7 +8,9 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import fr.luteal.core.data.local.CycleDao
+import fr.luteal.core.data.local.DailyEntryDao
 import fr.luteal.core.data.local.LutealDatabase
+import fr.luteal.core.data.local.SyncStateDao
 import fr.luteal.core.data.local.SymptomDao
 import fr.luteal.core.data.local.UserProfileDao
 import javax.inject.Singleton
@@ -26,13 +28,29 @@ object DatabaseModule {
             context,
             LutealDatabase::class.java,
             "luteal.db"
-        ).build()
+        ).addMigrations(
+                LutealDatabase.MIGRATION_1_2,
+                LutealDatabase.MIGRATION_2_3,
+                LutealDatabase.MIGRATION_3_4
+            ).build()
     }
 
     @Provides
     @Singleton
     fun provideCycleDao(database: LutealDatabase): CycleDao {
         return database.cycleDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSyncStateDao(database: LutealDatabase): SyncStateDao {
+        return database.syncStateDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideDailyEntryDao(database: LutealDatabase): DailyEntryDao {
+        return database.dailyEntryDao()
     }
 
     @Provides

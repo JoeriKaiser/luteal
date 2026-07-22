@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-20T23:42:48+02:00",
+  "title": "Design System: Luteal",
+  "extensions": {
+    "colorMeta": {
+      "evergreen-primary": {
+        "role": "primary",
+        "displayName": "Forest Instrument",
+        "canonical": "#235B4E",
+        "tonalRamp": ["#0B211C", "#12372E", "#1B4A40", "#235B4E", "#438071", "#72AA98", "#A9D5C7", "#E2F2EC"]
+      },
+      "linen-background": {
+        "role": "neutral",
+        "displayName": "Linen Ground",
+        "canonical": "#F7F4ED",
+        "tonalRamp": ["#221F1A", "#403C35", "#625D53", "#817B70", "#A49D91", "#C6C0B5", "#E2DDD4", "#F7F4ED"]
+      },
+      "menstrual-rust": {
+        "role": "tertiary",
+        "displayName": "Menstrual Rust",
+        "canonical": "#934545",
+        "tonalRamp": ["#321313", "#512323", "#713333", "#934545", "#B66765", "#D6908C", "#EDBCB7", "#F9E8E5"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Rare high-emphasis values." },
+      "headline": { "displayName": "Headline", "purpose": "Screen titles." },
+      "title": { "displayName": "Title", "purpose": "Sections and grouped surfaces." },
+      "body": { "displayName": "Body", "purpose": "Primary reading copy." },
+      "label": { "displayName": "Label", "purpose": "Actions, status, and navigation." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "feedback", "value": "120ms cubic-bezier(0.25, 1, 0.5, 1)", "purpose": "Press and selection feedback." },
+      { "name": "state-change", "value": "220ms cubic-bezier(0.25, 1, 0.5, 1)", "purpose": "Sheets and state transitions." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "0-599dp" },
+      { "name": "medium", "value": "600-839dp" },
+      { "name": "expanded", "value": "840dp+" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single highest-priority action in a local surface.",
+      "html": "<button class=\"ds-btn-primary\">Enregistrer les observations</button>",
+      "css": ".ds-btn-primary{min-height:52px;padding:0 24px;border:0;border-radius:12px;background:#235B4E;color:#F3FFF9;font:600 14px/20px system-ui;transition:filter 120ms cubic-bezier(.25,1,.5,1)}.ds-btn-primary:hover{filter:brightness(1.08)}.ds-btn-primary:active{filter:brightness(.9)}.ds-btn-primary:focus-visible{outline:3px solid #8FD4BE;outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "description": "A reversible or lower-priority action.",
+      "html": "<button class=\"ds-btn-secondary\">Modifier les observations</button>",
+      "css": ".ds-btn-secondary{min-height:52px;padding:0 24px;border:1px solid #747B76;border-radius:12px;background:#FCFAF5;color:#235B4E;font:600 14px/20px system-ui}.ds-btn-secondary:hover{background:#EDE9DF}.ds-btn-secondary:active{background:#D6D2C8}.ds-btn-secondary:focus-visible{outline:3px solid #8FD4BE;outline-offset:2px}"
+    },
+    {
+      "name": "Grouped Surface",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "A bordered surface for content that is genuinely grouped.",
+      "html": "<section class=\"ds-card\"><h3>Prochaines règles</h3><p>Une plage estimée apparaîtra avec davantage d’historique.</p></section>",
+      "css": ".ds-card{padding:24px;border:1px solid #D6D2C8;border-radius:16px;background:#FCFAF5;color:#252B27;font:400 16px/24px system-ui}.ds-card h3{margin:0 0 12px;font:600 20px/26px system-ui}.ds-card p{margin:0;color:#646B66}"
+    },
+    {
+      "name": "Filter Chip",
+      "kind": "chip",
+      "description": "A visible choice with explicit selected state.",
+      "html": "<button class=\"ds-chip\" aria-pressed=\"true\">Moyens</button>",
+      "css": ".ds-chip{min-height:48px;padding:0 14px;border:1px solid #235B4E;border-radius:8px;background:#C6EBDD;color:#0B3B31;font:600 14px/20px system-ui}.ds-chip:focus-visible{outline:3px solid #8FD4BE;outline-offset:2px}"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "custom",
+      "refersTo": "status-pill",
+      "description": "A non-interactive status for recorded, estimated, private, or local information.",
+      "html": "<span class=\"ds-status\">Enregistré</span>",
+      "css": ".ds-status{display:inline-flex;align-items:center;min-height:32px;padding:6px 12px;border-radius:999px;background:#C6EBDD;color:#0B3B31;font:600 12px/18px system-ui}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Instrument",
+    "overview": "Luteal behaves like a well-made personal instrument: immediate to read, calm to handle, and precise about what it knows. Warm surfaces prevent the product from feeling clinical while disciplined hierarchy keeps sensitive daily tasks clear. Identity appears through material restraint and subtle cyclical geometry, never through spectacle.",
+    "keyCharacteristics": [
+      "Light-first warm neutral canvas",
+      "One rare evergreen product accent",
+      "Recorded facts visually distinct from estimates",
+      "Familiar Android controls with complete states",
+      "Celestial references reduced to optional cyclical geometry"
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Evergreen is reserved for actions, focus, and current selection. Decorative accent coverage is forbidden.", "section": "colors" },
+      { "name": "The Recorded Versus Estimated Rule", "body": "Recorded information uses evergreen confirmation. Estimates use the quieter tertiary role and always include explanatory copy.", "section": "colors" },
+      { "name": "The Native Clarity Rule", "body": "Never use a display font for labels, buttons, health observations, or numerical data.", "section": "typography" },
+      { "name": "The Flat by Default Rule", "body": "Resting cards use zero elevation.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use the 4dp spacing foundation and vary spacing to create rhythm.",
+      "Do keep controls at least 48dp high and preserve visible labels.",
+      "Do separate recorded facts from estimates in color, icon, and copy."
+    ],
+    "donts": [
+      "Don't resemble astrology or horoscope products.",
+      "Don't use cute, infantilizing, or gender-stereotyped wellness branding.",
+      "Don't gamify tracking with streaks, scores, rewards, or guilt-producing completion states.",
+      "Don't use permanent star fields, neon accents, decorative glassmorphism, or full-spectrum gradients."
+    ]
+  }
+}

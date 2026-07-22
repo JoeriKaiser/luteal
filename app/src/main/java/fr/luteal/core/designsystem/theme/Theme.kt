@@ -1,21 +1,20 @@
 package fr.luteal.core.designsystem.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 
 @Composable
 fun LutealTheme(
-    darkTheme: Boolean = true, // Astronomy cosmic theme defaults to dark mode
+    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
-
     CompositionLocalProvider(
-        LocalPhaseColors provides PhaseColors()
+        LocalPhaseColors provides if (darkTheme) DarkPhaseColors else LightPhaseColors
     ) {
         MaterialTheme(
-            colorScheme = colorScheme,
+            colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
             typography = LutealTypography,
             shapes = LutealShapes,
             content = content

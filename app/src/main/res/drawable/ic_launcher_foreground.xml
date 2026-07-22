@@ -4,10 +4,22 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Left 180-degree semicircle (Evergreen #235B4E) -->
     <path
-        android:fillColor="#E89BA7"
-        android:pathData="M54,20 C40,40 30,55 30,68 C30,81 40,90 54,90 C68,90 78,81 78,68 C78,55 68,40 54,20 Z" />
+        android:strokeColor="#235B4E"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M52,26 A28,28 0 0,0 52,82" />
+    <!-- Right 180-degree semicircle (Luteal Indigo #5D587E) -->
     <path
-        android:fillColor="#B8A4DC"
-        android:pathData="M54,35 C46,48 40,58 40,66 C40,74 46,80 54,80 C62,80 68,74 68,66 C68,58 62,48 54,35 Z" />
+        android:strokeColor="#5D587E"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M56,26 A28,28 0 0,1 56,82" />
+    <!-- Center focal node (Evergreen #235B4E) -->
+    <path
+        android:fillColor="#235B4E"
+        android:pathData="M54,50 A4,4 0 1,1 54,58 A4,4 0 1,1 54,50" />
 </vector>

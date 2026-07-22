@@ -15,9 +15,15 @@ interface SymptomDao {
     @Query("SELECT * FROM symptom_logs ORDER BY timestampEpochMillis DESC")
     fun getAllSymptomLogs(): Flow<List<SymptomLogEntity>>
 
+    @Query("SELECT * FROM symptom_logs WHERE id = :id LIMIT 1")
+    suspend fun getSymptomLogOnce(id: String): SymptomLogEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSymptomLog(log: SymptomLogEntity)
 
     @Query("DELETE FROM symptom_logs WHERE id = :id")
     suspend fun deleteSymptomLog(id: String)
+
+    @Query("DELETE FROM symptom_logs")
+    suspend fun deleteAllSymptomLogs()
 }

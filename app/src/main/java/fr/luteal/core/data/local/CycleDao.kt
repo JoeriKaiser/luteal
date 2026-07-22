@@ -13,6 +13,12 @@ interface CycleDao {
     @Query("SELECT * FROM cycles ORDER BY startDate DESC")
     fun getAllCycles(): Flow<List<CycleEntity>>
 
+    @Query("SELECT * FROM cycles ORDER BY startDate DESC")
+    suspend fun getAllCyclesOnce(): List<CycleEntity>
+
+    @Query("SELECT * FROM cycles WHERE id = :id")
+    suspend fun getCycleById(id: String): CycleEntity?
+
     @Query("SELECT * FROM cycles WHERE endDate IS NULL LIMIT 1")
     fun getCurrentCycle(): Flow<CycleEntity?>
 
@@ -24,4 +30,7 @@ interface CycleDao {
 
     @Query("DELETE FROM cycles WHERE id = :id")
     suspend fun deleteCycle(id: String)
+
+    @Query("DELETE FROM cycles")
+    suspend fun deleteAllCycles()
 }

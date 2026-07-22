@@ -8,6 +8,7 @@
 /.idea/assetWizardSettings.xml
 .DS_Store
 /build
+**/build/
 /captures
 .externalNativeBuild
 .cxx
@@ -16,3 +17,4 @@ local.properties
 *.aar
 *.keystore
 *.jks
+keystore.properties
