@@ -39,9 +39,12 @@ class DuoViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(DuoUiState())
     val uiState: StateFlow<DuoUiState> = _uiState.asStateFlow()
 
-    init {
-        refresh()
-    }
+    // Deliberately no init { refresh() }. The tab scaffold is a `when`, not a
+    // NavHost, so hiltViewModel() scopes this to the Activity and it outlives
+    // every tab switch. A one-shot load at construction would latch whatever
+    // was true on the first visit - most damagingly NoAccount, shown forever
+    // after the user registers from Settings. DuoScreen refreshes on entry
+    // instead; see the LaunchedEffect there.
 
     fun refresh() {
         if (!duoRepository.hasAccount()) {

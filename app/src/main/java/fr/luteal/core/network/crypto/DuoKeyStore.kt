@@ -1,10 +1,8 @@
 package fr.luteal.core.network.crypto
 
 import android.content.Context
-import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
+import fr.luteal.core.network.auth.KeystoreSecretStore
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,39 +16,31 @@ import javax.inject.Singleton
  */
 @Singleton
 class DuoKeyStore @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext context: Context
 ) {
     private companion object {
-        const val FILE_NAME = "luteal_duo_keys"
+        const val FILE_NAME = "luteal_duo_keys_v2"
+        const val KEY_ALIAS = "luteal_duo_keys_key"
     }
 
-    private val prefs: SharedPreferences by lazy {
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        EncryptedSharedPreferences.create(
-            context,
-            FILE_NAME,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    }
+    private val store = KeystoreSecretStore(
+        context = context,
+        fileName = FILE_NAME,
+        keyAlias = KEY_ALIAS
+    )
 
     fun save(linkId: String, linkKey: ByteArray) {
-        prefs.edit().putString(linkId, DuoCrypto.encodeKey(linkKey)).apply()
+        store.put(linkId, DuoCrypto.encodeKey(linkKey))
     }
 
     fun load(linkId: String): ByteArray? =
-        prefs.getString(linkId, null)?.let {
-            runCatching { DuoCrypto.decodeKey(it) }.getOrNull()
-        }
+        store.get(linkId)?.let { runCatching { DuoCrypto.decodeKey(it) }.getOrNull() }
 
     fun remove(linkId: String) {
-        prefs.edit().remove(linkId).apply()
+        store.remove(linkId)
     }
 
     fun clear() {
-        prefs.edit().clear().apply()
+        store.clear()
     }
 }

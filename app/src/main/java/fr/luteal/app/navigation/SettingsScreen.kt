@@ -332,7 +332,7 @@ private fun SyncCard(
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-                AccountCodeSection(getAccountCode = getAccountCode)
+                AccountCodeSection(state = state, getAccountCode = getAccountCode)
 
                 if (!state.hasAccount) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -349,8 +349,14 @@ private fun SyncCard(
 }
 
 @Composable
-private fun AccountCodeSection(getAccountCode: () -> String?) {
-    val accountCode = remember { getAccountCode() }
+private fun AccountCodeSection(state: SettingsSyncUiState, getAccountCode: () -> String?) {
+    // Re-read whenever the account or the last sync changes. A bare
+    // `remember {}` latched the value from first composition, so registering
+    // while sitting on this screen left "aucun compte enregistré" on display
+    // until the user switched tabs.
+    val accountCode = remember(state.hasAccount, state.lastSyncedEpochMillis) {
+        getAccountCode()
+    }
     val clipboardManager = LocalClipboardManager.current
     var copied by remember { mutableStateOf(false) }
 

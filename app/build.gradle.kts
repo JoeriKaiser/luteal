@@ -27,6 +27,13 @@ android {
             useSupportLibrary = true
         }
 
+        // Ship only French. The app is French-first and res/xml/locales_config
+        // declares `fr` alone, but AndroidX and Material bring translations for
+        // 84 locales, which is most of resources.arsc. Keep this in step with
+        // locales_config if another language is ever added.
+        @Suppress("DEPRECATION")
+        resourceConfigurations += listOf("fr")
+
         // Default folicular base URL for online sync. The debug/dev build
         // targets the local trial server (emulator loopback); the release
         // build overrides this with the production API (see buildTypes).
@@ -154,7 +161,11 @@ dependencies {
     // Online sync path. The network permission is declared in the main
     // manifest; the debug build additionally permits cleartext for the local
     // trial server (see app/src/debug). Release syncs over HTTPS only.
-    implementation(libs.androidx.security.crypto)
+    // androidx.security:security-crypto is deliberately absent. Google
+    // deprecated it in April 2025 at 1.1.0-alpha07, and it pulled in Google
+    // Tink - 1416 classes, about a fifth of this app - to protect a handful of
+    // short strings. Secrets now use core/network/auth/KeystoreSecretStore,
+    // which wraps an AndroidKeyStore AES-GCM key directly.
     implementation(libs.okhttp)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)

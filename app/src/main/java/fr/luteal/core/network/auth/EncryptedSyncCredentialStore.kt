@@ -1,59 +1,59 @@
 package fr.luteal.core.network.auth
 
 import android.content.Context
-import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * [SyncCredentialStore] backed by [EncryptedSharedPreferences] (Android
- * Keystore). The account code and device token are encrypted at rest and are
- * never logged. This is the only place credentials are persisted.
+ * [SyncCredentialStore] backed by [KeystoreSecretStore].
+ *
+ * The account code and device token are encrypted at rest under a
+ * non-exportable AndroidKeyStore key and are never logged. This is the only
+ * place credentials are persisted.
+ *
+ * The account code is the root of the encryption key hierarchy (see
+ * docs/architecture/E2EE_DESIGN.md), so losing this store means losing the
+ * ability to decrypt anything the server holds. That is by design: the server
+ * has no key that could substitute for it.
  */
 @Singleton
 class EncryptedSyncCredentialStore @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext context: Context
 ) : SyncCredentialStore {
 
     private companion object {
-        const val FILE_NAME = "luteal_sync_credentials"
+        const val FILE_NAME = "luteal_sync_credentials_v2"
+        const val KEY_ALIAS = "luteal_sync_credentials_key"
         const val KEY_ACCOUNT_ID = "account_id"
         const val KEY_ACCOUNT_CODE = "account_code"
         const val KEY_DEVICE_TOKEN = "device_token"
     }
 
-    private val prefs: SharedPreferences by lazy {
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        EncryptedSharedPreferences.create(
-            context,
-            FILE_NAME,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    private val store = KeystoreSecretStore(
+        context = context,
+        fileName = FILE_NAME,
+        keyAlias = KEY_ALIAS
+    )
+
+    override fun load(): SyncCredentials? {
+        val accountId = store.get(KEY_ACCOUNT_ID) ?: return null
+        val accountCode = store.get(KEY_ACCOUNT_CODE) ?: return null
+        val deviceToken = store.get(KEY_DEVICE_TOKEN) ?: return null
+        return SyncCredentials(
+            accountId = accountId,
+            accountCode = accountCode,
+            deviceToken = deviceToken
         )
     }
 
-    override fun load(): SyncCredentials? {
-        val accountId = prefs.getString(KEY_ACCOUNT_ID, null) ?: return null
-        val accountCode = prefs.getString(KEY_ACCOUNT_CODE, null) ?: return null
-        val deviceToken = prefs.getString(KEY_DEVICE_TOKEN, null) ?: return null
-        return SyncCredentials(accountId = accountId, accountCode = accountCode, deviceToken = deviceToken)
-    }
-
     override fun save(credentials: SyncCredentials) {
-        prefs.edit()
-            .putString(KEY_ACCOUNT_ID, credentials.accountId)
-            .putString(KEY_ACCOUNT_CODE, credentials.accountCode)
-            .putString(KEY_DEVICE_TOKEN, credentials.deviceToken)
-            .apply()
+        store.put(KEY_ACCOUNT_ID, credentials.accountId)
+        store.put(KEY_ACCOUNT_CODE, credentials.accountCode)
+        store.put(KEY_DEVICE_TOKEN, credentials.deviceToken)
     }
 
     override fun clear() {
-        prefs.edit().clear().apply()
+        store.clear()
     }
 }

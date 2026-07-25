@@ -19,6 +19,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,6 +60,14 @@ fun DuoScreen(
     viewModel: DuoViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+
+    // Reload every time the Duo tab is opened. The ViewModel is Activity-scoped
+    // and survives tab switches, so without this it keeps showing whatever was
+    // true when it was first created - notably "synchronisation requise" after
+    // the user has since registered from Settings, which only a restart cleared.
+    LaunchedEffect(Unit) {
+        viewModel.refresh()
+    }
 
     Column(
         modifier = Modifier
