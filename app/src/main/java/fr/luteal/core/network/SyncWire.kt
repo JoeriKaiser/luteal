@@ -7,6 +7,7 @@ import fr.luteal.core.network.contract.models.DailyEntryData
 import fr.luteal.core.network.contract.models.EntityType
 import fr.luteal.core.network.contract.models.RejectedChange
 import fr.luteal.core.network.contract.models.SymptomLogData
+import fr.luteal.core.network.crypto.RecordSealer
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlinx.serialization.Contextual
@@ -30,10 +31,24 @@ import kotlinx.serialization.json.JsonElement
 
 // --- Push ------------------------------------------------------------------
 
+/**
+ * One end-to-end encrypted change.
+ *
+ * [ciphertext] is base64 of the sealed record (see
+ * [fr.luteal.core.network.crypto.RecordCrypto]). The remaining fields are
+ * plaintext because the server needs them to route the upsert, order the
+ * last-write-wins guard, and append the change log - it can no longer read
+ * them out of the payload. They are also bound into the AEAD associated data,
+ * so the server cannot move a payload between records undetected.
+ */
 @Serializable
 data class PushChangeWire(
     @SerialName("entity_type") val entityType: EntityType,
-    @SerialName("data") val data: JsonElement
+    @Contextual @SerialName("entity_id") val entityId: UUID,
+    @Contextual @SerialName("client_rev") val clientRev: UUID,
+    @Contextual @SerialName("updated_at") val updatedAt: OffsetDateTime,
+    @SerialName("deleted") val deleted: Boolean,
+    @SerialName("ciphertext") val ciphertext: String? = null
 )
 
 @Serializable
@@ -46,7 +61,10 @@ data class ConflictWire(
     @SerialName("entity_type") val entityType: EntityType,
     @Contextual @SerialName("entity_id") val entityId: UUID,
     @SerialName("reason") val reason: String,
-    @SerialName("current") val current: JsonElement
+    @Contextual @SerialName("current_client_rev") val currentClientRev: UUID,
+    @Contextual @SerialName("current_updated_at") val currentUpdatedAt: OffsetDateTime,
+    @SerialName("current_deleted") val currentDeleted: Boolean = false,
+    @SerialName("current_ciphertext") val currentCiphertext: String? = null
 )
 
 @Serializable
@@ -64,9 +82,10 @@ data class PullChangeWire(
     @SerialName("seq") val seq: Long,
     @SerialName("entity_type") val entityType: EntityType,
     @Contextual @SerialName("entity_id") val entityId: UUID,
+    @Contextual @SerialName("client_rev") val clientRev: UUID,
     @SerialName("deleted") val deleted: Boolean,
     @Contextual @SerialName("updated_at") val updatedAt: OffsetDateTime,
-    @SerialName("data") val data: JsonElement? = null
+    @SerialName("ciphertext") val ciphertext: String? = null
 )
 
 @Serializable
@@ -111,3 +130,66 @@ fun String.toPushResultWire(): PushResultWire =
 
 fun String.toPullResultWire(): PullResultWire =
     ContractJson.decodeFromString(PullResultWire.serializer(), this)
+
+// --- Sealing ---------------------------------------------------------------
+//
+// Each record carries its own envelope (id, client_rev, updated_at,
+// deleted_at), so the routing fields the server needs are derived from the
+// record itself rather than threaded separately. The same three values are
+// bound into the AEAD associated data.
+
+private fun sealedChange(
+    sealer: RecordSealer,
+    entityType: EntityType,
+    entityId: UUID,
+    clientRev: UUID,
+    updatedAt: OffsetDateTime,
+    deletedAt: OffsetDateTime?,
+    payload: JsonElement
+): PushChangeWire {
+    val deleted = deletedAt != null
+    return PushChangeWire(
+        entityType = entityType,
+        entityId = entityId,
+        clientRev = clientRev,
+        updatedAt = updatedAt,
+        deleted = deleted,
+        // A tombstone carries no content: there is nothing to protect, and the
+        // server rejects ciphertext on a delete.
+        ciphertext = if (deleted) {
+            null
+        } else {
+            sealer.seal(entityType.value, entityId.toString(), clientRev.toString(), payload)
+        }
+    )
+}
+
+fun CycleData.toPushChange(sealer: RecordSealer): PushChangeWire = sealedChange(
+    sealer, EntityType.CYCLE, id, clientRev, updatedAt, deletedAt, toJsonElement()
+)
+
+fun BleedingObservationData.toPushChange(sealer: RecordSealer): PushChangeWire = sealedChange(
+    sealer, EntityType.BLEEDING_OBSERVATION, id, clientRev, updatedAt, deletedAt, toJsonElement()
+)
+
+fun DailyEntryData.toPushChange(sealer: RecordSealer): PushChangeWire = sealedChange(
+    sealer, EntityType.DAILY_ENTRY, id, clientRev, updatedAt, deletedAt, toJsonElement()
+)
+
+fun SymptomLogData.toPushChange(sealer: RecordSealer): PushChangeWire = sealedChange(
+    sealer, EntityType.SYMPTOM_LOG, id, clientRev, updatedAt, deletedAt, toJsonElement()
+)
+
+/** Opens a pulled change, or returns null for a tombstone. */
+fun PullChangeWire.openPayload(sealer: RecordSealer): JsonElement? {
+    val sealed = ciphertext ?: return null
+    return sealer.open(entityType.value, entityId.toString(), clientRev.toString(), sealed)
+}
+
+/** Opens the server's current state from a conflict, or null for a tombstone. */
+fun ConflictWire.openCurrent(sealer: RecordSealer): JsonElement? {
+    val sealed = currentCiphertext ?: return null
+    return sealer.open(
+        entityType.value, entityId.toString(), currentClientRev.toString(), sealed
+    )
+}

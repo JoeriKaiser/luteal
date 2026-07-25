@@ -14,6 +14,10 @@ import fr.luteal.core.network.FolicularApiClient
 import fr.luteal.core.network.PushChangeWire
 import fr.luteal.core.network.PullChangeWire
 import fr.luteal.core.network.auth.SyncCredentialStore
+import fr.luteal.core.network.crypto.RecordSealer
+import fr.luteal.core.network.toPushChange
+import fr.luteal.core.network.openPayload
+import fr.luteal.core.network.openCurrent
 import fr.luteal.core.network.auth.SyncCredentials
 import fr.luteal.core.network.contract.models.CycleData
 import fr.luteal.core.network.contract.models.Certainty
@@ -30,9 +34,9 @@ import fr.luteal.core.network.mapping.toDailyEntry
 import fr.luteal.core.network.mapping.toSymptomLog
 import fr.luteal.core.network.mapping.toBleedingObservation
 import fr.luteal.core.network.toBleedingObservationData
-import fr.luteal.core.network.toCycleData as cycleDataFromJson
-import fr.luteal.core.network.toDailyEntryData as dailyEntryDataFromJson
-import fr.luteal.core.network.toSymptomLogData as symptomLogDataFromJson
+import fr.luteal.core.network.toCycleData
+import fr.luteal.core.network.toDailyEntryData
+import fr.luteal.core.network.toSymptomLogData
 import fr.luteal.core.network.toJsonElement
 import fr.luteal.core.model.DailyEntry
 import fr.luteal.core.model.SymptomLog
@@ -40,6 +44,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 /** Creates an API client for a resolved base URL (dev targeting). */
@@ -55,6 +60,16 @@ interface SyncCursorStore {
     suspend fun getCursor(): Long
     suspend fun setCursor(cursor: Long)
     suspend fun getBaseUrl(): String
+
+    /** Invite code for gated registration (closed rollout); empty when open. */
+    suspend fun getInviteCode(): String
+
+    /**
+     * Stable, non-identifying label for this device, generated once and
+     * persisted. Deliberately not the hardware model: see
+     * [fr.luteal.core.network.auth.DeviceLabel].
+     */
+    suspend fun getDeviceLabel(): String
 }
 
 /** Outcome of one sync pass. Contains no credentials. */
@@ -95,7 +110,7 @@ class CycleSyncEngine(
     private val credentialStore: SyncCredentialStore,
     private val apiClientFactory: FolicularApiClientFactory,
     private val cursorStore: SyncCursorStore,
-    private val deviceNameProvider: () -> String
+    private val recordSealer: RecordSealer
 ) {
 
     suspend fun sync(): SyncReport {
@@ -123,7 +138,7 @@ class CycleSyncEngine(
 
     private suspend fun ensureRegistered(client: FolicularApiClient): Pair<SyncCredentials, Boolean> {
         credentialStore.load()?.let { return it to false }
-        val response = client.register(deviceNameProvider())
+        val response = client.register(cursorStore.getDeviceLabel(), cursorStore.getInviteCode())
         val credentials = SyncCredentials(
             accountId = response.account.id.toString(),
             accountCode = response.account.code,
@@ -180,7 +195,7 @@ class CycleSyncEngine(
         if (changes.isEmpty()) return PushOutcome(0, 0, emptyList(), 0)
 
         val result = runCatching { client.syncPush(token, changes) }
-            .onFailure { if (it.isAuthFailure()) credentialStore.clear() }
+            .onFailure { if (it.isAuthFailure()) { credentialStore.clear(); recordSealer.invalidate() } }
             .getOrThrow()
 
         var appliedCount = 0
@@ -207,7 +222,7 @@ class CycleSyncEngine(
         for (conflict in result.conflicts) {
             when (conflict.entityType) {
                 EntityType.CYCLE -> {
-                    val serverCycle = conflict.current.cycleDataFromJson()
+                    val serverCycle = conflict.openCurrent(recordSealer)?.toCycleData() ?: continue
                     val localPeriodDays = cycleRepository.getCyclesOnce()
                         .firstOrNull { it.id == serverCycle.id.toString() }
                         ?.periodDays.orEmpty()
@@ -215,12 +230,12 @@ class CycleSyncEngine(
                     conflictsAdopted++
                 }
                 EntityType.DAILY_ENTRY -> {
-                    val serverEntry = conflict.current.dailyEntryDataFromJson()
+                    val serverEntry = conflict.openCurrent(recordSealer)?.toDailyEntryData() ?: continue
                     adoptDailyEntry(serverEntry)
                     conflictsAdopted++
                 }
                 EntityType.SYMPTOM_LOG -> {
-                    val serverLog = conflict.current.symptomLogDataFromJson()
+                    val serverLog = conflict.openCurrent(recordSealer)?.toSymptomLogData() ?: continue
                     adoptSymptomLog(serverLog)
                     conflictsAdopted++
                 }
@@ -249,7 +264,7 @@ class CycleSyncEngine(
                 lengthDays = null, bleedingDays = null,
                 certainty = Certainty.RECORDED, source = RecordSource.MANUAL, notes = ""
             )
-            changes += PushChangeWire(EntityType.CYCLE, tombstone.toJsonElement())
+            changes += tombstone.toPushChange(recordSealer)
             pushedIds += state.entityId
         } else {
             syncStateDao.delete(state.entityId)
@@ -266,9 +281,9 @@ class CycleSyncEngine(
             return
         }
         val cycleData = cycle.toCycleData(meta)
-        changes += PushChangeWire(EntityType.CYCLE, cycleData.toJsonElement())
+        changes += cycleData.toPushChange(recordSealer)
         fanOutBleeding(cycle.id, cycle.periodDays, meta).forEach { observation ->
-            changes += PushChangeWire(EntityType.BLEEDING_OBSERVATION, observation.toJsonElement())
+            changes += observation.toPushChange(recordSealer)
         }
         pushedIds += cycle.id
     }
@@ -288,7 +303,7 @@ class CycleSyncEngine(
         if (state.deletedAtEpochMillis != null) {
             val entry = DailyEntry(date = date, updatedAt = Instant.ofEpochMilli(state.updatedAtEpochMillis))
             val data = entry.toDailyEntryData(meta)
-            changes += PushChangeWire(EntityType.DAILY_ENTRY, data.toJsonElement())
+            changes += data.toPushChange(recordSealer)
             pushedIds += state.entityId
             return
         }
@@ -313,12 +328,12 @@ class CycleSyncEngine(
             updatedAt = Instant.ofEpochMilli(entryEntity.updatedAtEpochMillis)
         )
         val data = entry.toDailyEntryData(meta)
-        changes += PushChangeWire(EntityType.DAILY_ENTRY, data.toJsonElement())
+        changes += data.toPushChange(recordSealer)
         // Also fan out bleeding from the daily entry if it has one.
         entry.bleedingIntensity?.let {
             val bleeding = entry.toBleedingObservation(meta)
             if (bleeding != null) {
-                changes += PushChangeWire(EntityType.BLEEDING_OBSERVATION, bleeding.toJsonElement())
+                changes += bleeding.toPushChange(recordSealer)
             }
         }
         pushedIds += state.entityId
@@ -340,7 +355,7 @@ class CycleSyncEngine(
                 date = LocalDate.now(), symptomId = "unknown", severity = 1
             )
             val data = log.toSymptomLogData(meta)
-            changes += PushChangeWire(EntityType.SYMPTOM_LOG, data.toJsonElement())
+            changes += data.toPushChange(recordSealer)
             pushedIds += state.entityId
             return
         }
@@ -358,7 +373,7 @@ class CycleSyncEngine(
             notes = logEntity.notes
         )
         val data = log.toSymptomLogData(meta)
-        changes += PushChangeWire(EntityType.SYMPTOM_LOG, data.toJsonElement())
+        changes += data.toPushChange(recordSealer)
         pushedIds += state.entityId
     }
 
@@ -379,7 +394,7 @@ class CycleSyncEngine(
 
         while (true) {
             val result = runCatching { client.syncPull(token, since) }
-                .onFailure { if (it.isAuthFailure()) credentialStore.clear() }
+                .onFailure { if (it.isAuthFailure()) { credentialStore.clear(); recordSealer.invalidate() } }
                 .getOrThrow()
 
             val applied = applyPage(result.changes)
@@ -402,8 +417,10 @@ class CycleSyncEngine(
 
         // Decode live bleeding observations for cycle period-day association.
         val bleeding = changes
-            .filter { it.entityType == EntityType.BLEEDING_OBSERVATION && !it.deleted && it.data != null }
-            .mapNotNull { runCatching { it.data!!.toBleedingObservationData() }.getOrNull() }
+            .filter { it.entityType == EntityType.BLEEDING_OBSERVATION && !it.deleted }
+            .mapNotNull {
+                runCatching { it.openPayload(recordSealer)?.toBleedingObservationData() }.getOrNull()
+            }
 
         var recordsApplied = 0
         var tombstones = 0
@@ -412,11 +429,13 @@ class CycleSyncEngine(
             when (change.entityType) {
                 EntityType.CYCLE -> {
                     val cycleId = change.entityId.toString()
-                    if (change.deleted || change.data == null) {
+                    if (change.deleted) {
                         cycleRepository.deleteCycle(cycleId)
                         tombstones++
                     } else {
-                        val cycleData = runCatching { change.data.cycleDataFromJson() }.getOrNull() ?: continue
+                        val cycleData = runCatching {
+                            change.openPayload(recordSealer)?.toCycleData()
+                        }.getOrNull() ?: continue
                         val periodDays = associatePeriodDays(
                             startDate = cycleData.startDate,
                             endDate = cycleData.endDate,
@@ -429,25 +448,29 @@ class CycleSyncEngine(
                 }
                 EntityType.DAILY_ENTRY -> {
                     val entryId = change.entityId.toString()
-                    if (change.deleted || change.data == null) {
+                    if (change.deleted) {
                         // Daily entry ids are deterministic from the date; extract it.
                         dailyEntryDao.delete(entryId)
                         syncStateDao.delete(entryId)
                         tombstones++
                     } else {
-                        val entryData = runCatching { change.data.dailyEntryDataFromJson() }.getOrNull() ?: continue
+                        val entryData = runCatching {
+                            change.openPayload(recordSealer)?.toDailyEntryData()
+                        }.getOrNull() ?: continue
                         adoptDailyEntry(entryData)
                         recordsApplied++
                     }
                 }
                 EntityType.SYMPTOM_LOG -> {
                     val logId = change.entityId.toString()
-                    if (change.deleted || change.data == null) {
+                    if (change.deleted) {
                         symptomDao.deleteSymptomLog(logId)
                         syncStateDao.delete(logId)
                         tombstones++
                     } else {
-                        val logData = runCatching { change.data.symptomLogDataFromJson() }.getOrNull() ?: continue
+                        val logData = runCatching {
+                            change.openPayload(recordSealer)?.toSymptomLogData()
+                        }.getOrNull() ?: continue
                         adoptSymptomLog(logData)
                         recordsApplied++
                     }
@@ -532,9 +555,9 @@ class CycleSyncEngine(
 
     private fun SyncStateEntity.toSyncMeta(): SyncMeta = SyncMeta(
         clientRev = UUID.fromString(clientRev),
-        createdAt = createdAtEpochMillis.toUtcOffsetDateTime(),
-        updatedAt = updatedAtEpochMillis.toUtcOffsetDateTime(),
-        deletedAt = deletedAtEpochMillis?.toUtcOffsetDateTime()
+        createdAt = createdAtEpochMillis.toCoarseUtc(),
+        updatedAt = updatedAtEpochMillis.toCoarseUtc(),
+        deletedAt = deletedAtEpochMillis?.toCoarseUtc()
     )
 
     private fun CycleData.toCleanState(entityType: String): SyncStateEntity = SyncStateEntity(
@@ -550,6 +573,22 @@ class CycleSyncEngine(
 
     private fun Long.toUtcOffsetDateTime(): OffsetDateTime =
         OffsetDateTime.ofInstant(Instant.ofEpochMilli(this), ZoneOffset.UTC)
+
+    /**
+     * Envelope timestamps, normalised to UTC and truncated to the minute.
+     *
+     * These stay readable by the server even under end-to-end encryption,
+     * because delta pull orders by them. Millisecond precision would let the
+     * server reconstruct exactly when each observation was entered, which is
+     * behavioural data it has no need for: an offline-first client pushes a
+     * batch long after the fact, so without truncation the batch itself
+     * carries a minute-by-minute timeline of the user's evening.
+     *
+     * Minute granularity keeps last-write-wins well behaved (client_rev
+     * remains the documented tiebreak) while removing that timeline.
+     */
+    private fun Long.toCoarseUtc(): OffsetDateTime =
+        toUtcOffsetDateTime().truncatedTo(ChronoUnit.MINUTES)
 
     private fun Throwable.isAuthFailure(): Boolean =
         this is FolicularApiException && status == 401

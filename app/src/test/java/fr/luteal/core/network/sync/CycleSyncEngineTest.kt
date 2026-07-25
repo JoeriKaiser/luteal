@@ -10,6 +10,7 @@ import fr.luteal.core.network.PullChangeWire
 import fr.luteal.core.network.PullResultWire
 import fr.luteal.core.network.PushResultWire
 import fr.luteal.core.network.auth.SyncCredentials
+import fr.luteal.core.network.crypto.RecordSealer
 import fr.luteal.core.network.contract.models.AppliedChange
 import fr.luteal.core.network.contract.models.BleedingObservationData
 import fr.luteal.core.network.contract.models.Certainty
@@ -26,6 +27,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonElement
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -111,7 +113,60 @@ class CycleSyncEngineTest {
         credentialStore = creds,
         apiClientFactory = FolicularApiClientFactory { api },
         cursorStore = cursor,
-        deviceNameProvider = { "test-device" }
+        recordSealer = RecordSealer(creds)
+    )
+
+    /**
+     * A sealer holding the credentials the engine ends up with after
+     * registering, so fixtures are sealed under the same key the engine will
+     * derive. Pull tests then exercise the real decrypt path rather than a
+     * plaintext shortcut.
+     */
+    private val fixtureSealer = RecordSealer(
+        FakeCredentialStore(
+            SyncCredentials(
+                accountId = registerResponse.account.id.toString(),
+                accountCode = registerResponse.account.code,
+                deviceToken = registerResponse.device.token
+            )
+        )
+    )
+
+    /** Seals the server's current state for a conflict, under [creds]' key. */
+    private fun sealedConflict(
+        entityId: UUID,
+        payload: JsonElement,
+        creds: FakeCredentialStore,
+        clientRev: UUID = UUID.randomUUID()
+    ) = ConflictWire(
+        entityType = EntityType.CYCLE,
+        entityId = entityId,
+        reason = "superseded",
+        currentClientRev = clientRev,
+        currentUpdatedAt = now,
+        currentDeleted = false,
+        currentCiphertext = RecordSealer(creds).seal(
+            EntityType.CYCLE.value, entityId.toString(), clientRev.toString(), payload
+        )
+    )
+
+    /** Seals a record the way the server would have stored it. */
+    private fun sealedPull(
+        seq: Long,
+        entityType: EntityType,
+        entityId: UUID,
+        payload: JsonElement,
+        clientRev: UUID = UUID.randomUUID()
+    ) = PullChangeWire(
+        seq = seq,
+        entityType = entityType,
+        entityId = entityId,
+        clientRev = clientRev,
+        deleted = false,
+        updatedAt = now,
+        ciphertext = fixtureSealer.seal(
+            entityType.value, entityId.toString(), clientRev.toString(), payload
+        )
     )
 
     @Test
@@ -130,11 +185,15 @@ class CycleSyncEngineTest {
             )
             pullResults += PullResultWire(
                 changes = listOf(
-                    PullChangeWire(3L, EntityType.CYCLE, cycleId, false, now, cycleData().toJsonElement()),
-                    PullChangeWire(4L, EntityType.BLEEDING_OBSERVATION, UUID.randomUUID(), false, now,
-                        bleedingData(startDate, Flow.MEDIUM).toJsonElement()),
-                    PullChangeWire(5L, EntityType.BLEEDING_OBSERVATION, UUID.randomUUID(), false, now,
-                        bleedingData(startDate.plusDays(1), Flow.LIGHT).toJsonElement())
+                    sealedPull(3L, EntityType.CYCLE, cycleId, cycleData().toJsonElement()),
+                    sealedPull(
+                        4L, EntityType.BLEEDING_OBSERVATION, UUID.randomUUID(),
+                        bleedingData(startDate, Flow.MEDIUM).toJsonElement()
+                    ),
+                    sealedPull(
+                        5L, EntityType.BLEEDING_OBSERVATION, UUID.randomUUID(),
+                        bleedingData(startDate.plusDays(1), Flow.LIGHT).toJsonElement()
+                    )
                 ),
                 cursor = 5L,
                 hasMore = false
@@ -203,11 +262,10 @@ class CycleSyncEngineTest {
                 applied = emptyList(),
                 rejected = emptyList(),
                 conflicts = listOf(
-                    ConflictWire(
-                        entityType = EntityType.CYCLE,
+                    sealedConflict(
                         entityId = cycleId,
-                        reason = "superseded",
-                        current = cycleData(start = serverStart).toJsonElement()
+                        payload = cycleData(start = serverStart).toJsonElement(),
+                        creds = creds
                     )
                 ),
                 cursor = 9L
@@ -232,7 +290,15 @@ class CycleSyncEngineTest {
         val api = FakeApiClient().apply {
             pullResults += PullResultWire(
                 changes = listOf(
-                    PullChangeWire(1L, EntityType.CYCLE, cycleId, true, now, null)
+                    PullChangeWire(
+                        seq = 1L,
+                        entityType = EntityType.CYCLE,
+                        entityId = cycleId,
+                        clientRev = UUID.randomUUID(),
+                        deleted = true,
+                        updatedAt = now,
+                        ciphertext = null
+                    )
                 ),
                 cursor = 1L,
                 hasMore = false

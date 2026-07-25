@@ -40,6 +40,8 @@ import fr.luteal.core.designsystem.component.StatusPill
 import fr.luteal.core.designsystem.component.StatusTone
 import fr.luteal.core.designsystem.theme.LutealSpacing
 import fr.luteal.core.model.BleedingIntensity
+import fr.luteal.core.model.CycleEstimateCalculator
+import fr.luteal.core.model.CycleEstimateResult
 import java.time.temporal.ChronoUnit
 
 @Composable
@@ -276,65 +278,102 @@ private fun EstimateSection(state: LutealUiState, onBackfillCycle: () -> Unit) {
 
         Spacer(Modifier.height(LutealSpacing.xs))
 
-        val estimate = state.estimate
-        if (estimate == null) {
-            Text(
-                text = stringResource(R.string.estimate_unavailable_short),
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Spacer(Modifier.height(LutealSpacing.xxs))
-            Text(
-                text = stringResource(R.string.estimate_unavailable_hint),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            TextButton(onClick = onBackfillCycle) {
-                Text(text = stringResource(R.string.backfill_action))
+        when (val result = state.estimateResult) {
+            is CycleEstimateResult.NeedsMoreHistory -> {
+                Text(
+                    text = stringResource(R.string.estimate_unavailable_short),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Spacer(Modifier.height(LutealSpacing.xxs))
+                Text(
+                    text = stringResource(R.string.estimate_unavailable_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                TextButton(onClick = onBackfillCycle) {
+                    Text(text = stringResource(R.string.backfill_action))
+                }
             }
-        } else {
-            Text(
-                text = stringResource(
-                    R.string.estimate_range,
-                    FrenchDateFormatter.formatShortDate(estimate.earliestDate),
-                    FrenchDateFormatter.formatShortDate(estimate.latestDate)
-                ),
-                style = MaterialTheme.typography.titleLarge
-            )
-            Spacer(Modifier.height(LutealSpacing.xxs))
-            val daysUntil = ChronoUnit.DAYS.between(state.today, estimate.earliestDate).toInt()
-            Text(
-                text = if (daysUntil > 0) {
-                    stringResource(R.string.estimate_days_remaining, daysUntil)
-                } else {
-                    stringResource(R.string.estimate_in_progress)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = pluralStringResource(
-                    R.plurals.estimate_basis,
-                    estimate.cycleCount,
-                    estimate.cycleCount
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = stringResource(R.string.estimate_disclaimer),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+
+            // History exists; the intervals are simply outside what this
+            // calculator models. Saying "waiting for history" here would be
+            // untrue for anyone with long or irregular cycles.
+            is CycleEstimateResult.IntervalsOutOfRange -> {
+                Text(
+                    text = stringResource(R.string.estimate_out_of_range_short),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Spacer(Modifier.height(LutealSpacing.xxs))
+                Text(
+                    text = stringResource(R.string.estimate_out_of_range_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            is CycleEstimateResult.Available -> {
+                val estimate = result.estimate
+                Text(
+                    text = stringResource(
+                        R.string.estimate_range,
+                        FrenchDateFormatter.formatShortDate(estimate.earliestDate),
+                        FrenchDateFormatter.formatShortDate(estimate.latestDate)
+                    ),
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Spacer(Modifier.height(LutealSpacing.xxs))
+                val daysUntil =
+                    ChronoUnit.DAYS.between(state.today, estimate.earliestDate).toInt()
+                val daysPastWindow =
+                    ChronoUnit.DAYS.between(estimate.latestDate, state.today).toInt()
+                Text(
+                    text = when {
+                        daysUntil > 0 ->
+                            pluralStringResource(
+                                R.plurals.estimate_days_remaining,
+                                daysUntil,
+                                daysUntil
+                            )
+                        // Past the whole window: the estimate did not hold, and
+                        // saying "in progress" indefinitely would be misleading.
+                        daysPastWindow > 0 ->
+                            pluralStringResource(
+                                R.plurals.estimate_past_window,
+                                daysPastWindow,
+                                daysPastWindow
+                            )
+                        else -> stringResource(R.string.estimate_in_progress)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = pluralStringResource(
+                        R.plurals.estimate_basis,
+                        estimate.cycleCount,
+                        estimate.cycleCount
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = stringResource(R.string.estimate_disclaimer),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
 
 @Composable
 private fun CycleStatsSection(state: LutealUiState) {
+    // Same plausibility filter the estimator applies, so the average shown
+    // here cannot contradict the estimate rendered directly above it.
     val completedLengths = state.cycles
         .filterNot { it.isCurrent }
         .map { it.lengthInDays }
-        .filter { it > 0 }
+        .filter { it in CycleEstimateCalculator.plausibleCycleDays }
     if (completedLengths.isEmpty()) return
 
     Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
@@ -357,6 +396,18 @@ private fun CycleStatsSection(state: LutealUiState) {
             Text(
                 text = stringResource(R.string.cycle_stats_total_count, state.cycles.size),
                 style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        // An average alone hides how much the cycles actually vary.
+        if (completedLengths.size > 1) {
+            Text(
+                text = stringResource(
+                    R.string.cycle_stats_range,
+                    completedLengths.min(),
+                    completedLengths.max()
+                ),
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }

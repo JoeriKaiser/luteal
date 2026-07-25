@@ -41,7 +41,7 @@ class OkHttpFolicularApiClientTest {
             )
         )
 
-        val response = client.register("Pixel 9")
+        val response = client.register("Pixel 9", "")
 
         assertEquals("LTL-8K3FQ-Z2WNT-7HJMC-4XRDB", response.account.code)
         assertEquals("ltok_abc", response.device.token)
@@ -50,6 +50,27 @@ class OkHttpFolicularApiClientTest {
         assertEquals("POST", recorded.method)
         assertEquals("/v1/auth/register", recorded.path)
         assertTrue(recorded.body.readUtf8().contains("\"device_name\":\"Pixel 9\""))
+    }
+
+    @Test
+    fun `register sends invite code when provided`() = runTest {
+        server.enqueue(
+            MockResponse().setResponseCode(201).setBody(
+                """
+                {"account":{"id":"019832e0-6c14-7000-8000-0000000000aa",
+                            "code":"LTL-8K3FQ-Z2WNT-7HJMC-4XRDB"},
+                 "device":{"id":"019832e0-6c14-7000-8000-0000000000bb",
+                           "name":"Pixel 9","token":"ltok_abc"},
+                 "warning":"Conservez votre code."}
+                """.trimIndent()
+            )
+        )
+
+        client.register("Pixel 9", "BETA-1234")
+
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(body.contains("\"device_name\":\"Pixel 9\""))
+        assertTrue(body.contains("\"invite_code\":\"BETA-1234\""))
     }
 
     @Test

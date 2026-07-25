@@ -1,16 +1,13 @@
 package fr.luteal.core.network
 
-import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.network.contract.models.EntityType
-import fr.luteal.core.network.contract.models.Flow
 import fr.luteal.core.network.contract.models.Register201Response
-import fr.luteal.core.network.mapping.toBleedingIntensity
 import java.io.File
-import java.time.LocalDate
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -48,7 +45,7 @@ class ConformanceFixturesTest {
     }
 
     @Test
-    fun `sync push response decodes applied rejected and conflict current`() {
+    fun `sync push response decodes applied rejected and sealed conflict state`() {
         val result = ContractJson.decodeFromJsonElement(PushResultWire.serializer(), body("sync_push"))
 
         assertEquals(412L, result.cursor)
@@ -59,19 +56,23 @@ class ConformanceFixturesTest {
 
         assertEquals(1, result.rejected.size)
         assertEquals(EntityType.DAILY_ENTRY, result.rejected[0].entityType)
-        assertTrue(result.rejected[0].detail.contains("pain_level"))
+        assertTrue(result.rejected[0].detail.contains("ciphertext"))
 
         assertEquals(1, result.conflicts.size)
         val conflict = result.conflicts[0]
         assertEquals(EntityType.CYCLE, conflict.entityType)
         assertEquals("superseded", conflict.reason)
-        // The server's current record is recoverable from the JsonElement.
-        val current = conflict.current.toCycleData()
-        assertEquals(LocalDate.of(2026, 6, 30), current.startDate)
+        // The server's current state arrives sealed, with only the routing
+        // metadata readable. The fixture ciphertext is random, so this asserts
+        // the shape rather than decrypting it - SyncWireTest covers the
+        // round trip with a real key.
+        assertNotNull(conflict.currentCiphertext)
+        assertNotNull(conflict.currentClientRev)
+        assertEquals(false, conflict.currentDeleted)
     }
 
     @Test
-    fun `sync pull response decodes cycle bleeding and tombstone changes`() {
+    fun `sync pull response decodes sealed changes and tombstones`() {
         val result = ContractJson.decodeFromJsonElement(PullResultWire.serializer(), body("sync_pull"))
 
         assertEquals(412L, result.cursor)
@@ -81,20 +82,32 @@ class ConformanceFixturesTest {
         val cycle = result.changes[0]
         assertEquals(EntityType.CYCLE, cycle.entityType)
         assertEquals(false, cycle.deleted)
-        val cycleData = cycle.data!!.toCycleData()
-        assertEquals(LocalDate.of(2026, 6, 30), cycleData.startDate)
-        assertEquals(LocalDate.of(2026, 7, 27), cycleData.endDate)
+        assertNotNull(cycle.ciphertext)
+        assertNotNull(cycle.clientRev)
 
         val bleeding = result.changes[1]
         assertEquals(EntityType.BLEEDING_OBSERVATION, bleeding.entityType)
-        val obs = bleeding.data!!.toBleedingObservationData()
-        assertEquals(Flow.MEDIUM, obs.flow)
-        assertEquals(LocalDate.of(2026, 6, 30), obs.observedDate)
-        assertEquals(BleedingIntensity.MEDIUM, obs.flow.toBleedingIntensity())
+        assertNotNull(bleeding.ciphertext)
 
         val tombstone = result.changes[2]
         assertEquals(EntityType.CYCLE, tombstone.entityType)
         assertEquals(true, tombstone.deleted)
-        assertNull(tombstone.data)
+        assertNull(tombstone.ciphertext)
+    }
+
+    @Test
+    fun `sealed fixtures leak no observational content`() {
+        // Guards the whole point of the migration: if a plaintext field ever
+        // reappears on the wire, the golden bodies will show it.
+        listOf("sync_push", "sync_pull").forEach { name ->
+            val raw = body(name).toString()
+            listOf("start_date", "observed_date", "flow", "pain_level", "notes")
+                .forEach { field ->
+                    assertTrue(
+                        "$name must not carry plaintext \"$field\"",
+                        !raw.contains(field)
+                    )
+                }
+        }
     }
 }

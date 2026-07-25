@@ -121,7 +121,9 @@ class FakeCredentialStore(var credentials: SyncCredentials? = null) : SyncCreden
 /** In-memory [SyncCursorStore] for engine tests. */
 class FakeCursorStore(
     private var cursor: Long = 0L,
-    private val baseUrl: String = "http://test.local:8080"
+    private val baseUrl: String = "http://test.local:8080",
+    private val inviteCode: String = "",
+    private val deviceLabel: String = "test-device"
 ) : SyncCursorStore {
     override suspend fun getCursor(): Long = cursor
     override suspend fun setCursor(cursor: Long) {
@@ -129,6 +131,8 @@ class FakeCursorStore(
     }
 
     override suspend fun getBaseUrl(): String = baseUrl
+    override suspend fun getInviteCode(): String = inviteCode
+    override suspend fun getDeviceLabel(): String = deviceLabel
 }
 
 /** Scripted [FolicularApiClient] for engine tests. */
@@ -141,11 +145,13 @@ class FakeApiClient : FolicularApiClient {
 
     var registerCalls = 0
         private set
+    val registerInviteCodes = mutableListOf<String>()
     val pushCalls = mutableListOf<List<PushChangeWire>>()
     val pullSinceValues = mutableListOf<Long>()
 
-    override suspend fun register(deviceName: String): Register201Response {
+    override suspend fun register(deviceName: String, inviteCode: String): Register201Response {
         registerCalls++
+        registerInviteCodes += inviteCode
         return registerResponse
     }
 
@@ -161,4 +167,26 @@ class FakeApiClient : FolicularApiClient {
         return if (pullResults.isNotEmpty()) pullResults.removeFirst() else
             PullResultWire(emptyList(), since, false)
     }
+
+    // --- Duo stubs (not exercised by sync engine tests) ---
+    override suspend fun createInvitation(deviceToken: String) =
+        throw UnsupportedOperationException("not used in sync tests")
+    override suspend fun acceptLink(deviceToken: String, pairingCode: String) =
+        throw UnsupportedOperationException("not used in sync tests")
+    override suspend fun listLinks(deviceToken: String) =
+        throw UnsupportedOperationException("not used in sync tests")
+    override suspend fun patchGrants(deviceToken: String, linkId: String, field: fr.luteal.core.network.contract.models.GrantField, granted: Boolean) =
+        throw UnsupportedOperationException("not used in sync tests")
+    override suspend fun revokeLink(deviceToken: String, linkId: String) =
+        throw UnsupportedOperationException("not used in sync tests")
+    override suspend fun duoView(deviceToken: String) =
+        throw UnsupportedOperationException("not used in sync tests")
+    override suspend fun addDevice(accountCode: String, deviceName: String) =
+        throw UnsupportedOperationException("not used in sync tests")
+    override suspend fun putDuoPayload(deviceToken: String, payload: String) =
+        throw UnsupportedOperationException("not used in sync tests")
+    override suspend fun createSupportRequest(deviceToken: String, linkId: String, kind: fr.luteal.core.network.contract.models.SupportKind, sealedMessage: ByteArray) =
+        throw UnsupportedOperationException("not used in sync tests")
+    override suspend fun ackSupportRequest(deviceToken: String, requestId: String) =
+        throw UnsupportedOperationException("not used in sync tests")
 }

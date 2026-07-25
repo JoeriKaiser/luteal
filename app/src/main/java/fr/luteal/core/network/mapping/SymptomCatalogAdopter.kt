@@ -4,14 +4,21 @@ import fr.luteal.core.model.Symptom
 import fr.luteal.core.network.contract.models.SymptomDefinitionData
 
 /**
- * Reconciles the local symptom catalog with the server's authoritative
- * definitions. The backend seeds each account with a built-in catalog; the
- * client must ADOPT those (matched by key) rather than create its own rows,
- * because the backend enforces a unique live (account_id, key) index.
+ * Reconciles a local symptom catalog with definitions arriving from sync.
  *
- * Rule: active server definitions are authoritative for their key; local
- * symptoms whose key is not an active server definition are treated as
- * user customs and preserved.
+ * NOT currently wired into production code: the app renders
+ * [Symptom.DEFAULT_SYMPTOMS] and symptom definitions are not yet part of the
+ * synced slice (see docs/architecture/BACKEND_INTEGRATION.md).
+ *
+ * The original premise no longer holds. The backend used to seed each account
+ * with a built-in catalog and act as the authority for it; under end-to-end
+ * encryption it cannot, because it cannot create records it has no key for.
+ * The catalog is now owned by the client, and definitions would arrive sealed
+ * like any other record.
+ *
+ * The reconciliation rule survives that change and is why this is kept: a
+ * definition arriving from sync is authoritative for its key, and local
+ * symptoms whose key is not among them are user customs and are preserved.
  */
 object SymptomCatalogAdopter {
 

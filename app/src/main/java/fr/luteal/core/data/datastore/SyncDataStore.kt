@@ -27,6 +27,8 @@ private val Context.syncDataStore: DataStore<Preferences> by preferencesDataStor
 data class SyncPreferences(
     val cursor: Long = 0L,
     val baseUrl: String? = null,
+    val inviteCode: String? = null,
+    val deviceLabel: String? = null,
     val lastSyncedEpochMillis: Long? = null,
     val lastError: String? = null,
     val inProgress: Boolean = false
@@ -39,6 +41,8 @@ class SyncDataStore @Inject constructor(
     private companion object {
         val CURSOR = longPreferencesKey("sync_cursor")
         val BASE_URL = stringPreferencesKey("sync_base_url")
+        val INVITE_CODE = stringPreferencesKey("sync_invite_code")
+        val DEVICE_LABEL = stringPreferencesKey("sync_device_label")
         val LAST_SYNCED = longPreferencesKey("sync_last_synced_epoch_millis")
         val LAST_ERROR = stringPreferencesKey("sync_last_error")
         val IN_PROGRESS = stringPreferencesKey("sync_in_progress")
@@ -52,6 +56,8 @@ class SyncDataStore @Inject constructor(
             SyncPreferences(
                 cursor = preferences[CURSOR] ?: 0L,
                 baseUrl = preferences[BASE_URL],
+                inviteCode = preferences[INVITE_CODE],
+                deviceLabel = preferences[DEVICE_LABEL],
                 lastSyncedEpochMillis = preferences[LAST_SYNCED],
                 lastError = preferences[LAST_ERROR],
                 inProgress = preferences[IN_PROGRESS]?.toBoolean() ?: false
@@ -63,6 +69,17 @@ class SyncDataStore @Inject constructor(
     suspend fun setBaseUrl(baseUrl: String?): Unit = edit { preferences ->
         if (baseUrl.isNullOrBlank()) preferences.remove(BASE_URL) else preferences[BASE_URL] = baseUrl
     }
+
+    suspend fun setInviteCode(inviteCode: String?): Unit = edit { preferences ->
+        if (inviteCode.isNullOrBlank()) preferences.remove(INVITE_CODE) else preferences[INVITE_CODE] = inviteCode
+    }
+
+    /**
+     * Persists the generated device label so it stays stable across syncs.
+     * See [fr.luteal.core.network.auth.DeviceLabel] for why this is not the
+     * hardware model.
+     */
+    suspend fun setDeviceLabel(label: String): Unit = edit { it[DEVICE_LABEL] = label }
 
     suspend fun setInProgress(inProgress: Boolean): Unit = edit { it[IN_PROGRESS] = inProgress.toString() }
 

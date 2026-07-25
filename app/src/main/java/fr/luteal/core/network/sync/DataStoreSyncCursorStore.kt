@@ -1,6 +1,7 @@
 package fr.luteal.core.network.sync
 
 import fr.luteal.core.data.datastore.SyncDataStore
+import fr.luteal.core.network.auth.DeviceLabel
 import kotlinx.coroutines.flow.first
 
 /**
@@ -21,4 +22,16 @@ class DataStoreSyncCursorStore(
 
     override suspend fun getBaseUrl(): String =
         syncDataStore.syncPreferencesFlow.first().baseUrl?.takeIf { it.isNotBlank() } ?: defaultBaseUrl
+
+    override suspend fun getInviteCode(): String =
+        syncDataStore.syncPreferencesFlow.first().inviteCode.orEmpty()
+
+    override suspend fun getDeviceLabel(): String {
+        syncDataStore.syncPreferencesFlow.first().deviceLabel
+            ?.takeIf { it.isNotBlank() }
+            ?.let { return it }
+        val generated = DeviceLabel.random()
+        syncDataStore.setDeviceLabel(generated)
+        return generated
+    }
 }

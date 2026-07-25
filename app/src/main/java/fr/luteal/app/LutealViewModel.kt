@@ -10,6 +10,7 @@ import fr.luteal.core.data.repository.UserRepository
 import fr.luteal.core.model.Cycle
 import fr.luteal.core.model.CycleEstimate
 import fr.luteal.core.model.CycleEstimateCalculator
+import fr.luteal.core.model.CycleEstimateResult
 import fr.luteal.core.model.DailyEntry
 import fr.luteal.core.model.DuoSharingField
 import fr.luteal.core.model.UserRole
@@ -47,7 +48,7 @@ class LutealViewModel @Inject constructor(
             currentCycle = currentCycle,
             entries = entries,
             preferences = preferences,
-            estimate = CycleEstimateCalculator.estimateNextPeriod(cycles),
+            estimateResult = CycleEstimateCalculator.evaluate(cycles),
             entrySaveState = operation.entrySaveState,
             operationFailed = operation.failed
         )
@@ -147,10 +148,13 @@ data class LutealUiState(
     val currentCycle: Cycle? = null,
     val entries: List<DailyEntry> = emptyList(),
     val preferences: UserPreferences = UserPreferences(),
-    val estimate: CycleEstimate? = null,
+    val estimateResult: CycleEstimateResult = CycleEstimateResult.NeedsMoreHistory,
     val entrySaveState: EntrySaveState = EntrySaveState.IDLE,
     val operationFailed: Boolean = false
 ) {
+    val estimate: CycleEstimate?
+        get() = (estimateResult as? CycleEstimateResult.Available)?.estimate
+
     val todayEntry: DailyEntry?
         get() = entries.firstOrNull { it.date == today }
 

@@ -2,13 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
-      Network permissions are declared ONLY in the debug / dev build used for
-      the local sync trial. The release (offline) build's manifest declares no
-      network permission at all, so the shipped app stays fully offline.
+      Debug / dev build only: permit cleartext HTTP to a LOCAL folicular server
+      for the sync trial (emulator loopback http://10.0.2.2:8080, an
+      adb-reversed http://127.0.0.1:8080, or the host's LAN IP). The network
+      permissions themselves are declared in the main manifest; the release
+      build syncs over HTTPS only and ships no cleartext allowance.
     -->
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
     <application
         android:networkSecurityConfig="@xml/network_security_config"
         android:usesCleartextTraffic="true" />

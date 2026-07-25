@@ -1,11 +1,11 @@
 package fr.luteal.app.di
 
-import android.os.Build
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import fr.luteal.app.BuildConfig
 import fr.luteal.core.data.datastore.SyncDataStore
 import fr.luteal.core.data.local.DailyEntryDao
 import fr.luteal.core.data.local.SyncStateDao
@@ -15,6 +15,7 @@ import fr.luteal.core.network.FolicularApiClient
 import fr.luteal.core.network.OkHttpFolicularApiClient
 import fr.luteal.core.network.auth.EncryptedSyncCredentialStore
 import fr.luteal.core.network.auth.SyncCredentialStore
+import fr.luteal.core.network.crypto.RecordSealer
 import fr.luteal.core.network.sync.CycleSyncEngine
 import fr.luteal.core.network.sync.DataStoreSyncCursorStore
 import fr.luteal.core.network.sync.FolicularApiClientFactory
@@ -23,8 +24,13 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 import okhttp3.OkHttpClient
 
-/** Emulator loopback alias to the host machine; overridable at runtime. */
-const val DEFAULT_SYNC_BASE_URL = "http://10.0.2.2:8080"
+/**
+ * Default folicular base URL for online sync, per build type: the debug/dev
+ * build targets the local trial server (emulator loopback), the release build
+ * targets the production API over HTTPS. Overridable at runtime in Settings
+ * (debug only).
+ */
+private val DEFAULT_SYNC_BASE_URL: String = BuildConfig.SYNC_BASE_URL
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -68,7 +74,8 @@ abstract class SyncModule {
             symptomDao: SymptomDao,
             credentialStore: SyncCredentialStore,
             apiClientFactory: FolicularApiClientFactory,
-            cursorStore: SyncCursorStore
+            cursorStore: SyncCursorStore,
+            recordSealer: RecordSealer
         ): CycleSyncEngine = CycleSyncEngine(
             cycleRepository = cycleRepository,
             syncStateDao = syncStateDao,
@@ -77,7 +84,7 @@ abstract class SyncModule {
             credentialStore = credentialStore,
             apiClientFactory = apiClientFactory,
             cursorStore = cursorStore,
-            deviceNameProvider = { Build.MODEL.ifBlank { "Luteal" } }
+            recordSealer = recordSealer
         )
     }
 }

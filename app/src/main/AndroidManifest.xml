@@ -2,6 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Online cloud sync (SyncMode.ONLINE_CLOUD) requires network access.
+         Cleartext HTTP is NOT permitted by this base configuration: the
+         release build syncs over HTTPS only. The debug build additionally
+         enables cleartext for the local trial server (see app/src/debug). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <application
         android:name=".LutealApp"
         android:allowBackup="false"

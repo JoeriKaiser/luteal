@@ -138,10 +138,7 @@ fun LutealMainScaffold(
                                     editorRequest = EditorRequest(it, startPeriodIntent = false)
                                 }
                             )
-                            LutealDestination.DUO -> DuoScreen(
-                                state = uiState,
-                                onSharingChange = viewModel::updateDuoSharing
-                            )
+                            LutealDestination.DUO -> DuoScreen()
                             LutealDestination.SETTINGS -> SettingsScreen()
                         }
                     }

@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.HealthAndSafety
 import androidx.compose.material.icons.rounded.PhoneAndroid
@@ -83,27 +82,24 @@ fun SettingsScreen(
                 title = stringResource(R.string.settings_backup_title),
                 body = stringResource(R.string.settings_backup_body)
             )
-            if (!BuildConfig.DEBUG) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                SettingsInformationRow(
-                    icon = Icons.Rounded.CloudOff,
-                    title = stringResource(R.string.settings_sync_title),
-                    body = stringResource(R.string.settings_sync_body)
-                )
-            }
         }
 
-        // Local sync trial controls, only in the debug/dev build that declares
-        // the network permission. The release build never shows this.
+        // Online cloud sync, available in every build. The base-URL editor
+        // inside the card and the demo-data tools below stay debug-only; the
+        // release build syncs against the production API over HTTPS.
+        SyncCard(
+            state = syncState,
+            onToggleOnline = viewModel::setOnlineSyncEnabled,
+            onInviteCodeChange = viewModel::onInviteCodeChange,
+            onBaseUrlChange = viewModel::onBaseUrlChange,
+            onSave = viewModel::saveSyncSettings,
+            onSyncNow = viewModel::syncNow,
+            getAccountCode = viewModel::getAccountCode,
+            onRecoveryCodeChange = viewModel::onRecoveryCodeChange,
+            onRecoverAccount = viewModel::recoverAccount,
+            onDismissRecoveryMessage = viewModel::clearRecoveryState
+        )
         if (BuildConfig.DEBUG) {
-            SyncTrialCard(
-                state = syncState,
-                onToggleOnline = viewModel::setOnlineSyncEnabled,
-                onBaseUrlChange = viewModel::onBaseUrlChange,
-                onSaveBaseUrl = viewModel::saveBaseUrl,
-                onSyncNow = viewModel::syncNow,
-                getAccountCode = viewModel::getAccountCode
-            )
             TestDataCard(
                 state = syncState.testDataState,
                 onSeed = viewModel::seedMockData,
@@ -231,19 +227,37 @@ private fun TestDataCard(
 }
 
 @Composable
-private fun SyncTrialCard(
+private fun SyncCard(
     state: SettingsSyncUiState,
     onToggleOnline: (Boolean) -> Unit,
+    onInviteCodeChange: (String) -> Unit,
     onBaseUrlChange: (String) -> Unit,
-    onSaveBaseUrl: () -> Unit,
+    onSave: () -> Unit,
     onSyncNow: () -> Unit,
-    getAccountCode: () -> String?
+    getAccountCode: () -> String?,
+    onRecoveryCodeChange: (String) -> Unit,
+    onRecoverAccount: () -> Unit,
+    onDismissRecoveryMessage: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
-        SettingsSectionHeader(title = stringResource(R.string.settings_sync_trial_title))
+        SettingsSectionHeader(title = stringResource(R.string.settings_sync_title))
 
         LutealCard(modifier = Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
+                Text(
+                    text = stringResource(R.string.settings_sync_body),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // Stated before the toggle: enabling sync is the moment data
+                // leaves the device, and it is not end-to-end encrypted.
+                Text(
+                    text = stringResource(R.string.sync_transport_notice),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
                 OnlineSyncToggle(
                     enabled = state.onlineSyncEnabled,
                     onToggle = onToggleOnline
@@ -252,34 +266,54 @@ private fun SyncTrialCard(
                 if (state.onlineSyncEnabled) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
+                    // Invite code: required to create an account when the
+                    // server gates registration (closed rollout).
                     Text(
-                        text = stringResource(R.string.settings_sync_trial_body),
+                        text = stringResource(R.string.settings_sync_invite_body),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-
                     OutlinedTextField(
-                        value = state.baseUrlDraft,
-                        onValueChange = onBaseUrlChange,
-                        label = { Text(stringResource(R.string.settings_sync_base_url_label)) },
-                        placeholder = { Text(stringResource(R.string.settings_sync_base_url_default)) },
+                        value = state.inviteCodeDraft,
+                        onValueChange = onInviteCodeChange,
+                        label = { Text(stringResource(R.string.settings_sync_invite_label)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Text(
-                        text = "${stringResource(R.string.settings_sync_base_url_label)} : ${state.storedBaseUrl.ifBlank { stringResource(R.string.settings_sync_base_url_default) }}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    // Local-trial server address: debug/dev only. The release
+                    // build syncs against the production API (BuildConfig) and
+                    // does not expose a cleartext URL editor.
+                    if (BuildConfig.DEBUG) {
+                        Text(
+                            text = stringResource(R.string.settings_sync_trial_body),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        OutlinedTextField(
+                            value = state.baseUrlDraft,
+                            onValueChange = onBaseUrlChange,
+                            label = { Text(stringResource(R.string.settings_sync_base_url_label)) },
+                            placeholder = { Text(stringResource(R.string.settings_sync_base_url_default)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Text(
+                            text = "${stringResource(R.string.settings_sync_base_url_label)} : ${state.storedBaseUrl.ifBlank { stringResource(R.string.settings_sync_base_url_default) }}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(LutealSpacing.sm)
                     ) {
                         LutealSecondaryButton(
-                            text = stringResource(R.string.settings_sync_base_url_save),
-                            onClick = onSaveBaseUrl,
+                            text = stringResource(R.string.settings_sync_save),
+                            onClick = onSave,
                             modifier = Modifier.weight(1f)
                         )
 
@@ -299,6 +333,16 @@ private fun SyncTrialCard(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                 AccountCodeSection(getAccountCode = getAccountCode)
+
+                if (!state.hasAccount) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    AccountRecoverySection(
+                        state = state,
+                        onCodeChange = onRecoveryCodeChange,
+                        onRecover = onRecoverAccount,
+                        onDismissMessage = onDismissRecoveryMessage
+                    )
+                }
             }
         }
     }
@@ -342,6 +386,76 @@ private fun AccountCodeSection(getAccountCode: () -> String?) {
                 },
                 modifier = Modifier.fillMaxWidth()
             )
+        }
+    }
+}
+
+/**
+ * Attaches this device to an existing account.
+ *
+ * Shown only before this device has credentials. The account code is the root
+ * of the key hierarchy: without it a reinstall cannot decrypt anything the
+ * server holds, because the server has no key that could substitute for it.
+ */
+@Composable
+private fun AccountRecoverySection(
+    state: SettingsSyncUiState,
+    onCodeChange: (String) -> Unit,
+    onRecover: () -> Unit,
+    onDismissMessage: () -> Unit
+) {
+    if (state.hasAccount) return
+
+    Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
+        Text(
+            text = stringResource(R.string.settings_recovery_title),
+            style = MaterialTheme.typography.titleMedium
+        )
+        Text(
+            text = stringResource(R.string.settings_recovery_body),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedTextField(
+            value = state.recoveryCodeDraft,
+            onValueChange = onCodeChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text(stringResource(R.string.settings_recovery_label)) },
+            placeholder = { Text("LTL-XXXXX-XXXXX-XXXXX-XXXXX") }
+        )
+        LutealSecondaryButton(
+            text = stringResource(R.string.settings_recovery_action),
+            onClick = onRecover,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = state.recoveryCodeDraft.isNotBlank() &&
+                state.recoveryState !is RecoveryState.Loading
+        )
+
+        when (val recovery = state.recoveryState) {
+            is RecoveryState.Loading -> Text(
+                text = stringResource(R.string.settings_recovery_in_progress),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            is RecoveryState.Success -> Text(
+                text = stringResource(R.string.settings_recovery_success),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            is RecoveryState.Error -> Column(
+                verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)
+            ) {
+                Text(
+                    text = recovery.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+                TextButton(onClick = onDismissMessage) {
+                    Text(text = stringResource(R.string.action_close))
+                }
+            }
+            RecoveryState.Idle -> Unit
         }
     }
 }

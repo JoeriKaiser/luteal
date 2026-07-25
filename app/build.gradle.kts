@@ -26,6 +26,11 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // Default folicular base URL for online sync. The debug/dev build
+        // targets the local trial server (emulator loopback); the release
+        // build overrides this with the production API (see buildTypes).
+        buildConfigField("String", "SYNC_BASE_URL", "\"http://10.0.2.2:8080\"")
     }
 
     signingConfigs {
@@ -45,6 +50,9 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            // Production folicular API. Release syncs over HTTPS only
+            // (cleartext is not permitted); overrides the local-trial default.
+            buildConfigField("String", "SYNC_BASE_URL", "\"https://luteal-api.waldemar.site\"")
             signingConfig = if (rootProject.file("keystore.properties").exists()) {
                 signingConfigs.getByName("release")
             } else {
@@ -143,8 +151,9 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
 
-    // Online sync path (dev/online build only; the offline/release build
-    // declares no network permission - see app/src/debug/AndroidManifest.xml).
+    // Online sync path. The network permission is declared in the main
+    // manifest; the debug build additionally permits cleartext for the local
+    // trial server (see app/src/debug). Release syncs over HTTPS only.
     implementation(libs.androidx.security.crypto)
     implementation(libs.okhttp)
     implementation(libs.androidx.work.runtime.ktx)
@@ -177,4 +186,12 @@ tasks.withType<Test> {
         providers.gradleProperty("folicular.conformance")
             .getOrElse("$rootDir/../../Projects/folicular/conformance")
     )
+
+    // Opt-in end-to-end trial against a running folicular instance
+    // (E2eRoundTripTest). Skipped when unset so ordinary runs stay hermetic:
+    //   ./gradlew testDebugUnitTest --tests '*E2eRoundTripTest' \
+    //       -Pfolicular.e2e.url=http://127.0.0.1:8099
+    providers.gradleProperty("folicular.e2e.url").orNull?.let {
+        systemProperty("folicular.e2e.url", it)
+    }
 }
