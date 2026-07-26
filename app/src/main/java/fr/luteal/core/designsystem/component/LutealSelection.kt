@@ -59,10 +59,11 @@ fun LutealToggleRow(
 @Composable
 fun LutealRadioRow(
     title: String,
-    description: String,
     selected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Omitted for options whose title is self-explanatory, such as age bands. */
+    description: String? = null
 ) {
     Row(
         modifier = modifier
@@ -83,11 +84,13 @@ fun LutealRadioRow(
             verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)
         ) {
             Text(text = title, style = MaterialTheme.typography.titleMedium)
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (description != null) {
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

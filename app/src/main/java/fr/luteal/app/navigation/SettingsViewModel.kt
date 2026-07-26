@@ -7,7 +7,9 @@ import fr.luteal.app.sync.SyncScheduler
 import fr.luteal.core.data.datastore.SyncDataStore
 import fr.luteal.core.data.repository.UserRepository
 import fr.luteal.core.data.seed.TestDataSeeder
+import fr.luteal.core.model.AgeBand
 import fr.luteal.core.model.SyncMode
+import fr.luteal.core.model.TrackingContext
 import fr.luteal.core.network.auth.SyncCredentialStore
 import fr.luteal.core.network.auth.SyncCredentials
 import fr.luteal.core.network.sync.FolicularApiClientFactory
@@ -77,7 +79,9 @@ class SettingsViewModel @Inject constructor(
             testDataState = actionState,
             recoveryCodeDraft = draft.recoveryCode,
             recoveryState = recovery,
-            hasAccount = credentialStore.load() != null
+            hasAccount = credentialStore.load() != null,
+            declaredContexts = preferences.declaredContexts,
+            ageBand = AgeBand.fromId(preferences.ageBand)
         )
     }.stateIn(
         scope = viewModelScope,
@@ -90,6 +94,18 @@ class SettingsViewModel @Inject constructor(
             userRepository.updateSyncMode(
                 if (enabled) SyncMode.ONLINE_CLOUD else SyncMode.OFFLINE_LOCAL
             )
+        }
+    }
+
+    fun setTrackingContext(context: TrackingContext, enabled: Boolean) {
+        viewModelScope.launch {
+            userRepository.setTrackingContext(context.id, enabled)
+        }
+    }
+
+    fun setAgeBand(band: AgeBand?) {
+        viewModelScope.launch {
+            userRepository.setAgeBand(band?.id)
         }
     }
 
@@ -224,7 +240,11 @@ data class SettingsSyncUiState(
     val recoveryCodeDraft: String = "",
     val recoveryState: RecoveryState = RecoveryState.Idle,
     /** True once this device holds credentials; recovery is offered only before. */
-    val hasAccount: Boolean = false
+    val hasAccount: Boolean = false,
+    /** Contexts the user has declared, editable after onboarding. */
+    val declaredContexts: Set<TrackingContext> = emptySet(),
+    /** Null means no band declared, which is a valid state. */
+    val ageBand: AgeBand? = null
 )
 
 /** Text drafts held together so [combine] stays within its five-flow limit. */

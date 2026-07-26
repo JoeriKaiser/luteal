@@ -50,12 +50,25 @@ class UserRepositoryImpl @Inject constructor(
         userPreferencesDataStore.setDuoSharing(field, enabled)
     }
 
-    override suspend fun completeOnboarding(role: UserRole, disorderTracking: Map<String, Boolean>) {
+    override suspend fun completeOnboarding(
+        role: UserRole,
+        disorderTracking: Map<String, Boolean>,
+        ageBandId: String?
+    ) {
         updateUserRole(role)
         for ((disorderId, enabled) in disorderTracking) {
             userPreferencesDataStore.setDisorderTracking(disorderId, enabled)
         }
+        userPreferencesDataStore.setAgeBand(ageBandId)
         userPreferencesDataStore.setCompletedOnboarding(true)
+    }
+
+    override suspend fun setTrackingContext(contextId: String, enabled: Boolean) {
+        userPreferencesDataStore.setDisorderTracking(contextId, enabled)
+    }
+
+    override suspend fun setAgeBand(ageBandId: String?) {
+        userPreferencesDataStore.setAgeBand(ageBandId)
     }
 
     override suspend fun setCouplePairing(pairingCode: String?, partnerName: String?) {

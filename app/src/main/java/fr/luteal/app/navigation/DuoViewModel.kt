@@ -6,6 +6,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.luteal.core.data.repository.CycleRepository
 import fr.luteal.core.data.repository.DailyEntryRepository
 import fr.luteal.core.data.repository.DuoRepository
+import fr.luteal.core.data.repository.UserRepository
+import fr.luteal.core.model.AgeBand
 import fr.luteal.core.model.CycleEstimateCalculator
 import fr.luteal.core.model.DuoProjection
 import fr.luteal.core.model.SharedEstimate
@@ -33,7 +35,8 @@ class DuoViewModel @Inject constructor(
     private val duoRepository: DuoRepository,
     private val duoKeyStore: DuoKeyStore,
     private val cycleRepository: CycleRepository,
-    private val dailyEntryRepository: DailyEntryRepository
+    private val dailyEntryRepository: DailyEntryRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DuoUiState())
@@ -321,7 +324,16 @@ class DuoViewModel @Inject constructor(
                 } else null
 
                 val estimate = if (grants[GrantField.PERIOD_ESTIMATE] == true) {
-                    CycleEstimateCalculator.estimateNextPeriod(cycles)?.let {
+                    // Must use the same inputs as the tracker's own estimate.
+                    // Called without them, this recomputed the window from the
+                    // undeclared prior, so a partner saw a narrower and more
+                    // confident range than the tracker did for the same cycles.
+                    val preferences = userRepository.getUserPreferences().first()
+                    CycleEstimateCalculator.estimateNextPeriod(
+                        cycles = cycles,
+                        ageBand = AgeBand.fromId(preferences.ageBand),
+                        hasTimingContext = preferences.hasTimingContext
+                    )?.let {
                         SharedEstimate(
                             windowStart = it.earliestDate.toString(),
                             windowEnd = it.latestDate.toString()

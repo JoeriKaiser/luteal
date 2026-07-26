@@ -49,9 +49,9 @@ class CycleEstimateCalculatorTest {
         assertEquals(1, estimate.cycleCount)
         // Interval is 28 days; central = 2025-01-29 + 28 = 2025-02-26.
         assertEquals(LocalDate.parse("2025-02-26"), estimate.centralDate)
-        // One interval carries no variability signal, so the population prior
-        // fully determines the radius: ceil(1.96 * 2.6 * sqrt(2/3)) = 5.
-        assertEquals(5, radiusOf(estimate))
+        // One interval carries no variability signal, so the undeclared prior
+        // fully determines the radius: ceil(1.96 * 4.54 * sqrt(2/3)) = 8.
+        assertEquals(8, radiusOf(estimate))
         assertEquals(0, estimate.variabilityDays)
     }
 
@@ -135,7 +135,175 @@ class CycleEstimateCalculatorTest {
 
         val estimate = requireNotNull(CycleEstimateCalculator.estimateNextPeriod(erratic))
 
-        assertTrue(radiusOf(estimate) <= 14)
+        assertTrue(radiusOf(estimate) <= 22)
+    }
+
+    @Test
+    fun `recurring seven day swings withdraw the population prior`() {
+        // Same mean interval in both, so only the variability pattern differs.
+        // Steady: 28-day cycles with a single one-off 8-day swing, which STRAW
+        // treats as one unusual month rather than a property of the cycles.
+        val oneOffSwing = intervalsToCycles(listOf(28, 28, 28, 36, 28, 28))
+        // Persistent: swings of 7 or more recurring inside the ten-cycle window.
+        val recurringSwings = intervalsToCycles(listOf(28, 36, 28, 37, 29, 36))
+
+        val steadyRadius =
+            radiusOf(requireNotNull(CycleEstimateCalculator.estimateNextPeriod(oneOffSwing)))
+        val variableRadius =
+            radiusOf(requireNotNull(CycleEstimateCalculator.estimateNextPeriod(recurringSwings)))
+
+        assertTrue(
+            "Recurring swings ($variableRadius) must widen versus a one-off ($steadyRadius)",
+            variableRadius > steadyRadius
+        )
+    }
+
+    @Test
+    fun `a single large swing does not trigger the variability path`() {
+        // One 9-day swing in an otherwise regular history. Requiring recurrence
+        // is what stops a single mistyped or unusual cycle widening everything.
+        val cycles = intervalsToCycles(listOf(28, 28, 28, 28, 37))
+
+        val estimate = requireNotNull(CycleEstimateCalculator.estimateNextPeriod(cycles))
+
+        // With the prior still at full weight the radius stays modest; the
+        // withdrawn-prior path would push this materially wider.
+        assertTrue(
+            "Radius ${radiusOf(estimate)} should stay bounded for one swing",
+            radiusOf(estimate) < 12
+        )
+    }
+
+    @Test
+    fun `honest uncertainty is no longer truncated at fourteen days`() {
+        // Wildly varying but in-range intervals. The old cap reported more
+        // precision than this history supports.
+        val cycles = intervalsToCycles(listOf(16, 84, 18, 83, 17, 85))
+
+        val estimate = requireNotNull(CycleEstimateCalculator.estimateNextPeriod(cycles))
+
+        assertTrue(
+            "Radius ${radiusOf(estimate)} should exceed the retired 14-day cap",
+            radiusOf(estimate) > 14
+        )
+        assertTrue(radiusOf(estimate) <= 22)
+    }
+
+    @Test
+    fun `age band selects the variability prior`() {
+        // Two recorded intervals, so the prior still dominates and the band
+        // choice is visible in the result.
+        val cycles = intervalsToCycles(listOf(28, 28))
+
+        val lowestVariability = radiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(cycles, AgeBand.AGE_35_39)
+            )
+        )
+        val highestVariability = radiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(cycles, AgeBand.AGE_50_PLUS)
+            )
+        )
+
+        assertTrue(
+            "50+ ($highestVariability) must be wider than 35-39 ($lowestVariability)",
+            highestVariability > lowestVariability
+        )
+    }
+
+    @Test
+    fun `undeclared age band does not default to the narrowest prior`() {
+        val cycles = intervalsToCycles(listOf(28, 28))
+
+        val undeclared =
+            radiusOf(requireNotNull(CycleEstimateCalculator.estimateNextPeriod(cycles)))
+        val narrowestBand = radiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(cycles, AgeBand.AGE_35_39)
+            )
+        )
+
+        assertTrue(
+            "Undeclared ($undeclared) must not be narrower than the lowest band " +
+                "($narrowestBand): understating uncertainty is the failure that matters",
+            undeclared >= narrowestBand
+        )
+    }
+
+    @Test
+    fun `declared timing context widens the window`() {
+        val cycles = intervalsToCycles(listOf(28, 29, 28))
+
+        val withoutContext = radiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(cycles, hasTimingContext = false)
+            )
+        )
+        val withContext = radiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(cycles, hasTimingContext = true)
+            )
+        )
+
+        assertTrue(
+            "Declared timing context ($withContext) must widen versus none ($withoutContext)",
+            withContext > withoutContext
+        )
+    }
+
+    @Test
+    fun `a declared context never moves the central date`() {
+        val cycles = intervalsToCycles(listOf(28, 29, 28))
+
+        val plain = requireNotNull(CycleEstimateCalculator.estimateNextPeriod(cycles))
+        val declared = requireNotNull(
+            CycleEstimateCalculator.estimateNextPeriod(
+                cycles,
+                AgeBand.AGE_50_PLUS,
+                hasTimingContext = true
+            )
+        )
+
+        // Contexts and age may only change how uncertain the app says it is.
+        // Moving the prediction itself would be inference about a condition.
+        assertEquals(plain.centralDate, declared.centralDate)
+    }
+
+    @Test
+    fun `observed variability outranks a mere declaration`() {
+        // Swings well beyond the population floor, so the user's own record is
+        // unambiguously the stronger evidence.
+        val recurringSwings = intervalsToCycles(listOf(24, 40, 26, 42, 25, 41))
+
+        val declaredOnly = radiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(
+                    intervalsToCycles(listOf(28, 29, 28, 29, 28, 29)),
+                    hasTimingContext = true
+                )
+            )
+        )
+        val observed = radiusOf(
+            requireNotNull(CycleEstimateCalculator.estimateNextPeriod(recurringSwings))
+        )
+
+        assertTrue(
+            "Recorded variability ($observed) should outweigh a declaration alone " +
+                "($declaredOnly)",
+            observed > declaredOnly
+        )
+    }
+
+    /** Builds a cycle history from a list of interval lengths in days. */
+    private fun intervalsToCycles(intervals: List<Int>): List<Cycle> {
+        var date = LocalDate.parse("2025-01-01")
+        val cycles = mutableListOf(cycle(date))
+        for (interval in intervals) {
+            date = date.plusDays(interval.toLong())
+            cycles += cycle(date)
+        }
+        return cycles
     }
 
     @Test

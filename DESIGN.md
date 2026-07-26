@@ -4,9 +4,9 @@ description: A reassuring, discreet, and precise cycle tracker and Duo companion
 colors:
   evergreen-primary: "#235B4E"
   evergreen-primary-dark: "#8FD4BE"
-  linen-background: "#F7F4ED"
+  linen-background: "#F1EDE1"
   porcelain-surface: "#FCFAF5"
-  stone-container: "#EDE9DF"
+  stone-container: "#E6E1D3"
   warm-ink: "#252B27"
   quiet-ink: "#646B66"
   menstrual-rust: "#934545"

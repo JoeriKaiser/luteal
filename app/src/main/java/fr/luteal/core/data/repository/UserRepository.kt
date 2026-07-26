@@ -14,5 +14,21 @@ interface UserRepository {
     suspend fun updateUserRole(role: UserRole)
     suspend fun updateDuoSharing(field: DuoSharingField, enabled: Boolean)
     suspend fun setCouplePairing(pairingCode: String?, partnerName: String?)
-    suspend fun completeOnboarding(role: UserRole, disorderTracking: Map<String, Boolean>)
+    suspend fun completeOnboarding(
+        role: UserRole,
+        disorderTracking: Map<String, Boolean>,
+        ageBandId: String? = null
+    )
+
+    /**
+     * Declared contexts and age band are editable after onboarding.
+     *
+     * Both change over time - perimenopause in particular is something a user
+     * enters partway through using the app - and anyone who skipped the
+     * introduction never set them at all.
+     */
+    suspend fun setTrackingContext(contextId: String, enabled: Boolean)
+
+    /** Null clears a previously declared band. */
+    suspend fun setAgeBand(ageBandId: String?)
 }

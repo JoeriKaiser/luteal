@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
@@ -74,7 +75,9 @@ class LutealScreensTest {
 
         composeRule.onNodeWithText("Enregistré").assertIsDisplayed()
         composeRule.onNodeWithText("Estimé").assertIsDisplayed()
-        composeRule.onNodeWithText("Jour 1 du cycle").assertIsDisplayed()
+        // The day count is rendered as a numeral inside the cycle ring, which
+        // carries the full phrase as its accessible name.
+        composeRule.onNodeWithContentDescription("Jour 1 du cycle").assertIsDisplayed()
         composeRule.onNodeWithText("Menstruations").assertDoesNotExist()
     }
 
@@ -140,7 +143,9 @@ class LutealScreensTest {
             }
         }
 
-        composeRule.onNodeWithText("Douleur 3/5").performClick()
+        // Journal levels are drawn as filled segments; the label and value
+        // travel together in the accessible name.
+        composeRule.onNodeWithContentDescription("Douleur : 3 sur 5").performClick()
         assertEquals(recordedDate, selectedDate)
     }
 

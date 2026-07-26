@@ -1,20 +1,29 @@
 package fr.luteal.app.navigation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.Today
+import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,10 +44,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import fr.luteal.app.LutealUiState
 import fr.luteal.app.R
 import fr.luteal.core.common.FrenchDateFormatter
+import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.designsystem.component.AdaptiveActionGroup
 import fr.luteal.core.designsystem.component.LutealEmptyState
 import fr.luteal.core.designsystem.component.LutealPrimaryButton
@@ -160,6 +173,7 @@ fun JournalScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun JournalEntryRow(
     entry: DailyEntry,
@@ -179,9 +193,10 @@ private fun JournalEntryRow(
             horizontalArrangement = Arrangement.spacedBy(LutealSpacing.md),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            BleedingMark(intensity = entry.bleedingIntensity)
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)
+                verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
             ) {
                 Text(
                     text = if (isToday) {
@@ -191,13 +206,33 @@ private fun JournalEntryRow(
                     },
                     style = MaterialTheme.typography.titleMedium
                 )
-                Text(
-                    text = journalEntrySummary(entry),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                // Levels are drawn rather than spelled out, so a heavy day and
+                // a mild one no longer render as the same block of grey text.
+                val levels = listOfNotNull(
+                    entry.painLevel?.let { stringResource(R.string.level_label_pain) to it },
+                    entry.moodLevel?.let { stringResource(R.string.level_label_mood) to it },
+                    entry.energyLevel?.let { stringResource(R.string.level_label_energy) to it }
                 )
+                if (levels.isNotEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(LutealSpacing.md),
+                        verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                    ) {
+                        levels.forEach { (label, level) ->
+                            MiniLevel(label = label, level = level)
+                        }
+                    }
+                }
+                val trailing = journalEntryTrailingSummary(entry)
+                if (trailing.isNotEmpty()) {
+                    Text(
+                        text = trailing,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
@@ -208,13 +243,81 @@ private fun JournalEntryRow(
     }
 }
 
+/**
+ * Recorded flow for the day, as a drop that fills with intensity.
+ *
+ * The intensity name travels with it in the accessible label, so the fill is
+ * a second encoding of something already stated rather than the only one.
+ */
 @Composable
-private fun journalEntrySummary(entry: DailyEntry): String {
+private fun BleedingMark(intensity: BleedingIntensity?) {
+    val scheme = MaterialTheme.colorScheme
+    val recorded = intensity != null && intensity != BleedingIntensity.NONE
+    val description = if (intensity == null) {
+        stringResource(R.string.journal_no_bleeding_recorded)
+    } else {
+        stringResource(R.string.today_bleeding_label, bleedingLabel(intensity))
+    }
+    val dropSize = when (intensity) {
+        BleedingIntensity.HEAVY -> 26.dp
+        BleedingIntensity.MEDIUM -> 22.dp
+        BleedingIntensity.LIGHT -> 19.dp
+        BleedingIntensity.SPOTTING -> 16.dp
+        else -> 14.dp
+    }
+
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .background(
+                if (recorded) scheme.primaryContainer else scheme.surfaceVariant,
+                CircleShape
+            )
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = if (recorded) Icons.Rounded.WaterDrop else Icons.Rounded.Remove,
+            contentDescription = null,
+            tint = if (recorded) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
+            modifier = Modifier.size(dropSize)
+        )
+    }
+}
+
+/** A one-to-five level as filled segments, with the label kept visible. */
+@Composable
+private fun MiniLevel(label: String, level: Int) {
+    val scheme = MaterialTheme.colorScheme
+    val description = stringResource(R.string.level_a11y, label, level)
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.semantics { contentDescription = description }
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            (1..5).forEach { step ->
+                Box(
+                    modifier = Modifier
+                        .size(width = 7.dp, height = 7.dp)
+                        .background(
+                            if (step <= level) scheme.primary else scheme.outlineVariant,
+                            RoundedCornerShape(2.dp)
+                        )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun journalEntryTrailingSummary(entry: DailyEntry): String {
     val parts = buildList {
-        entry.bleedingIntensity?.let { add(stringResource(R.string.journal_summary_bleeding)) }
-        entry.painLevel?.let { add(stringResource(R.string.journal_summary_pain, it)) }
-        entry.moodLevel?.let { add(stringResource(R.string.journal_summary_mood, it)) }
-        entry.energyLevel?.let { add(stringResource(R.string.journal_summary_energy, it)) }
         if (entry.symptomIds.isNotEmpty()) {
             add(
                 pluralStringResource(
@@ -228,6 +331,17 @@ private fun journalEntrySummary(entry: DailyEntry): String {
     }
     return parts.joinToString(separator = " · ")
 }
+
+@Composable
+private fun bleedingLabel(intensity: BleedingIntensity): String = stringResource(
+    when (intensity) {
+        BleedingIntensity.NONE -> R.string.bleeding_none
+        BleedingIntensity.SPOTTING -> R.string.bleeding_spotting
+        BleedingIntensity.LIGHT -> R.string.bleeding_light
+        BleedingIntensity.MEDIUM -> R.string.bleeding_medium
+        BleedingIntensity.HEAVY -> R.string.bleeding_heavy
+    }
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

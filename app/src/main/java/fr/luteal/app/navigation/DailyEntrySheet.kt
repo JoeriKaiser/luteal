@@ -10,12 +10,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.Save
+import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -55,6 +59,8 @@ fun DailyEntrySheet(
     date: LocalDate,
     existingEntry: DailyEntry?,
     currentCycle: Cycle?,
+    /** Observations offered, derived from declared contexts. */
+    offeredSymptomIds: List<String>,
     startPeriodIntent: Boolean,
     isSaving: Boolean,
     saveFailed: Boolean,
@@ -214,6 +220,7 @@ fun DailyEntrySheet(
                     item {
                         SymptomSelector(
                             selected = selectedSymptoms,
+                            offeredSymptomIds = offeredSymptomIds,
                             onToggle = { symptom ->
                                 symptomIds = if (symptom in selectedSymptoms) {
                                     (selectedSymptoms - symptom).sorted()
@@ -327,14 +334,17 @@ private fun BleedingSelector(
             text = stringResource(R.string.editor_bleeding),
             style = MaterialTheme.typography.titleSmall
         )
+        // Two per row rather than three: the graduated drop needs room beside
+        // the label, and flow is an ordered scale worth reading as one.
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs),
             verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs),
-            maxItemsInEachRow = 3
+            maxItemsInEachRow = 2
         ) {
             BleedingChip(
                 label = stringResource(R.string.bleeding_not_set),
+                intensity = null,
                 selected = selected == null,
                 onClick = { onSelected(null) },
                 modifier = Modifier.weight(1f)
@@ -342,6 +352,7 @@ private fun BleedingSelector(
             BleedingIntensity.entries.forEach { intensity ->
                 BleedingChip(
                     label = bleedingLabel(intensity),
+                    intensity = intensity,
                     selected = selected == intensity,
                     onClick = { onSelected(intensity) },
                     modifier = Modifier.weight(1f)
@@ -354,15 +365,46 @@ private fun BleedingSelector(
 @Composable
 private fun BleedingChip(
     label: String,
+    intensity: BleedingIntensity?,
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // The drop grows across the scale so the ordering is visible, while the
+    // check keeps selection from resting on colour alone.
+    val dropSize = when (intensity) {
+        BleedingIntensity.HEAVY -> 22.dp
+        BleedingIntensity.MEDIUM -> 19.dp
+        BleedingIntensity.LIGHT -> 16.dp
+        BleedingIntensity.SPOTTING -> 13.dp
+        else -> null
+    }
     FilterChip(
         selected = selected,
         onClick = onClick,
         label = { Text(label, maxLines = 2) },
-        leadingIcon = if (selected) {
+        leadingIcon = when {
+            dropSize != null -> {
+                {
+                    Icon(
+                        imageVector = Icons.Rounded.WaterDrop,
+                        contentDescription = null,
+                        modifier = Modifier.size(dropSize)
+                    )
+                }
+            }
+            intensity == BleedingIntensity.NONE -> {
+                {
+                    Icon(
+                        imageVector = Icons.Rounded.Remove,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+            else -> null
+        },
+        trailingIcon = if (selected) {
             { Icon(Icons.Rounded.Check, contentDescription = null) }
         } else {
             null
@@ -370,6 +412,26 @@ private fun BleedingChip(
         modifier = modifier,
         shape = MaterialTheme.shapes.small
     )
+}
+
+/**
+ * Label for a catalog symptom id, or null when the id has no French label yet.
+ *
+ * Returning null rather than throwing means a symptom key arriving from a
+ * future catalog cannot crash the editor; it is simply not offered until it has
+ * copy.
+ */
+@Composable
+private fun symptomLabel(id: String): String? = when (id) {
+    "cramps" -> stringResource(R.string.symptom_cramps)
+    "headache" -> stringResource(R.string.symptom_headache)
+    "fatigue" -> stringResource(R.string.symptom_fatigue)
+    "bloating" -> stringResource(R.string.symptom_bloating)
+    "breast_tenderness" -> stringResource(R.string.symptom_breast_tenderness)
+    "mood_changes" -> stringResource(R.string.symptom_mood_changes)
+    "acne" -> stringResource(R.string.symptom_acne)
+    "pelvic_pain_outside_period" -> stringResource(R.string.symptom_pelvic_pain_outside_period)
+    else -> null
 }
 
 @Composable
@@ -387,14 +449,14 @@ private fun bleedingLabel(intensity: BleedingIntensity): String = stringResource
 @Composable
 private fun SymptomSelector(
     selected: Set<String>,
+    offeredSymptomIds: List<String>,
     onToggle: (String) -> Unit
 ) {
-    val symptoms = listOf(
-        "cramps" to R.string.symptom_cramps,
-        "headache" to R.string.symptom_headache,
-        "fatigue" to R.string.symptom_fatigue,
-        "bloating" to R.string.symptom_bloating
-    )
+    // Which observations are offered follows what the user declared during
+    // onboarding, which is what that step said it would do.
+    val symptoms = offeredSymptomIds.mapNotNull { id ->
+        symptomLabel(id)?.let { id to it }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
         Text(
             text = stringResource(R.string.editor_symptoms),
@@ -406,12 +468,12 @@ private fun SymptomSelector(
             verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs),
             maxItemsInEachRow = 2
         ) {
-            symptoms.forEach { (id, labelRes) ->
+            symptoms.forEach { (id, label) ->
                 val isSelected = id in selected
                 FilterChip(
                     selected = isSelected,
                     onClick = { onToggle(id) },
-                    label = { Text(stringResource(labelRes), maxLines = 2) },
+                    label = { Text(label, maxLines = 2) },
                     leadingIcon = if (isSelected) {
                         { Icon(Icons.Rounded.Check, contentDescription = null) }
                     } else {

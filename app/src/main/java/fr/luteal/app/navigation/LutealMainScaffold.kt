@@ -33,11 +33,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import fr.luteal.app.EntrySaveState
 import fr.luteal.app.LutealViewModel
 import fr.luteal.app.R
+import fr.luteal.core.model.ObservationCatalog
 import java.time.LocalDate
 
 @Composable
@@ -70,8 +72,8 @@ fun LutealMainScaffold(
 
     if (!uiState.preferences.hasCompletedOnboarding) {
         OnboardingScreen(
-            onComplete = { role, focusMap ->
-                viewModel.completeOnboarding(role, focusMap)
+            onComplete = { role, focusMap, ageBandId ->
+                viewModel.completeOnboarding(role, focusMap, ageBandId)
             }
         )
     } else {
@@ -98,7 +100,18 @@ fun LutealMainScaffold(
                                         contentDescription = stringResource(destination.labelRes)
                                     )
                                 },
-                                label = { Text(stringResource(visibleLabelRes), maxLines = 2) },
+                                // A second line does not fit the navigation
+                                // bar's height, so wrapping pushed "Reglages"
+                                // out of the bar entirely at large font
+                                // scales. The icon and the unchanged
+                                // contentDescription still carry the meaning.
+                                label = {
+                                    Text(
+                                        text = stringResource(visibleLabelRes),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
                                 colors = NavigationBarItemDefaults.colors(
                                     indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                                     selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -138,7 +151,11 @@ fun LutealMainScaffold(
                                     editorRequest = EditorRequest(it, startPeriodIntent = false)
                                 }
                             )
-                            LutealDestination.DUO -> DuoScreen()
+                            LutealDestination.DUO -> DuoScreen(
+                                onOpenSettings = {
+                                    selectedDestination = LutealDestination.SETTINGS
+                                }
+                            )
                             LutealDestination.SETTINGS -> SettingsScreen()
                         }
                     }
@@ -163,6 +180,9 @@ fun LutealMainScaffold(
             date = req.date,
             existingEntry = if (req.date == uiState.today) uiState.todayEntry else null,
             currentCycle = uiState.currentCycle,
+            offeredSymptomIds = ObservationCatalog.symptomIdsFor(
+                uiState.preferences.declaredContexts
+            ),
             startPeriodIntent = req.startPeriodIntent,
             isSaving = uiState.entrySaveState == EntrySaveState.SAVING,
             saveFailed = uiState.entrySaveState == EntrySaveState.FAILED,

@@ -7,6 +7,7 @@ import fr.luteal.core.data.datastore.UserPreferences
 import fr.luteal.core.data.repository.CycleRepository
 import fr.luteal.core.data.repository.DailyEntryRepository
 import fr.luteal.core.data.repository.UserRepository
+import fr.luteal.core.model.AgeBand
 import fr.luteal.core.model.Cycle
 import fr.luteal.core.model.CycleEstimate
 import fr.luteal.core.model.CycleEstimateCalculator
@@ -48,7 +49,11 @@ class LutealViewModel @Inject constructor(
             currentCycle = currentCycle,
             entries = entries,
             preferences = preferences,
-            estimateResult = CycleEstimateCalculator.evaluate(cycles),
+            estimateResult = CycleEstimateCalculator.evaluate(
+                cycles = cycles,
+                ageBand = AgeBand.fromId(preferences.ageBand),
+                hasTimingContext = preferences.hasTimingContext
+            ),
             entrySaveState = operation.entrySaveState,
             operationFailed = operation.failed
         )
@@ -82,9 +87,13 @@ class LutealViewModel @Inject constructor(
                 .onFailure { operationState.update { state -> state.copy(failed = true) } }
         }
     }
-    fun completeOnboarding(role: UserRole = UserRole.PRIMARY_TRACKER, disorderTracking: Map<String, Boolean> = emptyMap()) {
+    fun completeOnboarding(
+        role: UserRole = UserRole.PRIMARY_TRACKER,
+        disorderTracking: Map<String, Boolean> = emptyMap(),
+        ageBandId: String? = null
+    ) {
         viewModelScope.launch {
-            runCatching { userRepository.completeOnboarding(role, disorderTracking) }
+            runCatching { userRepository.completeOnboarding(role, disorderTracking, ageBandId) }
                 .onFailure { operationState.update { state -> state.copy(failed = true) } }
         }
     }

@@ -40,13 +40,15 @@ class SymptomCatalogAdopterTest {
             def("headache", ContractSymptomCategory.PAIN),
             def("acne", ContractSymptomCategory.PHYSICAL),
         )
-        val local = Symptom.DEFAULT_SYMPTOMS // 8 symptoms, 3 of which overlap
+        val local = Symptom.DEFAULT_SYMPTOMS // 3 of these overlap with the server
 
         val result = SymptomCatalogAdopter.adopt(server, local)
         val ids = result.map { it.id }
 
-        // 3 adopted from server + 5 local customs not on the server.
-        assertEquals(8, result.size)
+        // Adopted server defs plus every local symptom the server did not
+        // define. Derived from the catalog rather than hardcoded, so adding a
+        // symptom does not silently invalidate the expectation.
+        assertEquals(local.size, result.size)
         assertTrue("cramps" in ids)
         assertTrue("mood_changes" in ids) // preserved custom
         assertEquals(1, ids.count { it == "cramps" })

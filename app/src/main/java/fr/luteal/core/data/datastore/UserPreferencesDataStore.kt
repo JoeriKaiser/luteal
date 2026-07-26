@@ -9,8 +9,10 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import fr.luteal.core.model.ContextGroup
 import fr.luteal.core.model.DuoSharingField
 import fr.luteal.core.model.DuoSharingPreferences
+import fr.luteal.core.model.TrackingContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -29,9 +31,34 @@ data class UserPreferences(
     val trackPms: Boolean = false,
     val trackEndometriosis: Boolean = false,
     val trackPcos: Boolean = false,
+    val trackPerimenopause: Boolean = false,
+    val trackThyroid: Boolean = false,
+    /** Optional; null means the user did not declare one. */
+    val ageBand: String? = null,
     val couplePairingCode: String? = null,
     val duoSharing: DuoSharingPreferences = DuoSharingPreferences()
-)
+) {
+    /** Contexts the user declared during onboarding. */
+    val declaredContexts: Set<TrackingContext>
+        get() = buildSet {
+            if (trackPms) add(TrackingContext.PMS)
+            if (trackPmdd) add(TrackingContext.PMDD)
+            if (trackEndometriosis) add(TrackingContext.ENDOMETRIOSIS)
+            if (trackPcos) add(TrackingContext.PCOS)
+            if (trackPerimenopause) add(TrackingContext.PERIMENOPAUSE)
+            if (trackThyroid) add(TrackingContext.THYROID)
+        }
+
+    /**
+     * Whether any declared context belongs to [ContextGroup.TIMING].
+     *
+     * Endometriosis, SPM, and TDPM are deliberately excluded: they are
+     * OBSERVATION contexts and must not influence estimation. See
+     * [TrackingContext] and docs/research/CONDITION_CYCLE_IMPACTS.md.
+     */
+    val hasTimingContext: Boolean
+        get() = declaredContexts.any { it.group == ContextGroup.TIMING }
+}
 
 @Singleton
 class UserPreferencesDataStore @Inject constructor(
@@ -46,6 +73,9 @@ class UserPreferencesDataStore @Inject constructor(
         val TRACK_PMS = booleanPreferencesKey("track_pms")
         val TRACK_ENDOMETRIOSIS = booleanPreferencesKey("track_endometriosis")
         val TRACK_PCOS = booleanPreferencesKey("track_pcos")
+        val TRACK_PERIMENOPAUSE = booleanPreferencesKey("track_perimenopause")
+        val TRACK_THYROID = booleanPreferencesKey("track_thyroid")
+        val AGE_BAND = stringPreferencesKey("age_band")
         val COUPLE_PAIRING_CODE = stringPreferencesKey("couple_pairing_code")
         val SHARE_CYCLE_DAY = booleanPreferencesKey("share_cycle_day")
         val SHARE_PERIOD_ESTIMATE = booleanPreferencesKey("share_period_estimate")
@@ -68,6 +98,9 @@ class UserPreferencesDataStore @Inject constructor(
                 trackPms = preferences[TRACK_PMS] ?: false,
                 trackEndometriosis = preferences[TRACK_ENDOMETRIOSIS] ?: false,
                 trackPcos = preferences[TRACK_PCOS] ?: false,
+                trackPerimenopause = preferences[TRACK_PERIMENOPAUSE] ?: false,
+                trackThyroid = preferences[TRACK_THYROID] ?: false,
+                ageBand = preferences[AGE_BAND],
                 couplePairingCode = preferences[COUPLE_PAIRING_CODE],
                 duoSharing = DuoSharingPreferences(
                     shareCycleDay = preferences[SHARE_CYCLE_DAY] ?: true,
@@ -92,7 +125,15 @@ class UserPreferencesDataStore @Inject constructor(
             "pms" -> preferences[TRACK_PMS] = enabled
             "endometriosis" -> preferences[TRACK_ENDOMETRIOSIS] = enabled
             "pcos" -> preferences[TRACK_PCOS] = enabled
+            "perimenopause" -> preferences[TRACK_PERIMENOPAUSE] = enabled
+            "thyroid" -> preferences[TRACK_THYROID] = enabled
         }
+    }
+
+    /** Null clears a previously declared band. */
+    suspend fun setAgeBand(ageBandId: String?) = edit { preferences ->
+        if (ageBandId == null) preferences.remove(AGE_BAND)
+        else preferences[AGE_BAND] = ageBandId
     }
 
     suspend fun setDuoSharing(field: DuoSharingField, enabled: Boolean) = edit { preferences ->

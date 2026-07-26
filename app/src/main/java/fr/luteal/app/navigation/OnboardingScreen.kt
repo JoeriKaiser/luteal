@@ -1,5 +1,6 @@
 package fr.luteal.app.navigation
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
@@ -43,25 +45,35 @@ import fr.luteal.core.designsystem.component.LutealPrimaryButton
 import fr.luteal.core.designsystem.component.LutealRadioRow
 import fr.luteal.core.designsystem.component.LutealSecondaryButton
 import fr.luteal.core.designsystem.theme.LutealSpacing
+import fr.luteal.core.model.AgeBand
 import fr.luteal.core.model.UserRole
 
 @Composable
 fun OnboardingScreen(
-    onComplete: (role: UserRole, disorderTracking: Map<String, Boolean>) -> Unit,
+    onComplete: (
+        role: UserRole,
+        disorderTracking: Map<String, Boolean>,
+        ageBandId: String?
+    ) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var step by remember { mutableIntStateOf(0) }
     var selectedRole by remember { mutableStateOf(UserRole.PRIMARY_TRACKER) }
+    // Null is a real answer here, not an unset value: declining to give an age
+    // band is offered as an explicit option.
+    var selectedAgeBand by remember { mutableStateOf<AgeBand?>(null) }
     val focusMap = remember {
         mutableStateMapOf(
             "pms" to false,
             "pmdd" to false,
             "endometriosis" to false,
-            "pcos" to false
+            "pcos" to false,
+            "perimenopause" to false,
+            "thyroid" to false
         )
     }
 
-    val totalSteps = 4
+    val totalSteps = 5
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -75,12 +87,13 @@ fun OnboardingScreen(
                 .padding(LutealSpacing.lg),
             contentAlignment = Alignment.TopCenter
         ) {
+            // Fixed header, scrolling middle, fixed actions. Scrolling the
+            // whole page instead left every short step pinned to the top with
+            // several hundred pixels of empty background beneath it.
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .widthIn(max = 600.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
                     // Header step indicator
@@ -110,17 +123,25 @@ fun OnboardingScreen(
 
                     Spacer(modifier = Modifier.height(LutealSpacing.md))
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Spacer(modifier = Modifier.height(LutealSpacing.md))
-
-                    when (step) {
-                        0 -> WelcomeStep()
-                        1 -> RoleStep(selectedRole) { selectedRole = it }
-                        2 -> FocusStep(focusMap) { key, value -> focusMap[key] = value }
-                        3 -> PrivacySummaryStep()
-                    }
                 }
 
-                Spacer(modifier = Modifier.height(LutealSpacing.xl))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(modifier = Modifier.padding(vertical = LutealSpacing.lg)) {
+                        when (step) {
+                            0 -> WelcomeStep()
+                            1 -> RoleStep(selectedRole) { selectedRole = it }
+                            2 -> FocusStep(focusMap) { key, value -> focusMap[key] = value }
+                            3 -> AgeBandStep(selectedAgeBand) { selectedAgeBand = it }
+                            4 -> PrivacySummaryStep()
+                        }
+                    }
+                }
 
                 // Bottom Action Row
                 Column {
@@ -132,7 +153,7 @@ fun OnboardingScreen(
                         },
                         onClick = {
                             if (step == totalSteps - 1) {
-                                onComplete(selectedRole, focusMap.toMap())
+                                onComplete(selectedRole, focusMap.toMap(), selectedAgeBand?.id)
                             } else {
                                 step++
                             }
@@ -155,7 +176,7 @@ fun OnboardingScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             TextButton(
-                                onClick = { onComplete(selectedRole, focusMap.toMap()) }
+                                onClick = { onComplete(selectedRole, focusMap.toMap(), selectedAgeBand?.id) }
                             ) {
                                 Text(
                                     text = stringResource(R.string.onboarding_button_skip),
@@ -275,7 +296,9 @@ private fun FocusStep(
             "pms" to stringResource(R.string.onboarding_focus_pms),
             "pmdd" to stringResource(R.string.onboarding_focus_pmdd),
             "endometriosis" to stringResource(R.string.onboarding_focus_endometriosis),
-            "pcos" to stringResource(R.string.onboarding_focus_pcos)
+            "pcos" to stringResource(R.string.onboarding_focus_pcos),
+            "perimenopause" to stringResource(R.string.onboarding_focus_perimenopause),
+            "thyroid" to stringResource(R.string.onboarding_focus_thyroid)
         )
 
         focusItems.forEach { (key, label) ->
@@ -289,6 +312,65 @@ private fun FocusStep(
             }
         }
     }
+}
+
+/**
+ * Optional age band.
+ *
+ * Asked because within-person cycle variability is U-shaped in age and a single
+ * population constant cannot represent that. It is the only demographic Luteal
+ * collects, it never leaves the device, and declining is a first-class option
+ * rather than a skipped question.
+ */
+@Composable
+private fun AgeBandStep(
+    selected: AgeBand?,
+    onSelect: (AgeBand?) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
+        Text(
+            text = stringResource(R.string.onboarding_age_step_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = stringResource(R.string.onboarding_age_step_body),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(LutealSpacing.xs))
+
+        Column(
+            modifier = Modifier.selectableGroup(),
+            verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+        ) {
+            AgeBand.entries.forEach { band ->
+                LutealRadioRow(
+                    title = stringResource(ageBandLabel(band)),
+                    selected = selected == band,
+                    onClick = { onSelect(band) }
+                )
+            }
+            LutealRadioRow(
+                title = stringResource(R.string.onboarding_age_skip),
+                selected = selected == null,
+                onClick = { onSelect(null) }
+            )
+        }
+    }
+}
+
+@StringRes
+private fun ageBandLabel(band: AgeBand): Int = when (band) {
+    AgeBand.UNDER_20 -> R.string.age_band_under_20
+    AgeBand.AGE_20_24 -> R.string.age_band_20_24
+    AgeBand.AGE_25_29 -> R.string.age_band_25_29
+    AgeBand.AGE_30_34 -> R.string.age_band_30_34
+    AgeBand.AGE_35_39 -> R.string.age_band_35_39
+    AgeBand.AGE_40_44 -> R.string.age_band_40_44
+    AgeBand.AGE_45_49 -> R.string.age_band_45_49
+    AgeBand.AGE_50_PLUS -> R.string.age_band_50_plus
 }
 
 @Composable

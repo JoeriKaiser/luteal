@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Cold-start colours. These must track the Compose theme in
+      core/designsystem/theme/Color.kt: the window and splash background are
+      what the user sees before the first frame, so a mismatch reads as a
+      flash. Night values live in values-night/colors.xml.
+    -->
+    <color name="luteal_window_background">#F1EDE1</color>
+    <color name="luteal_splash_background">#F1EDE1</color>
+    <!-- Evergreen40. Legible on the linen splash background. -->
+    <color name="luteal_splash_mark">#235B4E</color>
+</resources>

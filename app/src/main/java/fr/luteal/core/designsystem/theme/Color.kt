@@ -9,8 +9,13 @@ import androidx.compose.ui.graphics.Color
 val Evergreen40 = Color(0xFF235B4E)
 val Evergreen80 = Color(0xFF8FD4BE)
 val WarmStone98 = Color(0xFFFCFAF5)
-val WarmStone95 = Color(0xFFF7F4ED)
-val WarmStone90 = Color(0xFFEDE9DF)
+
+// Linen Ground sits a deliberate step below Porcelain Surface. The previous
+// value differed from the surface by roughly two percent, so resting cards
+// read as flat page rather than as objects. Luteal stays flat by default, so
+// this tonal gap is the only thing doing that grouping work in light mode.
+val WarmStone95 = Color(0xFFF1EDE1)
+val WarmStone90 = Color(0xFFE6E1D3)
 val WarmStone80 = Color(0xFFD6D2C8)
 val WarmInk10 = Color(0xFF171C19)
 val WarmInk20 = Color(0xFF252B27)
@@ -85,8 +90,11 @@ val DarkColorScheme = darkColorScheme(
     onSecondaryContainer = Color(0xFFD3E9DF),
     tertiary = Color(0xFFE0BFA5),
     onTertiary = Color(0xFF422D1D),
-    tertiaryContainer = Color(0xFF5B4330),
-    onTertiaryContainer = Color(0xFFF8DCC6),
+    // Desaturated toward warm grey. The previous clay container read as an
+    // orange alert next to the evergreen surfaces around it, which is the
+    // wrong signal for a mood observation and for an estimate.
+    tertiaryContainer = Color(0xFF4F423A),
+    onTertiaryContainer = Color(0xFFF0E0D2),
     background = Color(0xFF121714),
     onBackground = Color(0xFFE4EAE5),
     surface = Color(0xFF181E1B),
