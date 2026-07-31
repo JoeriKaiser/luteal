@@ -16,8 +16,8 @@ a device or emulator. The trial above exercises the protocol and crypto from the
 JVM, not the Compose UI or Keystore-backed storage.
 
 This document is the single design reference for both repositories. The Android
-client is `luteal`; the Go backend is `folicular`
-(`~/Projects/folicular`).
+client is `luteal`; the Go backend is
+[`folicular`](https://github.com/JoeriKaiser/folicular).
 
 ---
 

@@ -29,10 +29,12 @@ folicular/openapi/openapi.yaml   <- single source of truth
   cover every route                 (72 @Serializable DTOs, models only)
 ```
 
-- The spec lives in the folicular repo. The app generates from it via the
-  `org.openapi.generator` Gradle plugin on every build (`preBuild` depends on
-  `openApiGenerate`).
-- Input path defaults to `$rootDir/../../Projects/folicular/openapi/openapi.yaml`;
+- The folicular repo owns the spec; a snapshot is vendored here under
+  `contract/` so a plain clone builds unaided. The app generates from it via
+  the `org.openapi.generator` Gradle plugin on every build (`preBuild` depends
+  on `openApiGenerate`). Refresh the snapshot with `./scripts/sync-contract.sh`.
+- Input path defaults to the vendored spec at `$rootDir/contract/openapi.yaml`
+  (see `contract/README.md`);
   override with `-Pfolicular.spec=/abs/path/openapi.yaml` for other layouts.
 - Generated output is build-only (`app/build/generated/openapi`), never
   committed, never hand-edited. Transport stays hand-written.

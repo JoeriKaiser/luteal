@@ -10,7 +10,9 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
+import androidx.test.platform.app.InstrumentationRegistry
 import fr.luteal.app.LutealUiState
+import fr.luteal.app.R
 import fr.luteal.core.data.datastore.UserPreferences
 import fr.luteal.core.designsystem.theme.LutealTheme
 import fr.luteal.core.model.Cycle
@@ -26,6 +28,15 @@ import java.time.LocalDate
 class LutealScreensTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    /**
+     * Expected text is read from the same resources the screen renders, so
+     * these assertions hold whichever of the shipped languages the device is
+     * set to. Hard-coded French only worked while French was the sole possible
+     * resolution.
+     */
+    private fun string(id: Int, vararg args: Any): String =
+        InstrumentationRegistry.getInstrumentation().targetContext.getString(id, *args)
 
     @Test
     fun emptyTodayExplainsAndOpensPeriodEntry() {
@@ -43,8 +54,8 @@ class LutealScreensTest {
             }
         }
 
-        composeRule.onNodeWithText("Commencez quand vous le souhaitez").assertIsDisplayed()
-        composeRule.onNodeWithText("Début des règles").performClick()
+        composeRule.onNodeWithText(string(R.string.cycle_no_history_title)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.action_start_period_short)).performClick()
         assertTrue(clicked)
     }
 
@@ -73,11 +84,13 @@ class LutealScreensTest {
             }
         }
 
-        composeRule.onNodeWithText("Enregistré").assertIsDisplayed()
-        composeRule.onNodeWithText("Estimé").assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.recorded_label)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.estimated_label)).assertIsDisplayed()
         // The day count is rendered as a numeral inside the cycle ring, which
         // carries the full phrase as its accessible name.
-        composeRule.onNodeWithContentDescription("Jour 1 du cycle").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(string(R.string.cycle_day, 1)).assertIsDisplayed()
+        // Clinical framing the product deliberately avoids: a literal, because
+        // the point is that this word appears in no resource at all.
         composeRule.onNodeWithText("Menstruations").assertDoesNotExist()
     }
 
@@ -101,8 +114,8 @@ class LutealScreensTest {
             }
         }
 
-        composeRule.onNodeWithText("Début des règles").assertIsDisplayed()
-        composeRule.onNodeWithText("Noter la journée").assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.action_start_period_short)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.action_log_entry_short)).assertIsDisplayed()
     }
 
     @Test
@@ -118,8 +131,8 @@ class LutealScreensTest {
             }
         }
 
-        composeRule.onNodeWithText("Votre journal est encore vide").assertIsDisplayed()
-        composeRule.onNodeWithText("Aucune observation").assertDoesNotExist()
+        composeRule.onNodeWithText(string(R.string.journal_empty_title)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.journal_no_observation)).assertDoesNotExist()
     }
 
     @Test
@@ -145,7 +158,9 @@ class LutealScreensTest {
 
         // Journal levels are drawn as filled segments; the label and value
         // travel together in the accessible name.
-        composeRule.onNodeWithContentDescription("Douleur : 3 sur 5").performClick()
+        composeRule.onNodeWithContentDescription(
+            string(R.string.level_a11y, string(R.string.level_label_pain), 3)
+        ).performClick()
         assertEquals(recordedDate, selectedDate)
     }
 

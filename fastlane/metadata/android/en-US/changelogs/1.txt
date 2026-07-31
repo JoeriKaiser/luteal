@@ -1,0 +1,7 @@
+First release.
+
+Offline-first cycle tracking: record cycle starts, bleeding, pain, mood, energy, symptoms and private notes. Estimates are shown as ranges derived from your own history and are always labelled as estimates.
+
+Optional end-to-end encrypted sync (off by default) and opt-in Duo sharing with a partner, controlled category by category and revocable at any time.
+
+French and English.

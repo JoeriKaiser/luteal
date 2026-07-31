@@ -49,10 +49,6 @@
 -keep class org.acra.** { *; }
 -dontwarn org.acra.**
 
-# --- EncryptedSharedPreferences (Tink) ---
--keep class com.google.crypto.tink.** { *; }
--dontwarn com.google.crypto.tink.**
-
 # --- Java time (desugared on older APIs) ---
 -dontwarn java.time.**
 

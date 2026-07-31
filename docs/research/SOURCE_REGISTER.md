@@ -2,10 +2,11 @@
 
 ## Related registers
 
-Physiology, terminology, and data-model sources live in the backend register:
-`~/Projects/folicular/docs/research/SOURCES.md` (with topic notes linking each
-source to the schema decision it informs). This register keeps product,
-content, privacy, and platform sources.
+Physiology, terminology, and data-model sources live in the backend register,
+`docs/research/SOURCES.md` in the
+[folicular](https://github.com/JoeriKaiser/folicular) repository (with topic
+notes linking each source to the schema decision it informs). This register
+keeps product, content, privacy, and platform sources.
 
 ## Use
 

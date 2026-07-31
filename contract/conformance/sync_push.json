@@ -1,0 +1,34 @@
+{
+  "name": "sync_push",
+  "method": "POST",
+  "path": "/v1/sync/push",
+  "status": 200,
+  "body": {
+    "applied": [
+      {
+        "entity_type": "cycle",
+        "entity_id": "019832e1-0000-7000-8000-000000000010",
+        "seq": 412
+      }
+    ],
+    "rejected": [
+      {
+        "entity_type": "daily_entry",
+        "entity_id": "019832e1-0000-7000-8000-000000000011",
+        "detail": "changes[1]: ciphertext: requis sauf pour une suppression"
+      }
+    ],
+    "conflicts": [
+      {
+        "entity_type": "cycle",
+        "entity_id": "019832e1-0000-7000-8000-000000000012",
+        "reason": "superseded",
+        "current_client_rev": "019832e1-1111-7000-8000-000000000013",
+        "current_updated_at": "2026-07-21T09:12:00Z",
+        "current_deleted": false,
+        "current_ciphertext": "Ae698m+uGUtN67xJvZK840AmNy5aRbdsJkhlF98eUKEQlrEUgGOoVm9pEexn3YTHqBQik4c1GoZBUsScqW+7PVK0zNZwIFS2X+Dt5vQ="
+      }
+    ],
+    "cursor": 412
+  }
+}

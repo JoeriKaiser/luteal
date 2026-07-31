@@ -1,0 +1,7 @@
+Première version.
+
+Suivi de cycle hors-ligne : débuts de cycle, saignements, douleur, humeur, énergie, symptômes et notes privées. Les estimations sont présentées comme des plages calculées à partir de votre propre historique, et toujours signalées comme des estimations.
+
+Synchronisation chiffrée de bout en bout, optionnelle et désactivée par défaut, et partage Duo avec un partenaire, contrôlé catégorie par catégorie et révocable à tout moment.
+
+Français et anglais.

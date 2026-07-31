@@ -1,0 +1,39 @@
+{
+  "name": "sync_pull",
+  "method": "GET",
+  "path": "/v1/sync/pull",
+  "status": 200,
+  "body": {
+    "changes": [
+      {
+        "seq": 410,
+        "entity_type": "cycle",
+        "entity_id": "019832e1-0000-7000-8000-000000000010",
+        "client_rev": "019832e1-1111-7000-8000-000000000011",
+        "deleted": false,
+        "updated_at": "2026-07-21T09:12:00Z",
+        "ciphertext": "AYMlTc8to5BU/pz7ml07sS6Lybr5AOw8xX8xELCV9ZfliepxuygeekzNzLBQQ30HkvTw1j+lmuHYgFZRF4KpFps/bEHouQdyKaBbzhQ="
+      },
+      {
+        "seq": 411,
+        "entity_type": "bleeding_observation",
+        "entity_id": "019832e1-0000-7000-8000-000000000020",
+        "client_rev": "019832e1-1111-7000-8000-000000000021",
+        "deleted": false,
+        "updated_at": "2026-07-21T09:12:00Z",
+        "ciphertext": "AVg6+D1v0Xnzfl69aN8bqA/VSaMCr6bqnFS98cYS9+yJ6JI0RwCNjR0WMY47ga8sDQs6qbTU6UehmZaIDw=="
+      },
+      {
+        "seq": 412,
+        "entity_type": "cycle",
+        "entity_id": "019832e1-0000-7000-8000-000000000099",
+        "client_rev": "019832e1-1111-7000-8000-000000000099",
+        "deleted": true,
+        "updated_at": "2026-07-21T10:00:00Z",
+        "ciphertext": null
+      }
+    ],
+    "cursor": 412,
+    "has_more": false
+  }
+}

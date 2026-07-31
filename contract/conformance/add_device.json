@@ -1,0 +1,10 @@
+{
+  "name": "add_device",
+  "method": "POST",
+  "path": "/v1/auth/devices",
+  "status": 201,
+  "body": {
+    "account_id": "019832e0-6c14-7000-8000-000000000001",
+    "device": { "id": "019832e0-6c14-7000-8000-000000000003", "name": "quartz-discret", "token": "ltok_Xy9-ExampleToken" }
+  }
+}

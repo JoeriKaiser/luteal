@@ -16,10 +16,20 @@ import java.io.File
  */
 class StringFormatSpecifierTest {
 
-    private val resourceFiles = listOf(
-        File("src/main/res/values/strings.xml"),
-        File("src/main/res/values-fr/strings.xml")
-    )
+    /** One `values*` folder that carries strings, named for the message text. */
+    private data class Translation(val folder: String, val file: File)
+
+    /**
+     * Every translation, discovered rather than listed, so a new locale is
+     * covered the moment its folder exists. `values/` holds French (the
+     * fallback for untranslated locales); `values-en/` holds English.
+     */
+    private val translations = File("src/main/res")
+        .listFiles { file -> file.isDirectory && file.name.startsWith("values") }
+        .orEmpty()
+        .map { Translation(it.name, File(it, "strings.xml")) }
+        .filter { it.file.isFile }
+        .sortedBy { it.folder }
 
     /** Matches a well-formed positional specifier, or a literal `%%`. */
     private val validSpecifier =
@@ -28,19 +38,47 @@ class StringFormatSpecifierTest {
     /** Matches any `%` that begins a specifier. */
     private val anySpecifier = Regex("""%.?""")
 
+    /** Resource names declared in one file, `<string>` and `<plurals>` alike. */
+    private fun names(file: File): Set<String> =
+        Regex("""<(?:string|plurals)\s+name="([^"]+)"""")
+            .findAll(file.readText())
+            .map { it.groupValues[1] }
+            .toSet()
+
     @Test
-    fun `resource files are present`() {
-        resourceFiles.forEach { file ->
-            assertTrue("Missing resource file: ${file.absolutePath}", file.isFile)
-        }
+    fun `default and english resource files are present`() {
+        val found = translations.map { it.folder }
+        assertTrue("Missing values/strings.xml, found $found", "values" in found)
+        assertTrue("Missing values-en/strings.xml, found $found", "values-en" in found)
+    }
+
+    @Test
+    fun `every translation covers the same resource names as the default`() {
+        val expected = names(File("src/main/res/values/strings.xml"))
+
+        translations
+            .filter { it.folder != "values" }
+            .forEach { translation ->
+                val actual = names(translation.file)
+                assertEquals(
+                    "${translation.folder} is missing names present in values/",
+                    emptySet<String>(),
+                    expected - actual
+                )
+                assertEquals(
+                    "${translation.folder} declares names absent from values/",
+                    emptySet<String>(),
+                    actual - expected
+                )
+            }
     }
 
     @Test
     fun `every format specifier is positional and has a conversion type`() {
         val offenders = mutableListOf<String>()
 
-        resourceFiles.forEach { file ->
-            val text = file.readText()
+        translations.forEach { translation ->
+            val text = translation.file.readText()
             Regex("""<(string|item)[^>]*>(.*?)</\1>""", RegexOption.DOT_MATCHES_ALL)
                 .findAll(text)
                 .forEach { match ->
@@ -57,7 +95,7 @@ class StringFormatSpecifierTest {
                         val valid = validSpecifier.matchAt(body, index)
                         if (valid == null) {
                             val shown = anySpecifier.matchAt(body, index)?.value ?: "%"
-                            offenders += "${file.name}: $name -> \"$shown\" in \"$body\""
+                            offenders += "${translation.folder}: $name -> \"$shown\" in \"$body\""
                             index++
                         } else {
                             index += valid.value.length

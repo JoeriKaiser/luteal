@@ -1,0 +1,11 @@
+{
+  "name": "register",
+  "method": "POST",
+  "path": "/v1/auth/register",
+  "status": 201,
+  "body": {
+    "account": { "id": "019832e0-6c14-7000-8000-000000000001", "code": "LTL-8K3FQ-Z2WNT-7HJMC-4XRDB" },
+    "device": { "id": "019832e0-6c14-7000-8000-000000000002", "name": "Pixel 9", "token": "ltok_Ab3-ExampleToken" },
+    "warning": "Le code de compte est affiche une seule fois. Conservez-le en lieu sur : il permet seul de retrouver votre compte."
+  }
+}

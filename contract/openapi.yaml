@@ -1,0 +1,1026 @@
+openapi: 3.0.3
+info:
+  title: folicular
+  description: |
+    Backend service for Luteal: anonymous identity, offline-first delta sync,
+    research-backed canonical data model, clearly labeled cycle estimates.
+
+    This document is the contract's single source of truth. The Go server is
+    validated against it (internal/contract tests); the Android client
+    generates its DTOs from it. Prose documentation lives in docs/api.md.
+
+    Conventions: dates are ISO-8601 calendar dates (format: date); instants
+    are RFC 3339 UTC (format: date-time). Synchronized record IDs are
+    client-generated UUIDv7 strings. Errors are RFC 9457 problem+json.
+  version: 1.0.0
+  contact:
+    name: Luteal
+
+servers:
+  - url: http://127.0.0.1:8080
+    description: Local development
+
+tags:
+  - name: auth
+    description: Anonymous Mullvad-style identity (no email, no OAuth)
+  - name: account
+    description: Account and server-authoritative settings
+  - name: sync
+    description: Offline-first delta synchronization
+  - name: reads
+    description: Read models over validated server state
+  - name: estimates
+    description: Cycle estimates (never facts, never medical conclusions)
+  - name: duo
+    description: Consensual partner surface with per-field grants
+  - name: ops
+    description: Operational endpoints
+
+security:
+  - bearerAuth: []
+
+paths:
+  /healthz:
+    get:
+      tags: [ops]
+      operationId: healthz
+      security: []
+      summary: Liveness probe (no DB)
+      responses:
+        "200":
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, example: ok }
+
+  /readyz:
+    get:
+      tags: [ops]
+      operationId: readyz
+      security: []
+      summary: Readiness probe (DB check)
+      responses:
+        "200":
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, example: ready }
+        "503": { $ref: "#/components/responses/Problem" }
+
+  /version:
+    get:
+      tags: [ops]
+      operationId: version
+      security: []
+      summary: Build version
+      responses:
+        "200":
+          description: Version information
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [version]
+                properties:
+                  version: { type: string, example: dev }
+
+  /v1/auth/register:
+    post:
+      tags: [auth]
+      operationId: register
+      security: []
+      summary: Create an anonymous account and register the first device
+      description: |
+        The account code is shown exactly once; only its SHA-256 hash is
+        stored. Losing it means losing the account - no email recovery
+        exists.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                device_name: { type: string, maxLength: 120, example: Pixel 9 }
+                invite_code:
+                  type: string
+                  description: >
+                    Invite code required when registration is gated (closed
+                    rollout). Ignored when registration is open.
+                  example: LTL-BETA-0001
+      responses:
+        "201":
+          description: Account and first device created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [account, device, warning]
+                properties:
+                  account:
+                    type: object
+                    required: [id, code]
+                    properties:
+                      id: { $ref: "#/components/schemas/UUID" }
+                      code:
+                        type: string
+                        description: Account code, shown once (LTL-XXXXX-XXXXX-XXXXX-XXXXX)
+                        example: LTL-8K3FQ-Z2WNT-7HJMC-4XRDB
+                  device: { $ref: "#/components/schemas/NewDevice" }
+                  warning:
+                    type: string
+                    description: French user-facing notice about keeping the code safe
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/auth/devices:
+    post:
+      tags: [auth]
+      operationId: addDevice
+      security: []
+      summary: Register an additional device using the account code
+      description: Rate limited per client IP. Failures are generic (no enumeration).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, example: LTL-8K3FQ-Z2WNT-7HJMC-4XRDB }
+                device_name: { type: string, maxLength: 120 }
+      responses:
+        "201":
+          description: Device registered
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [account_id, device]
+                properties:
+                  account_id:
+                    allOf: [{ $ref: "#/components/schemas/UUID" }]
+                    description: |
+                      Needed by the client to derive its encryption keys (HKDF
+                      salt). Not a secret, and the caller has just proved
+                      possession of the account code to reach this point.
+                  device: { $ref: "#/components/schemas/NewDevice" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+    get:
+      tags: [auth]
+      operationId: listDevices
+      summary: List the account's devices
+      responses:
+        "200":
+          description: Device list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [devices]
+                properties:
+                  devices:
+                    type: array
+                    items: { $ref: "#/components/schemas/Device" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/auth/devices/{deviceID}:
+    delete:
+      tags: [auth]
+      operationId: revokeDevice
+      summary: Revoke a device token
+      parameters:
+        - $ref: "#/components/parameters/DeviceID"
+      responses:
+        "204": { description: Device revoked }
+        "404": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/me:
+    get:
+      tags: [account]
+      operationId: getMe
+      summary: Account, current device, and server-authoritative settings
+      responses:
+        "200":
+          description: Account view
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        default: { $ref: "#/components/responses/Problem" }
+    patch:
+      tags: [account]
+      operationId: patchMe
+      summary: Partially update settings (server-authoritative, not synced)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SettingsPatch" }
+      responses:
+        "200":
+          description: Full account view after update
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "422": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/sync/push:
+    post:
+      tags: [sync]
+      operationId: syncPush
+      summary: Push a batch of client changes
+      description: |
+        Each change is validated and applied with an entity-level
+        last-write-wins guard (updated_at, then client_rev). Changes that
+        lose the guard are returned in `conflicts` carrying the server's
+        current state - nothing is silently lost. Invalid changes are
+        reported in `rejected`; valid changes in the same batch still apply.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [changes]
+              properties:
+                changes:
+                  type: array
+                  minItems: 1
+                  maxItems: 1000
+                  items: { $ref: "#/components/schemas/SyncChangeInput" }
+      responses:
+        "200":
+          description: Batch results and new cursor
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyncPushResult" }
+        "422": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/sync/pull:
+    get:
+      tags: [sync]
+      operationId: syncPull
+      summary: Pull ordered changes since a cursor
+      parameters:
+        - name: since
+          in: query
+          schema: { type: integer, format: int64, minimum: 0, default: 0 }
+        - name: limit
+          in: query
+          schema: { type: integer, format: int64, minimum: 1, maximum: 2000, default: 500 }
+      responses:
+        "200":
+          description: Ordered changes (tombstones included)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyncPullResult" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/duo/invitations:
+    post:
+      tags: [duo]
+      operationId: createInvitation
+      summary: Create a pending Duo link with a pairing code and URL
+      description: |
+        The pairing code (50 bits, 7-day expiry, single use) is transported
+        typed, as pairing_url, or as a QR code the client renders from
+        pairing_url. The code in the URL is a bearer-like secret.
+      responses:
+        "201":
+          description: Invitation created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invitation" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/duo/links:
+    post:
+      tags: [duo]
+      operationId: acceptLink
+      security:
+        - bearerAuth: []
+      summary: Accept a pending invitation (partner's own account)
+      description: Rate limited. Generic 404 prevents code enumeration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pairing_code]
+              properties:
+                pairing_code: { type: string, example: FQ7K2-WNT4H }
+      responses:
+        "201":
+          description: Link activated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [link]
+                properties:
+                  link: { $ref: "#/components/schemas/DuoLink" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+    get:
+      tags: [duo]
+      operationId: listLinks
+      summary: List the caller's Duo links in both roles
+      responses:
+        "200":
+          description: Link list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [links]
+                properties:
+                  links:
+                    type: array
+                    items: { $ref: "#/components/schemas/DuoLink" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/duo/links/{linkID}/grants:
+    patch:
+      tags: [duo]
+      operationId: patchGrants
+      summary: Grant or revoke one sharing field (tracker only)
+      parameters:
+        - $ref: "#/components/parameters/LinkID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [field, granted]
+              properties:
+                field: { $ref: "#/components/schemas/GrantField" }
+                granted: { type: boolean }
+      responses:
+        "204": { description: Grant updated }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/duo/links/{linkID}:
+    delete:
+      tags: [duo]
+      operationId: revokeLink
+      summary: End a link (either member; also cancels pending invitations)
+      parameters:
+        - $ref: "#/components/parameters/LinkID"
+      responses:
+        "204": { description: Link revoked }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/duo/view:
+    get:
+      tags: [duo]
+      operationId: duoView
+      summary: Role-aware partner projection
+      description: |
+        Returns the sealed projection published by the tracker's device, plus
+        the sealed support thread. The server relays ciphertext and cannot read
+        either. Private notes and raw observations are never included, because
+        the tracker's device never encrypts them into the payload.
+      responses:
+        "200":
+          description: Projection
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DuoView" }
+        "404": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/duo/payload:
+    put:
+      tags: [duo]
+      operationId: putDuoPayload
+      summary: Publish the sealed partner projection (tracker only)
+      description: |
+        The tracker's device composes the projection from its own records,
+        applies the active grants, seals the result under the Duo link key, and
+        publishes it here. Only the tracker may publish: the projection derives
+        from their records. Plaintext shape: DuoViewContent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payload]
+              properties:
+                payload: { type: string, format: byte }
+      responses:
+        "204": { description: Published }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/duo/support-requests:
+    post:
+      tags: [duo]
+      operationId: createSupportRequest
+      summary: Ask for support (either member)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [link_id, kind]
+              properties:
+                link_id: { $ref: "#/components/schemas/UUID" }
+                kind: { $ref: "#/components/schemas/SupportKind" }
+                message:
+                  type: string
+                  format: byte
+                  description: Sealed under the Duo link key by the sender's device
+      responses:
+        "201":
+          description: Request created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupportRequest" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/duo/support-requests/{requestID}/ack:
+    patch:
+      tags: [duo]
+      operationId: ackSupportRequest
+      summary: Acknowledge a support request (recipient only)
+      parameters:
+        - name: requestID
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/UUID" }
+      responses:
+        "204": { description: Acknowledged }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 256-bit device token issued at registration (ltok_...)
+
+  parameters:
+    DeviceID:
+      name: deviceID
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/UUID" }
+    LinkID:
+      name: linkID
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/UUID" }
+  responses:
+    Problem:
+      description: RFC 9457 problem details
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+  schemas:
+    UUID:
+      type: string
+      format: uuid
+      example: 019832e0-6c14-7000-8000-000000000001
+
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, example: about:blank }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+
+    NewDevice:
+      type: object
+      required: [id, name, token]
+      properties:
+        id: { $ref: "#/components/schemas/UUID" }
+        name: { type: string }
+        token:
+          type: string
+          description: Bearer token, shown once (ltok_...)
+
+    Device:
+      type: object
+      required: [id, name, created_at, revoked, current]
+      properties:
+        id: { $ref: "#/components/schemas/UUID" }
+        name: { type: string }
+        created_at: { type: string, format: date-time }
+        last_seen_at: { type: string, format: date-time, nullable: true }
+        revoked: { type: boolean }
+        current: { type: boolean }
+
+    LifeStage:
+      type: string
+      description: STRAW+10-aligned, user-selected, never inferred
+      enum:
+        - unknown
+        - reproductive_early
+        - reproductive_peak
+        - reproductive_late
+        - menopause_transition_early
+        - menopause_transition_late
+        - postmenopause_early
+        - postmenopause_late
+
+    TrackingFocus:
+      type: string
+      description: User-selected charting focus, never a diagnosis
+      enum: [pms, pmdd, endometriosis, pcos, custom]
+
+    Settings:
+      type: object
+      required: [updated_at]
+      description: |
+        Sealed settings blob. Life stage and tracking focuses (pms, pmdd,
+        endometriosis, pcos) are Art. 9 health data, so they are encrypted
+        client-side like every other record and the server stores an opaque
+        blob. Plaintext shape: see SettingsContent.
+      properties:
+        settings:
+          type: string
+          format: byte
+          nullable: true
+        updated_at: { type: string, format: date-time }
+
+    SettingsPatch:
+      type: object
+      required: [settings]
+      description: |
+        Full replacement of the sealed settings blob. There is no server-side
+        merge: merging requires reading the fields, which the server cannot do.
+        The client decrypts, merges, reseals, and sends the whole blob.
+      properties:
+        settings: { type: string, format: byte }
+
+    SettingsContent:
+      type: object
+      description: |
+        Plaintext shape sealed inside Settings.settings. Never transmitted in
+        the clear; kept here so clients agree on the format.
+      required: [locale, time_zone, life_stage, tracking_focus]
+      properties:
+        locale: { type: string, example: fr }
+        time_zone: { type: string, example: Europe/Paris }
+        life_stage: { $ref: "#/components/schemas/LifeStage" }
+        tracking_focus:
+          type: array
+          items: { $ref: "#/components/schemas/TrackingFocus" }
+
+    Me:
+      type: object
+      required: [account, device, settings]
+      properties:
+        account:
+          type: object
+          required: [id, status, created_at]
+          properties:
+            id: { $ref: "#/components/schemas/UUID" }
+            status: { type: string, enum: [active, disabled, deleted] }
+            created_at: { type: string, format: date-time }
+        device:
+          type: object
+          required: [id, name]
+          properties:
+            id: { $ref: "#/components/schemas/UUID" }
+            name: { type: string }
+        settings: { $ref: "#/components/schemas/Settings" }
+
+    EntityType:
+      type: string
+      enum:
+        - cycle
+        - bleeding_observation
+        - daily_entry
+        - symptom_definition
+        - symptom_log
+        - biomarker_observation
+        - medication_log
+
+    SyncChangeInput:
+      type: object
+      required: [entity_type, entity_id, client_rev, updated_at, deleted, ciphertext]
+      description: |
+        One end-to-end encrypted record change.
+
+        Record content is sealed on the client and opaque to this server (see
+        the client repo's docs/architecture/E2EE_DESIGN.md). The routing fields
+        below are therefore carried in plaintext: the server needs them to
+        target the upsert, order the last-write-wins guard, and append the
+        change log, and it can no longer read them out of the payload.
+      properties:
+        entity_type: { $ref: "#/components/schemas/EntityType" }
+        entity_id: { $ref: "#/components/schemas/UUID" }
+        client_rev:
+          allOf: [{ $ref: "#/components/schemas/UUID" }]
+          description: Fresh per local edit; the tiebreak after updated_at
+        updated_at:
+          type: string
+          format: date-time
+          description: |
+            RFC 3339 UTC, truncated to the minute by the client so a pushed
+            batch does not reveal when each observation was entered.
+        deleted:
+          type: boolean
+          description: Tombstone marker; ciphertext is null when true
+        ciphertext:
+          type: string
+          format: byte
+          nullable: true
+          description: |
+            Base64 of `0x01 || nonce(12) || AES-256-GCM(record JSON) || tag(16)`.
+            Associated data binds "<entity_type> <entity_id> <client_rev>", so
+            relocating a payload onto another record fails authentication.
+
+    AppliedChange:
+      type: object
+      required: [entity_type, entity_id, seq]
+      properties:
+        entity_type: { $ref: "#/components/schemas/EntityType" }
+        entity_id: { $ref: "#/components/schemas/UUID" }
+        seq: { type: integer, format: int64 }
+
+    RejectedChange:
+      type: object
+      required: [entity_type, detail]
+      properties:
+        entity_type: { $ref: "#/components/schemas/EntityType" }
+        entity_id: { $ref: "#/components/schemas/UUID" }
+        detail: { type: string }
+
+    ConflictChange:
+      type: object
+      required: [entity_type, entity_id, reason, current_client_rev, current_updated_at]
+      properties:
+        entity_type: { $ref: "#/components/schemas/EntityType" }
+        entity_id: { $ref: "#/components/schemas/UUID" }
+        reason: { type: string, enum: [superseded] }
+        current_client_rev: { $ref: "#/components/schemas/UUID" }
+        current_updated_at: { type: string, format: date-time }
+        current_deleted: { type: boolean }
+        current_ciphertext:
+          type: string
+          format: byte
+          nullable: true
+          description: |
+            The server's current sealed record. The client adopts it by
+            decrypting locally; nothing is silently lost. Null for tombstones.
+
+    SyncPushResult:
+      type: object
+      required: [applied, rejected, conflicts, cursor]
+      properties:
+        applied:
+          type: array
+          items: { $ref: "#/components/schemas/AppliedChange" }
+        rejected:
+          type: array
+          items: { $ref: "#/components/schemas/RejectedChange" }
+        conflicts:
+          type: array
+          items: { $ref: "#/components/schemas/ConflictChange" }
+        cursor: { type: integer, format: int64 }
+
+    SyncPullChange:
+      type: object
+      required: [seq, entity_type, entity_id, deleted, updated_at, client_rev]
+      properties:
+        seq: { type: integer, format: int64 }
+        entity_type: { $ref: "#/components/schemas/EntityType" }
+        entity_id: { $ref: "#/components/schemas/UUID" }
+        deleted: { type: boolean }
+        updated_at: { type: string, format: date-time }
+        client_rev:
+          allOf: [{ $ref: "#/components/schemas/UUID" }]
+          description: Required to rebuild the AEAD associated data on decrypt
+        ciphertext:
+          type: string
+          format: byte
+          nullable: true
+          description: Sealed record snapshot; null when deleted
+
+    SyncPullResult:
+      type: object
+      required: [changes, cursor, has_more]
+      properties:
+        changes:
+          type: array
+          items: { $ref: "#/components/schemas/SyncPullChange" }
+        cursor: { type: integer, format: int64 }
+        has_more: { type: boolean }
+
+    Flow:
+      type: string
+      description: Self-rated bleeding flow (FIGO-aligned vocabulary)
+      enum: [none, spotting, light, medium, heavy]
+
+    Certainty:
+      type: string
+      enum: [recorded, uncertain, estimated]
+
+    RecordSource:
+      type: string
+      enum: [manual, import, estimated]
+
+    # --- Sealed payload shapes ------------------------------------------
+    # The schemas below are deliberately NOT referenced by any path. They
+    # describe the plaintext *inside* SyncChangeInput.ciphertext, which this
+    # server never decrypts. They remain in the contract because they are a
+    # real shared format between client versions and because the Android
+    # client generates its record types from them.
+    CycleData:
+      type: object
+      description: |
+        start_date is cycle day 1 = first day of full menstrual flow.
+        Bounds are permissive plausibility, not normative ranges.
+      required: [id, client_rev, created_at, updated_at, start_date, certainty, source, notes]
+      properties:
+        id: { $ref: "#/components/schemas/UUID" }
+        client_rev: { $ref: "#/components/schemas/UUID" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        deleted_at: { type: string, format: date-time, nullable: true }
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date, nullable: true }
+        length_days: { type: integer, nullable: true, minimum: 10, maximum: 200 }
+        bleeding_days: { type: integer, nullable: true, minimum: 0, maximum: 45 }
+        certainty: { $ref: "#/components/schemas/Certainty" }
+        source: { $ref: "#/components/schemas/RecordSource" }
+        notes: { type: string, maxLength: 5000 }
+
+    BleedingObservationData:
+      type: object
+      description: Daily bleeding self-observation; spotting flagged as intermenstrual
+      required: [id, client_rev, created_at, updated_at, observed_date, flow, intermenstrual, notes]
+      properties:
+        id: { $ref: "#/components/schemas/UUID" }
+        client_rev: { $ref: "#/components/schemas/UUID" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        deleted_at: { type: string, format: date-time, nullable: true }
+        observed_date: { type: string, format: date }
+        flow: { $ref: "#/components/schemas/Flow" }
+        intermenstrual: { type: boolean }
+        product_count: { type: integer, nullable: true, minimum: 0, maximum: 60 }
+        notes: { type: string, maxLength: 5000 }
+
+    DailyEntryData:
+      type: object
+      description: Prospective daily charting; null levels mean "not recorded"
+      required: [id, client_rev, created_at, updated_at, entry_date, notes]
+      properties:
+        id: { $ref: "#/components/schemas/UUID" }
+        client_rev: { $ref: "#/components/schemas/UUID" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        deleted_at: { type: string, format: date-time, nullable: true }
+        entry_date: { type: string, format: date }
+        pain_level: { type: integer, nullable: true, minimum: 1, maximum: 5 }
+        mood_level: { type: integer, nullable: true, minimum: 1, maximum: 5 }
+        energy_level: { type: integer, nullable: true, minimum: 1, maximum: 5 }
+        notes: { type: string, maxLength: 5000 }
+
+    SymptomCategory:
+      type: string
+      enum: [mood, physical, energy, pain, cervical_fluid, other]
+
+    SymptomDefinitionData:
+      type: object
+      description: Per-account symptom catalog entry (built-in seed or custom)
+      required: [id, client_rev, created_at, updated_at, key, label, category, builtin, active]
+      properties:
+        id: { $ref: "#/components/schemas/UUID" }
+        client_rev: { $ref: "#/components/schemas/UUID" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        deleted_at: { type: string, format: date-time, nullable: true }
+        key: { type: string, pattern: "^[a-z0-9_]{1,64}$" }
+        label: { type: string, minLength: 1, maxLength: 120 }
+        category: { $ref: "#/components/schemas/SymptomCategory" }
+        builtin: { type: boolean }
+        active: { type: boolean }
+
+    SymptomLogData:
+      type: object
+      required: [id, client_rev, created_at, updated_at, log_date, logged_at, symptom_key, severity, notes]
+      properties:
+        id: { $ref: "#/components/schemas/UUID" }
+        client_rev: { $ref: "#/components/schemas/UUID" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        deleted_at: { type: string, format: date-time, nullable: true }
+        log_date: { type: string, format: date }
+        logged_at: { type: string, format: date-time }
+        symptom_key: { type: string, pattern: "^[a-z0-9_]{1,64}$" }
+        severity: { type: integer, minimum: 1, maximum: 5 }
+        notes: { type: string, maxLength: 5000 }
+
+    BbtQuality:
+      type: string
+      enum: [normal, disturbed]
+
+    CervicalFluid:
+      type: string
+      enum: [none, sticky, creamy, watery, egg_white, unresolved]
+
+    CervixPosition:
+      type: string
+      enum: [low, medium, high, unknown]
+
+    CervixFirmness:
+      type: string
+      enum: [firm, soft, unknown]
+
+    BiomarkerObservationData:
+      type: object
+      description: |
+        Self-observed probabilistic biomarkers stored as recorded. The v1
+        estimate engine does not consume them.
+      required: [id, client_rev, created_at, updated_at, observed_date, bbt_quality, notes]
+      properties:
+        id: { $ref: "#/components/schemas/UUID" }
+        client_rev: { $ref: "#/components/schemas/UUID" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        deleted_at: { type: string, format: date-time, nullable: true }
+        observed_date: { type: string, format: date }
+        bbt_celsius: { type: number, format: double, nullable: true, minimum: 34.0, maximum: 43.0 }
+        bbt_time: { type: string, nullable: true, pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$" }
+        bbt_quality: { $ref: "#/components/schemas/BbtQuality" }
+        cervical_fluid:
+          allOf: [{ $ref: "#/components/schemas/CervicalFluid" }]
+          nullable: true
+        cervix_position:
+          allOf: [{ $ref: "#/components/schemas/CervixPosition" }]
+          nullable: true
+        cervix_firmness:
+          allOf: [{ $ref: "#/components/schemas/CervixFirmness" }]
+          nullable: true
+        notes: { type: string, maxLength: 5000 }
+
+    MedicationKind:
+      type: string
+      enum: [contraceptive_hormonal, emergency_contraception, pain_relief, supplement, other]
+
+    MedicationLogData:
+      type: object
+      required: [id, client_rev, created_at, updated_at, log_date, name, dose, kind, notes]
+      properties:
+        id: { $ref: "#/components/schemas/UUID" }
+        client_rev: { $ref: "#/components/schemas/UUID" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        deleted_at: { type: string, format: date-time, nullable: true }
+        log_date: { type: string, format: date }
+        taken_at: { type: string, nullable: true }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        dose: { type: string, maxLength: 100 }
+        kind: { $ref: "#/components/schemas/MedicationKind" }
+        notes: { type: string, maxLength: 5000 }
+
+    Invitation:
+      type: object
+      required: [link_id, pairing_code, pairing_url, expires_at]
+      properties:
+        link_id: { $ref: "#/components/schemas/UUID" }
+        pairing_code: { type: string, example: FQ7K2-WNT4H }
+        pairing_url:
+          type: string
+          description: Shareable link / QR payload / deep-link target
+          example: https://luteal-duo.waldemar.site/accept?code=FQ7K2-WNT4H
+        expires_at: { type: string, format: date-time }
+
+    DuoRole:
+      type: string
+      enum: [tracker, partner]
+
+    DuoLink:
+      type: object
+      required: [id, role, status, created_at]
+      properties:
+        id: { $ref: "#/components/schemas/UUID" }
+        role: { $ref: "#/components/schemas/DuoRole" }
+        status: { type: string, enum: [pending, active, revoked] }
+        created_at: { type: string, format: date-time }
+        revoked_at: { type: string, format: date-time, nullable: true }
+
+    GrantField:
+      type: string
+      enum: [cycle_day, period_estimate, mood, energy, support_requests]
+
+    SupportKind:
+      type: string
+      enum: [general, comfort, practical, space]
+
+    SupportRequest:
+      type: object
+      required: [id, author_role, kind, created_at]
+      properties:
+        id: { $ref: "#/components/schemas/UUID" }
+        author_role: { $ref: "#/components/schemas/DuoRole" }
+        kind: { $ref: "#/components/schemas/SupportKind" }
+        message_ciphertext:
+          type: string
+          format: byte
+          nullable: true
+          description: Sealed under the Duo link key by the sender's device
+        created_at: { type: string, format: date-time }
+        acknowledged_at: { type: string, format: date-time, nullable: true }
+
+    DuoView:
+      type: object
+      required: [link_id, role, as_of]
+      description: |
+        The server no longer composes this view: it cannot read cycle starts or
+        daily entries. The tracker's device applies the grants locally, seals
+        the result under the Duo link key, and publishes it via
+        PUT /v1/duo/payload. Grants are therefore enforced at composition time,
+        which is stronger than server-side filtering - the server cannot leak
+        what it never received.
+      properties:
+        link_id: { $ref: "#/components/schemas/UUID" }
+        role: { $ref: "#/components/schemas/DuoRole" }
+        as_of: { type: string, format: date-time }
+        payload:
+          type: string
+          format: byte
+          nullable: true
+          description: Sealed projection; null until the tracker publishes one
+        payload_updated_at: { type: string, format: date-time, nullable: true }
+        grants:
+          type: array
+          description: |
+            Currently active grant fields. These are names of shared categories,
+            not observations, so they stay in the clear: the server already
+            records them via PATCH /v1/duo/links/{linkID}/grants and needs them
+            for audit. The tracker's device reads them back to know what to seal
+            into the next projection, which is why they cannot live only in the
+            encrypted payload.
+          items: { $ref: "#/components/schemas/GrantField" }
+        support_requests:
+          type: array
+          nullable: true
+          items: { $ref: "#/components/schemas/SupportRequest" }
+
+    DuoViewContent:
+      type: object
+      description: |
+        Plaintext shape sealed inside DuoView.payload. Never transmitted in the
+        clear; kept here so tracker and partner clients agree on the format.
+        Only granted fields are present - an ungranted field is absent because
+        it was never encrypted, not filtered afterwards.
+      properties:
+        cycle_day: { type: integer, nullable: true }
+        period_estimate:
+          type: object
+          nullable: true
+          required: [window_start, window_end]
+          properties:
+            window_start: { type: string, format: date }
+            window_end: { type: string, format: date }
+        mood: { $ref: "#/components/schemas/SharedLevel" }
+        energy: { $ref: "#/components/schemas/SharedLevel" }
+
+    SharedLevel:
+      type: object
+      nullable: true
+      required: [date, level]
+      properties:
+        date: { type: string, format: date }
+        level: { type: integer, minimum: 1, maximum: 5 }

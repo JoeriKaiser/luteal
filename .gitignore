@@ -1,11 +1,9 @@
 *.iml
 .gradle
+.kotlin
 /local.properties
-/.idea/workspace.xml
-/.idea/libraries
-/.idea/modules.xml
-/.idea/navCompiler.xml
-/.idea/assetWizardSettings.xml
+# IDE configuration is per-developer; nothing under .idea belongs in the repo.
+/.idea/
 .DS_Store
 /build
 **/build/

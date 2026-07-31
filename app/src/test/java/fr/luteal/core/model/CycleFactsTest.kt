@@ -62,22 +62,27 @@ class CycleFactsTest {
     }
 
     @Test
-    fun `every fact has copy in both resource files`() {
+    fun `every fact has copy in every shipped language`() {
         // factText() falls back to null for an unknown id, which would make the
-        // card vanish silently rather than fail loudly.
-        val files = listOf(
-            File("src/main/res/values/strings.xml"),
-            File("src/main/res/values-fr/strings.xml")
-        )
+        // card vanish silently rather than fail loudly. Locales are discovered
+        // rather than listed, so adding a translation extends this check.
+        val translations = File("src/main/res")
+            .listFiles { file -> file.isDirectory && file.name.startsWith("values") }
+            .orEmpty()
+            .map { it.name to File(it, "strings.xml") }
+            .filter { (_, file) -> file.isFile }
 
-        files.forEach { file ->
-            assertTrue("Missing resource file: ${file.absolutePath}", file.isFile)
+        val folders = translations.map { (folder, _) -> folder }
+        assertTrue("Missing values/strings.xml, found $folders", "values" in folders)
+        assertTrue("Missing values-en/strings.xml, found $folders", "values-en" in folders)
+
+        translations.forEach { (folder, file) ->
             val text = file.readText()
             val missing = CycleFacts.ALL
                 .map { it.id }
                 .filterNot { text.contains("name=\"fact_$it\"") }
 
-            assertTrue("${file.name} is missing copy for: $missing", missing.isEmpty())
+            assertTrue("$folder is missing copy for: $missing", missing.isEmpty())
         }
     }
 

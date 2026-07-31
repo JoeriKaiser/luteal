@@ -27,12 +27,13 @@ android {
             useSupportLibrary = true
         }
 
-        // Ship only French. The app is French-first and res/xml/locales_config
-        // declares `fr` alone, but AndroidX and Material bring translations for
-        // 84 locales, which is most of resources.arsc. Keep this in step with
-        // locales_config if another language is ever added.
+        // Ship French and English only. The app is French-first - French lives
+        // in the default `values/` folder, so it is also the fallback for every
+        // untranslated locale - but AndroidX and Material bring translations
+        // for 84 locales, which is most of resources.arsc. Keep this in step
+        // with res/xml/locales_config.xml and the values-* folders.
         @Suppress("DEPRECATION")
-        resourceConfigurations += listOf("fr")
+        resourceConfigurations += listOf("fr", "en")
 
         // Default folicular base URL for online sync. The debug/dev build
         // targets the local trial server (emulator loopback); the release
@@ -60,10 +61,14 @@ android {
             // Production folicular API. Release syncs over HTTPS only
             // (cleartext is not permitted); overrides the local-trial default.
             buildConfigField("String", "SYNC_BASE_URL", "\"https://luteal-api.waldemar.site\"")
+            // Sign only when real credentials are present. Without
+            // keystore.properties the release APK is left unsigned rather than
+            // falling back to the debug key: F-Droid signs its own builds, and
+            // a silently debug-signed release is a footgun worth failing on.
             signingConfig = if (rootProject.file("keystore.properties").exists()) {
                 signingConfigs.getByName("release")
             } else {
-                signingConfigs.getByName("debug")
+                null
             }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -89,8 +94,8 @@ android {
     }
 
     // Generated folicular API contract DTOs (see docs/architecture/BACKEND_INTEGRATION.md).
-    // The spec's single source of truth is the folicular repository; the path
-    // is overridable with -Pfolicular.spec=... for other machine layouts.
+    // The spec is vendored at contract/openapi.yaml; override the path with
+    // -Pfolicular.spec=... to build against an upstream working copy.
     sourceSets {
         getByName("main") {
             kotlin.srcDir(layout.buildDirectory.dir("generated/openapi/src/main/kotlin"))
@@ -100,8 +105,13 @@ android {
 
 // Contract DTO generation from the folicular OpenAPI spec (models only;
 // transport stays hand-written). Runs before every build.
+//
+// The spec is vendored at contract/openapi.yaml so a plain clone builds with
+// no sibling checkout - see contract/README.md for how to refresh it. The
+// folicular repository remains the upstream source of truth; point at it with
+// -Pfolicular.spec=/abs/path/openapi.yaml when working on both sides at once.
 val folicularSpec = providers.gradleProperty("folicular.spec")
-    .getOrElse("$rootDir/../../Projects/folicular/openapi/openapi.yaml")
+    .getOrElse("$rootDir/contract/openapi.yaml")
 
 openApiGenerate {
     generatorName.set("kotlin")
@@ -189,13 +199,14 @@ dependencies {
 
 // Pass the shared folicular conformance fixtures directory to unit tests
 // (ConformanceFixturesTest decodes the same golden responses the backend's
-// internal/contract fixtures test validates against the spec). Defaults to the
-// sibling folicular checkout; override with -Pfolicular.conformance=/abs/path.
+// internal/contract fixtures test validates against the spec). Vendored
+// alongside the spec so a plain clone runs the full suite; override with
+// -Pfolicular.conformance=/abs/path to test against an upstream working copy.
 tasks.withType<Test> {
     systemProperty(
         "folicular.conformance",
         providers.gradleProperty("folicular.conformance")
-            .getOrElse("$rootDir/../../Projects/folicular/conformance")
+            .getOrElse("$rootDir/contract/conformance")
     )
 
     // Opt-in end-to-end trial against a running folicular instance

@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Locales offered in the Android per-app language picker. French is listed
+    first and lives in the default `values/` folder, so it is also the fallback
+    for any locale that is not translated. Keep this in step with the
+    `resourceConfigurations` list in app/build.gradle.kts and the values-*
+    folders under res/.
+-->
 <locale-config xmlns:android="http://schemas.android.com/apk/res/android">
     <locale android:name="fr" />
+    <locale android:name="en" />
 </locale-config>
