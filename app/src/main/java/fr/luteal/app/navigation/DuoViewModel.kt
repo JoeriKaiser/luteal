@@ -6,18 +6,25 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.luteal.core.data.repository.CycleRepository
 import fr.luteal.core.data.repository.DailyEntryRepository
 import fr.luteal.core.data.repository.DuoRepository
+import fr.luteal.core.data.repository.DuoCycleProjectionCacheWriter
+import fr.luteal.core.data.repository.DuoWidgetCacheRepository
 import fr.luteal.core.data.repository.UserRepository
 import fr.luteal.core.model.AgeBand
 import fr.luteal.core.model.CycleEstimateCalculator
 import fr.luteal.core.model.DuoProjection
+import fr.luteal.core.model.DuoSharingField
+import fr.luteal.core.model.DuoSharingPreferences
 import fr.luteal.core.model.SharedEstimate
 import fr.luteal.core.model.SharedLevel
 import fr.luteal.core.network.ContractJson
 import fr.luteal.core.network.crypto.DuoCrypto
 import fr.luteal.core.network.crypto.DuoKeyStore
+import fr.luteal.core.network.crypto.DuoProjectionDecodeResult
+import fr.luteal.core.network.crypto.DuoProjectionDecoder
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
+import java.util.Base64
 import fr.luteal.core.network.contract.models.DuoLink
 import fr.luteal.core.network.contract.models.DuoView
 import fr.luteal.core.network.contract.models.GrantField
@@ -36,10 +43,19 @@ class DuoViewModel @Inject constructor(
     private val duoKeyStore: DuoKeyStore,
     private val cycleRepository: CycleRepository,
     private val dailyEntryRepository: DailyEntryRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val projectionDecoder: DuoProjectionDecoder,
+    private val widgetCacheWriter: DuoCycleProjectionCacheWriter,
+    private val widgetCacheRepository: DuoWidgetCacheRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DuoUiState())
+
+    // True once the server (or a successful grant toggle) confirmed the
+    // grants in this session. publishProjection() refuses to run before
+    // that: sealing with an unknown grant set would publish "nothing
+    // shared" and silently wipe the partner's view on a cold start.
+    private var grantsConfirmed = false
     val uiState: StateFlow<DuoUiState> = _uiState.asStateFlow()
 
     // Deliberately no init { refresh() }. The tab scaffold is a `when`, not a
@@ -56,28 +72,19 @@ class DuoViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
+            // Show the last confirmed grants while the network round trip runs;
+            // a cold start must not fall back to "everything off".
+            seedGrantsFromCache()
             runCatching { duoRepository.duoView() }
                 .onSuccess { view ->
                     val isTracker =
                         view.role == fr.luteal.core.network.contract.models.DuoRole.TRACKER
-                    _uiState.update {
-                        it.copy(
-                            phase = if (isTracker) DuoPhase.TrackerActive else DuoPhase.PartnerActive,
-                            duoView = view,
-                            activeLinkId = view.linkId.toString(),
-                            projection = openProjection(view),
-                            supportMessages = openSupportMessages(view),
-                            // Read grants back from the server before
-                            // republishing. Without this the tracker would seal
-                            // an empty projection on every cold start and
-                            // silently wipe what the partner sees.
-                            grants = view.grants.orEmpty().associateWith { true },
-                            keyMissing = duoKeyStore.load(view.linkId.toString()) == null,
-                            isLoading = false
-                        )
-                    }
+                    applyDuoView(view)
                     // The tracker owns the projection: refresh republishes it so
                     // the partner sees current data and revoked grants drop out.
+                    // applyDuoView only confirms the grants when the server
+                    // actually returned them, so an unknown grant set never
+                    // triggers an empty republish.
                     if (isTracker) publishProjection()
                 }
                 .onFailure { err ->
@@ -100,17 +107,9 @@ class DuoViewModel @Inject constructor(
                     }
                     if (active != null) {
                         runCatching { duoRepository.duoView() }
-                            .onSuccess { view ->
-                                _uiState.update {
-                                    it.copy(
-                                        phase = if (view.role == fr.luteal.core.network.contract.models.DuoRole.TRACKER)
-                                            DuoPhase.TrackerActive else DuoPhase.PartnerActive,
-                                        duoView = view,
-                                        activeLinkId = active.id.toString()
-                                    )
-                                }
-                            }
+                            .onSuccess { view -> applyDuoView(view) }
                             .onFailure {
+                                seedGrantsFromCache()
                                 _uiState.update {
                                     it.copy(
                                         phase = if (active.role == fr.luteal.core.network.contract.models.DuoRole.TRACKER)
@@ -120,6 +119,7 @@ class DuoViewModel @Inject constructor(
                                 }
                             }
                     } else if (pending != null) {
+                        widgetCacheRepository.clear()
                         _uiState.update {
                             it.copy(
                                 phase = DuoPhase.InvitationPending,
@@ -127,6 +127,7 @@ class DuoViewModel @Inject constructor(
                             )
                         }
                     } else {
+                        widgetCacheRepository.clear()
                         _uiState.update { it.copy(phase = DuoPhase.NoLink) }
                     }
                 }
@@ -134,6 +135,73 @@ class DuoViewModel @Inject constructor(
                     _uiState.update { it.copy(phase = DuoPhase.NoLink) }
                 }
         }
+    }
+
+    /**
+     * Applies a fresh [DuoView] to the UI state. The server's grant list is
+     * authoritative when present; the locally cached map (last confirmed
+     * choices) is kept as the fallback when the server does not expose the
+     * field, and the cache is updated from the server otherwise.
+     */
+    private suspend fun applyDuoView(view: DuoView) {
+        val isTracker =
+            view.role == fr.luteal.core.network.contract.models.DuoRole.TRACKER
+        val serverGrants = view.grants
+        if (serverGrants != null) {
+            grantsConfirmed = true
+            persistGrants(serverGrants)
+        }
+        val decodedProjection = projectionDecoder.decode(view)
+        widgetCacheWriter.save(view)
+        _uiState.update {
+            it.copy(
+                phase = if (isTracker) DuoPhase.TrackerActive else DuoPhase.PartnerActive,
+                duoView = view,
+                activeLinkId = view.linkId.toString(),
+                projection = (decodedProjection as? DuoProjectionDecodeResult.Available)?.projection,
+                supportMessages = openSupportMessages(view),
+                grants = serverGrants?.associateWith { true } ?: it.grants,
+                keyMissing = decodedProjection == DuoProjectionDecodeResult.KeyMissing,
+                isLoading = false
+            )
+        }
+    }
+
+    /** Seeds the toggle state from the local cache (last confirmed choices). */
+    private suspend fun seedGrantsFromCache() {
+        val prefs = userRepository.getUserPreferences().first().duoSharing
+        _uiState.update { it.copy(grants = prefs.toGrantMap()) }
+    }
+
+    /** Mirrors the server's grant list into the local cache. */
+    private suspend fun persistGrants(serverGrants: List<GrantField>) {
+        DuoSharingField.entries.forEach { field ->
+            userRepository.updateDuoSharing(field, serverGrants.contains(field.toGrantField()))
+        }
+    }
+
+    private fun DuoSharingPreferences.toGrantMap(): Map<GrantField, Boolean> = mapOf(
+        GrantField.CYCLE_DAY to shareCycleDay,
+        GrantField.PERIOD_ESTIMATE to sharePeriodEstimate,
+        GrantField.MOOD to shareMood,
+        GrantField.ENERGY to shareEnergy,
+        GrantField.SUPPORT_REQUESTS to shareSupportRequests
+    )
+
+    private fun DuoSharingField.toGrantField(): GrantField = when (this) {
+        DuoSharingField.CYCLE_DAY -> GrantField.CYCLE_DAY
+        DuoSharingField.PERIOD_ESTIMATE -> GrantField.PERIOD_ESTIMATE
+        DuoSharingField.MOOD -> GrantField.MOOD
+        DuoSharingField.ENERGY -> GrantField.ENERGY
+        DuoSharingField.SUPPORT_REQUESTS -> GrantField.SUPPORT_REQUESTS
+    }
+
+    private fun GrantField.toDuoSharingField(): DuoSharingField = when (this) {
+        GrantField.CYCLE_DAY -> DuoSharingField.CYCLE_DAY
+        GrantField.PERIOD_ESTIMATE -> DuoSharingField.PERIOD_ESTIMATE
+        GrantField.MOOD -> DuoSharingField.MOOD
+        GrantField.ENERGY -> DuoSharingField.ENERGY
+        GrantField.SUPPORT_REQUESTS -> DuoSharingField.SUPPORT_REQUESTS
     }
 
     fun createInvitation() {
@@ -193,12 +261,18 @@ class DuoViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { duoRepository.patchGrants(linkId, field, granted) }
                 .onSuccess {
-                    // Revocation must stop the data flowing, not just flip a
-                    // server flag: republish so the field is no longer sealed in.
-                    publishProjection()
+                    grantsConfirmed = true
+                    // Apply the change before republishing: the sealed
+                    // projection must reflect the new grant immediately (a
+                    // republish against the stale map would keep revoked
+                    // fields flowing and delay newly granted ones).
                     _uiState.update { state ->
                         state.copy(grants = state.grants + (field to granted))
                     }
+                    // Keep the local cache in step so a later cold start shows
+                    // the last confirmed choices even before the server answers.
+                    userRepository.updateDuoSharing(field.toDuoSharingField(), granted)
+                    publishProjection()
                 }
                 .onFailure { err ->
                     _uiState.update { it.copy(error = err.message) }
@@ -214,6 +288,7 @@ class DuoViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching { duoRepository.revokeLink(linkId) }
                 .onSuccess {
+                    widgetCacheRepository.clear()
                     _uiState.update {
                         DuoUiState(phase = DuoPhase.NoLink)
                     }
@@ -236,8 +311,11 @@ class DuoViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isSendingSupport = true, error = null) }
             // Sealed before it leaves the device: the server relays support
-            // messages but never reads them.
-            val sealed = DuoCrypto.sealRaw(key, linkId, message.toByteArray())
+            // messages but never reads them. The wire carries base64 (Go
+            // decodes []byte from a base64 string, not a JSON number array).
+            val sealed = Base64.getEncoder().encodeToString(
+                DuoCrypto.sealRaw(key, linkId, message.toByteArray())
+            )
             runCatching { duoRepository.createSupportRequest(linkId, kind, sealed) }
                 .onSuccess {
                     _uiState.update { it.copy(isSendingSupport = false, supportDraft = "") }
@@ -265,21 +343,6 @@ class DuoViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
 
-
-    /**
-     * Opens the sealed projection with the link key held on this device.
-     * Returns null when there is no payload yet or the key is missing (for
-     * example after a reinstall, which requires re-pairing).
-     */
-    private fun openProjection(view: DuoView): DuoProjection? {
-        val payload = view.payload ?: return null
-        val linkId = view.linkId.toString()
-        val key = duoKeyStore.load(linkId) ?: return null
-        return runCatching {
-            val plaintext = DuoCrypto.open(key, linkId, String(payload))
-            ContractJson.decodeFromString(DuoProjection.serializer(), String(plaintext))
-        }.getOrNull()
-    }
 
     /**
      * Decrypts the support thread, keyed by request id.
@@ -310,6 +373,11 @@ class DuoViewModel @Inject constructor(
     fun publishProjection() {
         val linkId = _uiState.value.activeLinkId ?: return
         val key = duoKeyStore.load(linkId) ?: return
+        // Never seal a projection while the grants are unknown: on a cold
+        // start that would publish "nothing shared" and silently wipe the
+        // partner's view. The grants are confirmed by the server's duoView
+        // (even an empty list) or by a successful toggle in this session.
+        if (!grantsConfirmed) return
         val grants = _uiState.value.grants
 
         viewModelScope.launch {
@@ -363,6 +431,7 @@ class DuoViewModel @Inject constructor(
                 duoRepository.putDuoPayload(DuoCrypto.seal(key, linkId, json.toByteArray()))
                 projection
             }.onSuccess { projection ->
+                widgetCacheWriter.savePublished(linkId, projection, grants)
                 _uiState.update { it.copy(projection = projection) }
             }.onFailure { err ->
                 _uiState.update { it.copy(error = err.message) }

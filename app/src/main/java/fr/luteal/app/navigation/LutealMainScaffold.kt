@@ -44,6 +44,8 @@ import java.time.LocalDate
 
 @Composable
 fun LutealMainScaffold(
+    widgetDestination: String? = null,
+    onWidgetDestinationConsumed: () -> Unit = {},
     viewModel: LutealViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -54,6 +56,28 @@ fun LutealMainScaffold(
     val saveError = stringResource(R.string.save_error)
     val saveSuccess = stringResource(R.string.save_success_local)
     val useCompactNavigationLabels = LocalDensity.current.fontScale >= 1.5f
+
+    // Widget requests survive a cold start and wait until onboarding is
+    // complete. They navigate only; health data is still edited and confirmed
+    // inside the app.
+    LaunchedEffect(widgetDestination, uiState.preferences.hasCompletedOnboarding) {
+        val destination = widgetDestination ?: return@LaunchedEffect
+        if (!uiState.preferences.hasCompletedOnboarding) return@LaunchedEffect
+        when (destination) {
+            fr.luteal.app.MainActivity.WIDGET_DESTINATION_TODAY -> {
+                selectedDestination = LutealDestination.TODAY
+            }
+            fr.luteal.app.MainActivity.WIDGET_DESTINATION_TODAY_EDITOR -> {
+                selectedDestination = LutealDestination.TODAY
+                viewModel.clearEntrySaveState()
+                editorRequest = EditorRequest(uiState.today, startPeriodIntent = false)
+            }
+            fr.luteal.app.MainActivity.WIDGET_DESTINATION_DUO -> {
+                selectedDestination = LutealDestination.DUO
+            }
+        }
+        onWidgetDestinationConsumed()
+    }
 
     LaunchedEffect(uiState.operationFailed) {
         if (uiState.operationFailed) {

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.rounded.HealthAndSafety
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -88,6 +89,12 @@ fun SettingsScreen(
                 icon = Icons.Rounded.Shield,
                 title = stringResource(R.string.settings_backup_title),
                 body = stringResource(R.string.settings_backup_body)
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SettingsInformationRow(
+                icon = Icons.Rounded.VisibilityOff,
+                title = stringResource(R.string.settings_widgets_privacy_title),
+                body = stringResource(R.string.widget_privacy_notice)
             )
         }
 

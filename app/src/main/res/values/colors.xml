@@ -10,4 +10,12 @@
     <color name="luteal_splash_background">#F1EDE1</color>
     <!-- Evergreen40. Legible on the linen splash background. -->
     <color name="luteal_splash_mark">#235B4E</color>
+
+    <!-- Resource-backed Glance palette, kept in step with Color.kt. -->
+    <color name="widget_surface">#FCFAF5</color>
+    <color name="widget_text_primary">#252B27</color>
+    <color name="widget_text_supporting">#555D58</color>
+    <color name="widget_accent">#235B4E</color>
+    <color name="widget_estimate">#755B45</color>
+    <color name="widget_outline">#D6D2C8</color>
 </resources>

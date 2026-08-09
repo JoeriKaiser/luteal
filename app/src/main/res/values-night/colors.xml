@@ -9,4 +9,11 @@
       evergreen would all but disappear.
     -->
     <color name="luteal_splash_mark">#8FD4BE</color>
+
+    <color name="widget_surface">#181E1B</color>
+    <color name="widget_text_primary">#E4EAE5</color>
+    <color name="widget_text_supporting">#C2C9C4</color>
+    <color name="widget_accent">#8FD4BE</color>
+    <color name="widget_estimate">#E0BFA5</color>
+    <color name="widget_outline">#3D4540</color>
 </resources>

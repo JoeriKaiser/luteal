@@ -15,6 +15,9 @@ default, with optional end-to-end encrypted sync.
 - Tracking data lives in a local Room database. Nothing leaves the device until
   sync is explicitly enabled - `SyncMode` defaults to `OFFLINE_LOCAL`.
 - Android cloud backup is disabled for the app's data (`allowBackup=false`).
+- Home-screen widgets start concealed and never show private notes or detailed
+  observations. Revealing a widget sends its visible content to the launcher,
+  which may retain previews or screenshots outside Luteal's control.
 - No advertising, no analytics, no Google Play Services, no Firebase.
 - Crash reporting is ACRA with a consent dialog: nothing is sent unless the user
   reads it and chooses to send. Tracking data is not included.
@@ -46,7 +49,7 @@ build is left unsigned rather than falling back to the debug key.
 | `app/src/main/java/fr/luteal/core` | Domain model, Room storage, sync, crypto |
 | `contract/` | Vendored folicular OpenAPI spec and conformance fixtures |
 | `docs/architecture` | Sync boundary, E2EE design, backend integration |
-| `docs/product` | Feature research and roadmap |
+| `docs/product` | Feature research, roadmap, and widget behavior |
 | `docs/research` | Cycle research notes and source register |
 | `fastlane/` | F-Droid listing metadata |
 

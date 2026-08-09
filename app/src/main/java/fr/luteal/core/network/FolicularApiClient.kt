@@ -71,9 +71,9 @@ interface FolicularApiClient {
     suspend fun putDuoPayload(deviceToken: String, payload: String)
 
     /** POST /v1/duo/support-requests - create a support request. */
-    /** [sealedMessage] is ciphertext; the server relays it without reading it. */
+    /** [sealedMessage] is base64 of the sealed message; the server relays it without reading it. */
     suspend fun createSupportRequest(
-        deviceToken: String, linkId: String, kind: SupportKind, sealedMessage: ByteArray
+        deviceToken: String, linkId: String, kind: SupportKind, sealedMessage: String
     ): SupportRequest
 
     /** PATCH /v1/duo/support-requests/{requestID}/ack - acknowledge a request. */

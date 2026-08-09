@@ -6,12 +6,15 @@ import org.junit.Test
 
 class DuoSharingPreferencesTest {
     @Test
-    fun `sensitive daily observations are private by default`() {
+    fun `nothing is shared by default - sharing is opt-in`() {
         val preferences = DuoSharingPreferences()
 
-        assertTrue(preferences.shareCycleDay)
+        // Grants mirror the server's duoView and are only ever set by an
+        // explicit toggle; a fresh install shares nothing.
+        assertFalse(preferences.shareCycleDay)
         assertFalse(preferences.sharePeriodEstimate)
         assertFalse(preferences.shareMood)
         assertFalse(preferences.shareEnergy)
+        assertFalse(preferences.shareSupportRequests)
     }
 }

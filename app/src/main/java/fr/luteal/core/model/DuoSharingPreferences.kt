@@ -1,11 +1,11 @@
 package fr.luteal.core.model
 
 data class DuoSharingPreferences(
-    val shareCycleDay: Boolean = true,
+    val shareCycleDay: Boolean = false,
     val sharePeriodEstimate: Boolean = false,
     val shareMood: Boolean = false,
     val shareEnergy: Boolean = false,
-    val shareSupportRequests: Boolean = true
+    val shareSupportRequests: Boolean = false
 )
 
 enum class DuoSharingField {

@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import fr.luteal.core.data.local.CycleDao
 import fr.luteal.core.data.local.DailyEntryDao
+import fr.luteal.core.data.local.DuoWidgetCacheDao
 import fr.luteal.core.data.local.LutealDatabase
 import fr.luteal.core.data.local.SyncStateDao
 import fr.luteal.core.data.local.SymptomDao
@@ -31,7 +32,8 @@ object DatabaseModule {
         ).addMigrations(
                 LutealDatabase.MIGRATION_1_2,
                 LutealDatabase.MIGRATION_2_3,
-                LutealDatabase.MIGRATION_3_4
+                LutealDatabase.MIGRATION_3_4,
+                LutealDatabase.MIGRATION_4_5
             ).build()
     }
 
@@ -51,6 +53,12 @@ object DatabaseModule {
     @Singleton
     fun provideDailyEntryDao(database: LutealDatabase): DailyEntryDao {
         return database.dailyEntryDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideDuoWidgetCacheDao(database: LutealDatabase): DuoWidgetCacheDao {
+        return database.duoWidgetCacheDao()
     }
 
     @Provides

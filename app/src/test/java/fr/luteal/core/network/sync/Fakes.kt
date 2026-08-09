@@ -185,7 +185,7 @@ class FakeApiClient : FolicularApiClient {
         throw UnsupportedOperationException("not used in sync tests")
     override suspend fun putDuoPayload(deviceToken: String, payload: String) =
         throw UnsupportedOperationException("not used in sync tests")
-    override suspend fun createSupportRequest(deviceToken: String, linkId: String, kind: fr.luteal.core.network.contract.models.SupportKind, sealedMessage: ByteArray) =
+    override suspend fun createSupportRequest(deviceToken: String, linkId: String, kind: fr.luteal.core.network.contract.models.SupportKind, sealedMessage: String) =
         throw UnsupportedOperationException("not used in sync tests")
     override suspend fun ackSupportRequest(deviceToken: String, requestId: String) =
         throw UnsupportedOperationException("not used in sync tests")

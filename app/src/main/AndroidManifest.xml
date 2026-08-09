@@ -32,6 +32,41 @@
             </intent-filter>
         </activity>
 
+        <receiver
+            android:name=".widget.personal.PersonalCycleWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_personal_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/personal_cycle_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.duo.DuoCycleWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_duo_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/duo_cycle_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.WidgetSystemEventReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
         <!-- WorkManager is initialized on demand by LutealApp (Configuration.Provider)
              so @HiltWorker workers are created by Hilt; disable the default
              androidx.startup initializer. -->

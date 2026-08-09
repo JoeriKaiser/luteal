@@ -8,6 +8,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import fr.luteal.core.data.entity.CycleEntity
 import fr.luteal.core.data.entity.DailyEntryEntity
 import fr.luteal.core.data.entity.DisorderConfigEntity
+import fr.luteal.core.data.entity.DuoWidgetCacheEntity
 import fr.luteal.core.data.entity.SyncStateEntity
 import fr.luteal.core.data.entity.SymptomLogEntity
 import fr.luteal.core.data.entity.UserProfileEntity
@@ -19,9 +20,10 @@ import fr.luteal.core.data.entity.UserProfileEntity
         DailyEntryEntity::class,
         SymptomLogEntity::class,
         DisorderConfigEntity::class,
-        UserProfileEntity::class
+        UserProfileEntity::class,
+        DuoWidgetCacheEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -29,6 +31,7 @@ abstract class LutealDatabase : RoomDatabase() {
     abstract fun cycleDao(): CycleDao
     abstract fun syncStateDao(): SyncStateDao
     abstract fun dailyEntryDao(): DailyEntryDao
+    abstract fun duoWidgetCacheDao(): DuoWidgetCacheDao
     abstract fun symptomDao(): SymptomDao
     abstract fun userProfileDao(): UserProfileDao
 
@@ -95,6 +98,26 @@ abstract class LutealDatabase : RoomDatabase() {
                     """.trimIndent()
                 )
                 db.execSQL("DROP TABLE IF EXISTS cycle_sync_state")
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS duo_widget_cache (
+                        linkId TEXT NOT NULL PRIMARY KEY,
+                        role TEXT NOT NULL,
+                        cycleDay INTEGER,
+                        estimateStart TEXT,
+                        estimateEnd TEXT,
+                        cycleDayGranted INTEGER NOT NULL,
+                        estimateGranted INTEGER NOT NULL,
+                        status TEXT NOT NULL,
+                        refreshedAtEpochMillis INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
             }
         }
     }
