@@ -2,7 +2,6 @@ package fr.luteal.core.network
 
 import fr.luteal.core.network.contract.models.AcceptLink201Response
 import fr.luteal.core.network.contract.models.AcceptLinkRequest
-import fr.luteal.core.network.contract.models.CreateSupportRequestRequest
 import fr.luteal.core.network.contract.models.DuoView
 import fr.luteal.core.network.contract.models.GrantField
 import fr.luteal.core.network.contract.models.Invitation
@@ -185,7 +184,6 @@ class OkHttpFolicularApiClient(
                 if (!resp.isSuccessful) throw resp.toApiException(text)
             }
         }
-
     override suspend fun duoView(deviceToken: String): DuoView =
         withContext(Dispatchers.IO) {
             val request = Request.Builder()
@@ -196,7 +194,10 @@ class OkHttpFolicularApiClient(
             httpClient.newCall(request).execute().use { resp ->
                 val text = resp.body?.string().orEmpty()
                 if (!resp.isSuccessful) throw resp.toApiException(text)
-                ContractJson.decodeFromString(DuoView.serializer(), text)
+                // The generated DuoView cannot decode the base64 payload and
+                // message ciphertexts (see DuoWire.kt); go through the wire
+                // mirror instead.
+                ContractJson.decodeFromString(DuoViewWire.serializer(), text).toModel()
             }
         }
 
@@ -214,13 +215,12 @@ class OkHttpFolicularApiClient(
                 if (!resp.isSuccessful) throw resp.toApiException(resp.body?.string().orEmpty())
             }
         }
-
     override suspend fun createSupportRequest(
-        deviceToken: String, linkId: String, kind: SupportKind, sealedMessage: ByteArray
+        deviceToken: String, linkId: String, kind: SupportKind, sealedMessage: String
     ): SupportRequest = withContext(Dispatchers.IO) {
         val body = ContractJson.encodeToString(
-            CreateSupportRequestRequest.serializer(),
-            CreateSupportRequestRequest(UUID.fromString(linkId), kind, sealedMessage)
+            CreateSupportRequestRequestWire.serializer(),
+            CreateSupportRequestRequestWire(UUID.fromString(linkId), kind, sealedMessage)
         )
         val request = Request.Builder()
             .url("$root/v1/duo/support-requests")
@@ -230,7 +230,7 @@ class OkHttpFolicularApiClient(
         httpClient.newCall(request).execute().use { resp ->
             val text = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) throw resp.toApiException(text)
-            ContractJson.decodeFromString(SupportRequest.serializer(), text)
+            ContractJson.decodeFromString(SupportRequestWire.serializer(), text).toModel()
         }
     }
 

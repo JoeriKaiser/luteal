@@ -70,9 +70,12 @@ class DuoRepository @Inject constructor(
         client.putDuoPayload(token, payload)
     }
 
-    /** [sealedMessage] is already encrypted under the Duo link key. */
+    /**
+     * [sealedMessage] is base64 of the message already sealed under the Duo
+     * link key.
+     */
     suspend fun createSupportRequest(
-        linkId: String, kind: SupportKind, sealedMessage: ByteArray
+        linkId: String, kind: SupportKind, sealedMessage: String
     ): SupportRequest {
         val (client, token) = client()
         return client.createSupportRequest(token, linkId, kind, sealedMessage)

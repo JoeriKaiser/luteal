@@ -103,11 +103,15 @@ class UserPreferencesDataStore @Inject constructor(
                 ageBand = preferences[AGE_BAND],
                 couplePairingCode = preferences[COUPLE_PAIRING_CODE],
                 duoSharing = DuoSharingPreferences(
-                    shareCycleDay = preferences[SHARE_CYCLE_DAY] ?: true,
+                    // All off by default: sharing is opt-in and the server is
+                    // the source of truth for grants. These keys mirror the
+                    // last confirmed choices and are written only from the
+                    // server's duoView response or a successful toggle.
+                    shareCycleDay = preferences[SHARE_CYCLE_DAY] ?: false,
                     sharePeriodEstimate = preferences[SHARE_PERIOD_ESTIMATE] ?: false,
                     shareMood = preferences[SHARE_MOOD] ?: false,
                     shareEnergy = preferences[SHARE_ENERGY] ?: false,
-                    shareSupportRequests = preferences[SHARE_SUPPORT_REQUESTS] ?: true
+                    shareSupportRequests = preferences[SHARE_SUPPORT_REQUESTS] ?: false
                 )
             )
         }
