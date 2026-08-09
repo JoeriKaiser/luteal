@@ -4,15 +4,27 @@ import android.app.Application
 import android.content.Context
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import fr.luteal.app.widget.WidgetDataObserver
+import fr.luteal.app.widget.WidgetWorkScheduler
 import dagger.hilt.android.HiltAndroidApp
 import org.acra.config.dialog
 import org.acra.config.mailSender
 import org.acra.data.StringFormat
 import org.acra.ktx.initAcra
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 @HiltAndroidApp
 class LutealApp : Application(), Configuration.Provider {
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    @Inject
+    lateinit var widgetDataObserver: WidgetDataObserver
+
+    @Inject
+    lateinit var widgetWorkScheduler: WidgetWorkScheduler
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
@@ -31,6 +43,12 @@ class LutealApp : Application(), Configuration.Provider {
                 body = getString(R.string.crash_mail_body)
             }
         }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        widgetDataObserver.start(applicationScope)
+        widgetWorkScheduler.reconcileSchedules()
     }
 
     @Inject

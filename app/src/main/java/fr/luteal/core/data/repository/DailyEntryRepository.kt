@@ -7,6 +7,7 @@ import java.time.LocalDate
 interface DailyEntryRepository {
     fun observeEntries(): Flow<List<DailyEntry>>
     fun observeEntry(date: LocalDate): Flow<DailyEntry?>
+    suspend fun getEntryOnce(date: LocalDate): DailyEntry?
     suspend fun save(entry: DailyEntry)
     suspend fun delete(date: LocalDate)
 }

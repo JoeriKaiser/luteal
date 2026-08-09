@@ -6,6 +6,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.luteal.core.data.repository.CycleRepository
 import fr.luteal.core.data.repository.DailyEntryRepository
 import fr.luteal.core.data.repository.DuoRepository
+import fr.luteal.core.data.repository.DuoCycleProjectionCacheWriter
+import fr.luteal.core.data.repository.DuoWidgetCacheRepository
 import fr.luteal.core.data.repository.UserRepository
 import fr.luteal.core.model.AgeBand
 import fr.luteal.core.model.CycleEstimateCalculator
@@ -17,6 +19,8 @@ import fr.luteal.core.model.SharedLevel
 import fr.luteal.core.network.ContractJson
 import fr.luteal.core.network.crypto.DuoCrypto
 import fr.luteal.core.network.crypto.DuoKeyStore
+import fr.luteal.core.network.crypto.DuoProjectionDecodeResult
+import fr.luteal.core.network.crypto.DuoProjectionDecoder
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
@@ -39,7 +43,10 @@ class DuoViewModel @Inject constructor(
     private val duoKeyStore: DuoKeyStore,
     private val cycleRepository: CycleRepository,
     private val dailyEntryRepository: DailyEntryRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val projectionDecoder: DuoProjectionDecoder,
+    private val widgetCacheWriter: DuoCycleProjectionCacheWriter,
+    private val widgetCacheRepository: DuoWidgetCacheRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DuoUiState())
@@ -112,6 +119,7 @@ class DuoViewModel @Inject constructor(
                                 }
                             }
                     } else if (pending != null) {
+                        widgetCacheRepository.clear()
                         _uiState.update {
                             it.copy(
                                 phase = DuoPhase.InvitationPending,
@@ -119,6 +127,7 @@ class DuoViewModel @Inject constructor(
                             )
                         }
                     } else {
+                        widgetCacheRepository.clear()
                         _uiState.update { it.copy(phase = DuoPhase.NoLink) }
                     }
                 }
@@ -142,15 +151,17 @@ class DuoViewModel @Inject constructor(
             grantsConfirmed = true
             persistGrants(serverGrants)
         }
+        val decodedProjection = projectionDecoder.decode(view)
+        widgetCacheWriter.save(view)
         _uiState.update {
             it.copy(
                 phase = if (isTracker) DuoPhase.TrackerActive else DuoPhase.PartnerActive,
                 duoView = view,
                 activeLinkId = view.linkId.toString(),
-                projection = openProjection(view),
+                projection = (decodedProjection as? DuoProjectionDecodeResult.Available)?.projection,
                 supportMessages = openSupportMessages(view),
                 grants = serverGrants?.associateWith { true } ?: it.grants,
-                keyMissing = duoKeyStore.load(view.linkId.toString()) == null,
+                keyMissing = decodedProjection == DuoProjectionDecodeResult.KeyMissing,
                 isLoading = false
             )
         }
@@ -277,6 +288,7 @@ class DuoViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching { duoRepository.revokeLink(linkId) }
                 .onSuccess {
+                    widgetCacheRepository.clear()
                     _uiState.update {
                         DuoUiState(phase = DuoPhase.NoLink)
                     }
@@ -331,21 +343,6 @@ class DuoViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
 
-
-    /**
-     * Opens the sealed projection with the link key held on this device.
-     * Returns null when there is no payload yet or the key is missing (for
-     * example after a reinstall, which requires re-pairing).
-     */
-    private fun openProjection(view: DuoView): DuoProjection? {
-        val payload = view.payload ?: return null
-        val linkId = view.linkId.toString()
-        val key = duoKeyStore.load(linkId) ?: return null
-        return runCatching {
-            val plaintext = DuoCrypto.open(key, linkId, String(payload))
-            ContractJson.decodeFromString(DuoProjection.serializer(), String(plaintext))
-        }.getOrNull()
-    }
 
     /**
      * Decrypts the support thread, keyed by request id.
@@ -434,6 +431,7 @@ class DuoViewModel @Inject constructor(
                 duoRepository.putDuoPayload(DuoCrypto.seal(key, linkId, json.toByteArray()))
                 projection
             }.onSuccess { projection ->
+                widgetCacheWriter.savePublished(linkId, projection, grants)
                 _uiState.update { it.copy(projection = projection) }
             }.onFailure { err ->
                 _uiState.update { it.copy(error = err.message) }

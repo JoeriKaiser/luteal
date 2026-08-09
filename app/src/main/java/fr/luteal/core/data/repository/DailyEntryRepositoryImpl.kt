@@ -28,6 +28,9 @@ class DailyEntryRepositoryImpl @Inject constructor(
     override fun observeEntry(date: LocalDate): Flow<DailyEntry?> =
         dailyEntryDao.observeEntry(date.toString()).map { it?.toDomain() }
 
+    override suspend fun getEntryOnce(date: LocalDate): DailyEntry? =
+        dailyEntryDao.getEntryOnce(date.toString())?.toDomain()
+
     override suspend fun save(entry: DailyEntry) {
         dailyEntryDao.upsert(entry.toEntity())
         markDirty(entry.date.toString())
