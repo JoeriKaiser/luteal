@@ -1,0 +1,1 @@
+Nouveau : phase actuelle clairement indiquée comme enregistrée, estimée ou indéterminée, avec des conseils quotidiens sourcés. Ajout de widgets privés pour le cycle personnel et Duo. Synchronisation chiffrée, partage Duo et fiabilité générale renforcés.
