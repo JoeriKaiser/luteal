@@ -12,6 +12,8 @@ import fr.luteal.core.model.Cycle
 import fr.luteal.core.model.CycleEstimate
 import fr.luteal.core.model.CycleEstimateCalculator
 import fr.luteal.core.model.CycleEstimateResult
+import fr.luteal.core.model.CurrentCyclePhase
+import fr.luteal.core.model.CurrentCyclePhaseCalculator
 import fr.luteal.core.model.DailyEntry
 import fr.luteal.core.model.DuoSharingField
 import fr.luteal.core.model.UserRole
@@ -171,6 +173,14 @@ data class LutealUiState(
         get() = currentCycle
             ?.takeIf { !today.isBefore(it.startDate) }
             ?.let { java.time.temporal.ChronoUnit.DAYS.between(it.startDate, today).toInt() + 1 }
+
+    val currentPhase: CurrentCyclePhase
+        get() = CurrentCyclePhaseCalculator.evaluate(
+            today = today,
+            currentCycle = currentCycle,
+            todayEntry = todayEntry,
+            estimateResult = estimateResult
+        )
 }
 
 enum class EntrySaveState {

@@ -74,7 +74,7 @@ These observations must never be converted into a pregnancy, fertility, or ovula
 - Correct a cycle start without recreating unrelated observations
 - Support overlapping edits and incomplete cycles
 - Import and export dates in a stable, documented format
-- No phase label derived from calendar arithmetic alone
+- Conservative phase labels may combine recorded bleeding with the user's next-period estimate. Menstruation remains recorded; calculated phases are labeled estimated; overlapping transition ranges remain indeterminate; calendar data never confirms ovulation.
 
 ### 4. Estimates and cycle summaries
 
@@ -86,12 +86,20 @@ These observations must never be converted into a pregnancy, fertility, or ovula
 - Suppress the estimate when history is insufficient or invalid
 - Never show a single predicted date as certain
 
+#### Current phase display
+
+- Menstrual phase is shown as recorded only from a cycle start or compatible bleeding observation
+- Follicular and luteal labels are estimates shown only where plausible phase ranges do not overlap
+- Ovulatory transition remains low confidence and appears only on the central estimate after a strict history-stability gate
+- Missing early-cycle bleeding detail, transition windows, unsupported history, and expired estimates produce an explicit indeterminate state
+- Phase-aware tips cite reviewed sources and never assume symptoms, energy, behavior, or fertility intentions
+
 #### Later research before implementation
 
 - Handling of long gaps, postpartum changes, perimenopause, and deliberately excluded intervals
 - User-controlled exclusion of anomalous or incorrect cycle starts
 - Transparent explanation of calculation changes
-- Whether any ovulation-related estimate provides enough value to justify its misunderstanding risk
+- Biomarker-informed retrospective phase interpretation, if it can remain probabilistic and avoid contraceptive claims
 
 ### 5. Trends and review
 
