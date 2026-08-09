@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.pluralStringResource
@@ -44,21 +45,26 @@ import androidx.compose.ui.unit.dp
 import fr.luteal.app.LutealUiState
 import fr.luteal.app.R
 import fr.luteal.core.common.FrenchDateFormatter
-import fr.luteal.core.designsystem.component.AdaptiveActionGroup
 import fr.luteal.core.designsystem.component.CycleDayRing
 import fr.luteal.core.designsystem.component.LutealCard
 import fr.luteal.core.designsystem.component.LutealCardEmphasis
 import fr.luteal.core.designsystem.component.LutealPrimaryButton
-import fr.luteal.core.designsystem.component.LutealSecondaryButton
 import fr.luteal.core.designsystem.component.ObservationPill
 import fr.luteal.core.designsystem.component.ObservationTone
 import fr.luteal.core.designsystem.component.StatusPill
 import fr.luteal.core.designsystem.component.StatusTone
+import fr.luteal.core.designsystem.theme.LocalPhaseColors
 import fr.luteal.core.designsystem.theme.LutealSpacing
+import fr.luteal.core.designsystem.theme.PhaseTone
 import fr.luteal.core.model.BleedingIntensity
+import fr.luteal.core.model.CurrentCyclePhase
 import fr.luteal.core.model.CycleEstimateCalculator
 import fr.luteal.core.model.CycleEstimateResult
 import fr.luteal.core.model.CycleFacts
+import fr.luteal.core.model.CyclePhase
+import fr.luteal.core.model.PhaseCertainty
+import fr.luteal.core.model.PhaseIndeterminateReason
+import fr.luteal.core.model.PhaseTips
 import java.time.temporal.ChronoUnit
 
 @Composable
@@ -80,46 +86,32 @@ fun TodayScreen(
             subtitle = FrenchDateFormatter.formatFullDate(state.today)
         )
 
-        CycleFactCard(state)
+        CycleHeroCard(state)
 
-        AdaptiveActionGroup(
-            primary = { actionModifier ->
-                LutealPrimaryButton(
-                    text = stringResource(R.string.action_start_period_short),
-                    onClick = onStartPeriod,
-                    icon = Icons.Rounded.WaterDrop,
-                    modifier = actionModifier
-                )
-            },
-            secondary = { actionModifier ->
-                LutealSecondaryButton(
-                    text = if (state.todayEntry != null) {
-                        stringResource(R.string.action_edit_today)
-                    } else {
-                        stringResource(R.string.action_log_entry_short)
-                    },
-                    onClick = onEditToday,
-                    icon = if (state.todayEntry != null) Icons.Rounded.Edit else Icons.Rounded.Add,
-                    modifier = actionModifier
-                )
-            }
+        LutealPrimaryButton(
+            text = stringResource(R.string.action_start_period_short),
+            onClick = onStartPeriod,
+            icon = Icons.Rounded.WaterDrop,
+            modifier = Modifier.fillMaxWidth()
         )
 
         TodayObservationCard(state = state, onEditToday = onEditToday)
+        when (val phase = state.currentPhase) {
+            is CurrentCyclePhase.Available -> PhaseTipCard(phase, state.today)
+            is CurrentCyclePhase.Indeterminate -> CycleFactCard(today = state.today)
+        }
         EstimateSection(state = state, onBackfillCycle = onBackfillCycle)
 
         if (state.cycles.size >= 2) {
             CycleStatsSection(state)
         }
 
-        CycleFactCard(today = state.today)
-
         Spacer(Modifier.height(LutealSpacing.lg))
     }
 }
 
 @Composable
-private fun CycleFactCard(state: LutealUiState) {
+private fun CycleHeroCard(state: LutealUiState) {
     val cycle = state.currentCycle
     LutealCard(
         modifier = Modifier.fillMaxWidth(),
@@ -194,6 +186,8 @@ private fun CycleFactCard(state: LutealUiState) {
                         ) { facts() }
                     }
                 }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                CurrentPhaseSummary(state.currentPhase)
                 state.todayEntry?.bleedingIntensity?.let { intensity ->
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Text(
@@ -204,6 +198,56 @@ private fun CycleFactCard(state: LutealUiState) {
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CurrentPhaseSummary(result: CurrentCyclePhase) {
+    Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
+        Text(
+            text = stringResource(R.string.phase_current_label),
+            style = MaterialTheme.typography.titleMedium
+        )
+        when (result) {
+            is CurrentCyclePhase.Available -> {
+                val tone = phaseTone(result.phase)
+                Text(
+                    text = phaseLabel(result.phase),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = tone.content
+                )
+                StatusPill(
+                    text = stringResource(
+                        if (result.certainty == PhaseCertainty.RECORDED) {
+                            R.string.recorded_label
+                        } else {
+                            R.string.estimated_label
+                        }
+                    ),
+                    tone = if (result.certainty == PhaseCertainty.RECORDED) {
+                        StatusTone.RECORDED
+                    } else {
+                        StatusTone.ESTIMATED
+                    }
+                )
+                Text(
+                    text = phaseSupport(result),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            is CurrentCyclePhase.Indeterminate -> {
+                Text(
+                    text = stringResource(R.string.phase_indeterminate),
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Text(
+                    text = phaseIndeterminateSupport(result.reason),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -538,49 +582,69 @@ private fun bleedingLabel(intensity: BleedingIntensity): String = stringResource
     }
 )
 
-/**
- * A sourced population fact, one per day.
- *
- * Chosen from the date rather than at random, so it is stable for the day and
- * identical across relaunches. It is never chosen from the user's own records:
- * a fact surfaced because of where someone is in their cycle would be an
- * inference about their phase.
- *
- * The source is named in the card and the link is a separate, explicit action.
- * Opening it leaves the app and contacts an external site, which is not
- * something a privacy-first app should do on an incidental tap.
- */
+@Composable
+private fun PhaseTipCard(phase: CurrentCyclePhase.Available, today: java.time.LocalDate) {
+    val tip = remember(phase.phase, today) { PhaseTips.forDate(phase.phase, today) }
+    SourcedDailyCard(
+        title = stringResource(R.string.phase_tip_title),
+        context = stringResource(
+            if (phase.certainty == PhaseCertainty.RECORDED) {
+                R.string.phase_tip_context_recorded
+            } else {
+                R.string.phase_tip_context_estimated
+            },
+            phaseLabel(phase.phase)
+        ),
+        contextColor = phaseTone(phase.phase).content,
+        text = phaseTipText(tip.id) ?: return,
+        source = tip.source,
+        url = tip.url
+    )
+}
+
+/** A stable general fact used whenever the current phase is indeterminate. */
 @Composable
 private fun CycleFactCard(today: java.time.LocalDate) {
     val fact = remember(today) { CycleFacts.forDate(today) }
-    val text = factText(fact.id) ?: return
-    val uriHandler = LocalUriHandler.current
+    SourcedDailyCard(
+        title = stringResource(R.string.fact_card_title),
+        text = factText(fact.id) ?: return,
+        source = fact.source,
+        url = fact.url
+    )
+}
 
+/** The shared, explicit external-source treatment for facts and phase tips. */
+@Composable
+private fun SourcedDailyCard(
+    title: String,
+    text: String,
+    source: String,
+    url: String,
+    context: String? = null,
+    contextColor: Color = MaterialTheme.colorScheme.onSurfaceVariant
+) {
+    val uriHandler = LocalUriHandler.current
     LutealCard(
         modifier = Modifier.fillMaxWidth(),
         emphasis = LutealCardEmphasis.QUIET
     ) {
-        Text(
-            text = stringResource(R.string.fact_card_title),
-            style = MaterialTheme.typography.titleMedium
-        )
+        Text(text = title, style = MaterialTheme.typography.titleMedium)
+        context?.let {
+            Spacer(Modifier.height(LutealSpacing.xxs))
+            Text(text = it, style = MaterialTheme.typography.labelLarge, color = contextColor)
+        }
         Spacer(Modifier.height(LutealSpacing.xs))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Text(text = text, style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(LutealSpacing.sm))
         Text(
-            text = stringResource(R.string.fact_source_label, fact.source),
+            text = stringResource(R.string.fact_source_label, source),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         TextButton(
-            onClick = { uriHandler.openUri(fact.url) },
-            contentPadding = PaddingValues(
-                horizontal = 0.dp,
-                vertical = LutealSpacing.xs
-            )
+            onClick = { uriHandler.openUri(url) },
+            contentPadding = PaddingValues(horizontal = 0.dp, vertical = LutealSpacing.xs)
         ) {
             Text(text = stringResource(R.string.fact_view_source))
             Spacer(Modifier.width(LutealSpacing.xxs))
@@ -593,12 +657,24 @@ private fun CycleFactCard(today: java.time.LocalDate) {
     }
 }
 
-/**
- * Null for an id with no copy, so a fact cannot render as a blank card.
- *
- * `CycleFactsTest` asserts every id in the catalog has a matching string in
- * both resource files, so this branch should be unreachable in practice.
- */
+/** Null for an unknown id so catalog and localized copy cannot drift silently. */
+@Composable
+private fun phaseTipText(id: String): String? = when (id) {
+    "menstrual_warmth" -> stringResource(R.string.phase_tip_menstrual_warmth)
+    "menstrual_movement" -> stringResource(R.string.phase_tip_menstrual_movement)
+    "menstrual_pain_support" -> stringResource(R.string.phase_tip_menstrual_pain_support)
+    "follicular_varies" -> stringResource(R.string.phase_tip_follicular_varies)
+    "follicular_own_history" -> stringResource(R.string.phase_tip_follicular_own_history)
+    "follicular_no_fixed_day" -> stringResource(R.string.phase_tip_follicular_no_fixed_day)
+    "ovulatory_not_confirmed" -> stringResource(R.string.phase_tip_ovulatory_not_confirmed)
+    "ovulatory_counts_back" -> stringResource(R.string.phase_tip_ovulatory_counts_back)
+    "ovulatory_not_day_14" -> stringResource(R.string.phase_tip_ovulatory_not_day_14)
+    "luteal_diary" -> stringResource(R.string.phase_tip_luteal_diary)
+    "luteal_daily_support" -> stringResource(R.string.phase_tip_luteal_daily_support)
+    "luteal_seek_support" -> stringResource(R.string.phase_tip_luteal_seek_support)
+    else -> null
+}
+
 @Composable
 private fun factText(id: String): String? = when (id) {
     "no_single_normal" -> stringResource(R.string.fact_no_single_normal)
@@ -627,6 +703,50 @@ private fun factText(id: String): String? = when (id) {
     "not_shameful" -> stringResource(R.string.fact_not_shameful)
     else -> null
 }
+
+@Composable
+private fun phaseLabel(phase: CyclePhase): String = stringResource(
+    when (phase) {
+        CyclePhase.MENSTRUAL -> R.string.phase_menstrual
+        CyclePhase.FOLLICULAR -> R.string.phase_follicular
+        CyclePhase.OVULATORY -> R.string.phase_ovulatory
+        CyclePhase.LUTEAL -> R.string.phase_luteal
+    }
+)
+
+@Composable
+private fun phaseTone(phase: CyclePhase): PhaseTone {
+    val colors = LocalPhaseColors.current
+    return when (phase) {
+        CyclePhase.MENSTRUAL -> colors.menstrual
+        CyclePhase.FOLLICULAR -> colors.follicular
+        CyclePhase.OVULATORY -> colors.ovulatory
+        CyclePhase.LUTEAL -> colors.luteal
+    }
+}
+
+@Composable
+private fun phaseSupport(phase: CurrentCyclePhase.Available): String = stringResource(
+    when {
+        phase.certainty == PhaseCertainty.RECORDED -> R.string.phase_support_recorded
+        phase.phase == CyclePhase.OVULATORY -> R.string.phase_support_ovulatory_estimated
+        else -> R.string.phase_support_estimated
+    }
+)
+
+@Composable
+private fun phaseIndeterminateSupport(reason: PhaseIndeterminateReason): String = stringResource(
+    when (reason) {
+        PhaseIndeterminateReason.NO_CURRENT_CYCLE -> R.string.phase_reason_no_cycle
+        PhaseIndeterminateReason.EARLY_CYCLE_WITHOUT_BLEEDING_DETAIL ->
+            R.string.phase_reason_early_cycle
+        PhaseIndeterminateReason.NEEDS_MORE_HISTORY -> R.string.phase_reason_more_history
+        PhaseIndeterminateReason.INTERVALS_OUT_OF_RANGE -> R.string.phase_reason_out_of_range
+        PhaseIndeterminateReason.PHASE_TRANSITION -> R.string.phase_reason_transition
+        PhaseIndeterminateReason.NEXT_PERIOD_WINDOW -> R.string.phase_reason_period_window
+        PhaseIndeterminateReason.ESTIMATE_EXPIRED -> R.string.phase_reason_expired
+    }
+)
 
 @Composable
 internal fun ScreenHeader(title: String, subtitle: String) {
