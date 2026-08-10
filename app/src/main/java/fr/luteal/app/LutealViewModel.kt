@@ -108,6 +108,12 @@ class LutealViewModel @Inject constructor(
                 require(existing.none { it.startDate == startDate }) {
                     "Un cycle existe déjà à cette date."
                 }
+                val prevCycle = existing
+                    .filter { it.startDate < startDate }
+                    .maxByOrNull { it.startDate }
+                if (prevCycle != null && (prevCycle.endDate == null || prevCycle.endDate >= startDate)) {
+                    cycleRepository.saveCycle(prevCycle.copy(endDate = startDate.minusDays(1)))
+                }
                 val nextStart = existing
                     .map(Cycle::startDate)
                     .filter { it > startDate }

@@ -350,7 +350,7 @@ private fun JournalDatePickerDialog(
     onSelect: (LocalDate) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val zone = ZoneId.systemDefault()
+    val zone = java.time.ZoneOffset.UTC
     val state = rememberDatePickerState(
         initialSelectedDateMillis = today.atStartOfDay(zone).toInstant().toEpochMilli(),
         selectableDates = remember(today) {
