@@ -9,14 +9,14 @@ Luteal records and presents user-entered observations and clearly identified est
 
 ## Constraints & Requirements
 
-### 1. French Language First
-- **Default Locale:** French (`fr`) is the primary and mandatory default language for all strings, date formatters, and UI copy.
-- **Resource Placement:** All user-facing text must reside in `res/values/strings.xml` and `res/values-fr/strings.xml` with zero hardcoded UI strings.
+### 1. French First, English Shipped
+- **Default Locale:** French (`fr`) is the primary and mandatory default language for all strings, date formatters, and UI copy. English (`en`) is shipped as the second language (`res/values-en/`, listed in `res/xml/locales_config.xml`).
+- **Resource Placement:** All user-facing text must reside in `res/values/strings.xml` (French default) with parity in `res/values-fr/strings.xml` and `res/values-en/strings.xml`; zero hardcoded UI strings. New strings need all three.
 - **DateFormatting:** Use `java.time` with `Locale.FRENCH` via `fr.luteal.core.common.FrenchDateFormatter`.
 
 ### 2. Offline-First Architecture & Networking
-- **Default Operation:** 100% offline-first. The app operates fully without requiring network permissions or connectivity.
-- **Backend Sync:** Optional Online Cloud Sync mode designed to interface with a modern Golang backend. Network permissions (`INTERNET`, `ACCESS_NETWORK_STATE`) are declared conditionally for online mode.
+- **Default Operation:** 100% offline-first. The app operates fully without connectivity; sync runs only when the user enables `SyncMode.ONLINE_CLOUD` (off by default).
+- **Backend Sync:** Optional Online Cloud Sync mode interfacing with the folicular Golang backend. Network permissions (`INTERNET`, `ACCESS_NETWORK_STATE`) are declared in the main manifest so both build types can sync; cleartext HTTP is debug-only.
 - **Persistence:** Local persistence is managed by Room Database (`LutealDatabase`) and DataStore Preferences (`UserPreferencesDataStore`).
 
 ### 3. Cycle and Observation Domain Context
@@ -26,12 +26,11 @@ Luteal records and presents user-entered observations and clearly identified est
 - **Duo Mode:** Treat the tracker and partner experiences as equally central. Sharing is private by default, explicit, granular, visible, and reversible. A partner never receives private notes or observations without specific permission.
 - **Language:** Use inclusive copy that does not assume gender identity, sexual activity, fertility goals, pregnancy intention, cycle regularity, or a gendered partner role.
 
-### 4. Backend Source of Truth
-- **Canonical authority:** The Go backend ([`folicular`](https://github.com/JoeriKaiser/folicular)) is the source of truth when it comes to data: canonical schema, validation rules, enum vocabularies, conflict resolution, and computed estimates are defined there.
-- **Client role:** The Android client remains offline-first for display and local writes (Room is the local cache, see `docs/architecture/SYNC_BOUNDARY.md`), but its sync DTOs, enums, and validation must conform to the backend contract (`folicular/docs/api.md`, `folicular/docs/data-model.md`).
+### 4. Authority Split Between Client and Backend
+- **Transport contract authority:** the folicular repository ([`folicular`](https://github.com/JoeriKaiser/folicular)) owns the API contract (OpenAPI spec, enum vocabularies, routing schema, conflict ordering); a snapshot is vendored under `contract/` and the Kotlin client generates from it. Schema changes to the *transport* start in the backend; refresh the vendored snapshot with `./scripts/sync-contract.sh`.
+- **Content authority lives client-side:** record content is end-to-end encrypted, so a server that cannot read payloads cannot validate them or compute estimates. Content validation, the record schema, and computed estimates (`CycleEstimateCalculator`) are defined by the client. The server owns routing metadata, upsert targeting, last-write-wins ordering (`updated_at`, then `client_rev`), and the change log. A per-record `schema_version` inside the sealed payload is designed but not yet implemented; record schemas may only change additively until it lands (see `docs/architecture/E2EE_DESIGN.md` §7).
+- **Client role:** The Android client remains offline-first for display and local writes (Room is the local cache, see `docs/architecture/SYNC_BOUNDARY.md`). Its sync DTOs and enums conform to the backend contract (`folicular/docs/api.md`, `folicular/docs/data-model.md`); its record payloads are its own.
 - **Conflicts:** When local and synchronized versions disagree, the client accepts the backend's resolved state and re-derives its local cache from it. Server sequence numbers remain transport metadata, not domain truth.
-- **Schema changes start in the backend:** adapt the client to backend migrations, never the reverse.
-- **Planned inversion (E2EE):** this authority model is scheduled to invert. A server that cannot read payloads cannot validate them or compute estimates, so content validation and estimates move to the client while routing metadata and conflict resolution stay server-side. Do not treat this section as final; see `docs/architecture/E2EE_DESIGN.md` §7 for the migration and its consequences.
 - **Research register:** physiology and terminology sources backing the data model live in `folicular/docs/research/SOURCES.md`; product and content sources remain in `docs/research/SOURCE_REGISTER.md`.
 
 ### 5. Online Sync & Real-Device Trial
@@ -39,13 +38,13 @@ Luteal records and presents user-entered observations and clearly identified est
 - **Install gotcha:** updating an already-installed offline build with the online/debug build does NOT auto-grant the newly added `INTERNET` permission (symptom: `socket failed: EPERM`). Do a clean install (`adb uninstall fr.luteal.app`) or run `adb shell pm grant fr.luteal.app android.permission.INTERNET`.
 - **Backend:** run folicular via Docker Compose from its own checkout (`docker compose up -d --build`, logs via `docker compose logs -f folicular`). If host port 8080 is taken, set `FOLICULAR_HOST_PORT=<port>`.
 - **Device targeting:** the emulator uses `http://10.0.2.2:8080`; a real device uses `adb reverse tcp:8080 tcp:<host port>` then `http://127.0.0.1:8080`, or the host's LAN IP. The base URL is configurable in Settings → Synchronisation in the debug build (local trial); release uses the production default.
-- **Credentials:** the account code and device token live only in Keystore-backed `EncryptedSharedPreferences` (`core/network/auth`); never in Room, DataStore, or logs. The one-time account code is not yet surfaced in the UI (account-code backup/recovery UX is a later phase).
+- **Credentials:** the account code and device token live only in Keystore-backed storage (`core/network/auth`, `EncryptedSyncCredentialStore` over `KeystoreSecretStore`); never in Room, DataStore, or logs. The account code is viewable and copyable in Settings → Synchronisation with honest no-reset copy; a new device recovers the account from the code alone (`addDevice`). A first-run "write this down" moment at registration remains to build (see `docs/architecture/BACKEND_INTEGRATION.md` Milestone 2).
 - **Data minimisation on the wire:** registration sends a stable random label (`core/network/auth/DeviceLabel.kt`), never `Build.MODEL`, which fingerprints the device without serving sync. Envelope timestamps are UTC-normalised and truncated to the minute (`CycleSyncEngine.toCoarseUtc`) so a pushed batch does not carry a minute-by-minute timeline of when each observation was entered. Server-side, client addresses are HMAC'd under a per-process pepper before use as rate-limit keys and are never logged or persisted.
 - **Encryption status:** record content **is** end-to-end encrypted. Records are sealed on device with AES-256-GCM under a key derived from the account code (`core/network/crypto`, HKDF validated against RFC 5869 vectors); the server stores ciphertext plus routing metadata only and holds no key. Duo payloads are sealed under a link key that travels in the pairing URL fragment and never reaches the server. Verified end to end against a live server, including a direct check that the database file contains no plaintext. Never use "anonyme" in user-facing copy: the product achieves GDPR pseudonymisation, not anonymisation. See `docs/architecture/E2EE_DESIGN.md`.
 - **Do not reintroduce `androidx.security:security-crypto`.** Google deprecated it in April 2025 at `1.1.0-alpha07`, and it pulled in Google Tink: 1416 classes, about a fifth of the app, to protect a handful of short strings. Secrets use `core/network/auth/KeystoreSecretStore`, which wraps an AndroidKeyStore AES-GCM key directly. Any new secret storage goes through that.
-- **Ship French only.** `defaultConfig.resourceConfigurations` is pinned to `fr` to match `res/xml/locales_config`; without it AndroidX and Material ship 84 locales, which was most of `resources.arsc`. Update both together if a language is ever added.
+- **Ship French and English only.** `defaultConfig.resourceConfigurations` is pinned to `fr` and `en` to match `res/xml/locales_config`; without the pin AndroidX and Material ship 84 locales, which was most of `resources.arsc`. Update both together if a language is ever added.
 - **The account code is the encryption key**, not just a login credential. There is no reset and no server-side recovery, by construction. Any change that risks the user losing it — or that claims something stronger than the crypto actually delivers — needs the copy in `settings_sync_account_code_body` and `sync_transport_notice` revisited first.
-- **Scope:** the implemented slice is cycles-only (register → push cycles + fanned-out bleeding → pull → apply to Room). Daily entries, symptom logs, biomarkers, medication, delete propagation, and multi-device convergence are later phases (see `docs/architecture/BACKEND_INTEGRATION.md`).
+- **Scope:** the live slice covers `cycle`, `bleeding_observation` (fanned out of cycles and of daily entries), `daily_entry`, and `symptom_log`, with tombstones in both directions and adopt-server-state conflict handling. Remaining: periodic sync scheduling, `account_settings` round-trip (`PATCH /v1/me`), biomarkers, medication, full symptom-catalog adoption, and multi-device convergence tests at entity depth (see `docs/architecture/BACKEND_INTEGRATION.md`).
 
 ### 6. Distribution & Production Deployment
 - **Distribution channel:** Luteal is distributed **F-Droid only**; there is no Google Play release. The build must remain free of proprietary Google libraries (no Play Services). Hilt, Compose, Room, and OkHttp are acceptable; anything requiring Google Play Services is not.
