@@ -1,19 +1,18 @@
 # End-to-End Encryption Design
 
-Status: **implemented and verified end to end.** Key hierarchy, record sealing,
-the folicular schema and handler migration, client sync integration, Duo key
-agreement, and account-code recovery are all in place and covered by tests.
+Status: **implemented, verified end to end, and live in the app.** Key
+hierarchy, record sealing, the folicular schema and handler migration, client
+sync integration, Duo key agreement, and account-code recovery are all in
+place, covered by tests, and shipping behind `SyncMode.ONLINE_CLOUD`.
 
 Verified against a live server on 2026-07-25 (`E2eRoundTripTest`, opt-in via
 `-Pfolicular.e2e.url`): register, seal, push, pull and decrypt round-trips; a
 second device recovers the account from the code alone and reads the first
 device's record. Inspecting the resulting SQLite file directly found **no
 plaintext at all** — no notes, dates, or enum values, only the `0x01` version
-byte and ciphertext.
-
-Remaining before an invite rollout: run the app itself against a real server on
-a device or emulator. The trial above exercises the protocol and crypto from the
-JVM, not the Compose UI or Keystore-backed storage.
+byte and ciphertext. The Compose app itself has since run against a real
+server on a device (see `BACKEND_INTEGRATION.md`, current state), and
+`sync_transport_notice` now states end-to-end encryption truthfully.
 
 This document is the single design reference for both repositories. The Android
 client is `luteal`; the Go backend is
@@ -218,68 +217,78 @@ server flag.
 
 ## 7. Backend authority is inverted
 
-`luteal/AGENTS.md` §4 currently makes the backend canonical for validation,
-enum vocabularies, and computed estimates. **A server that cannot read payloads
-cannot validate or compute them.** This is the central architectural
-consequence and must be recorded in both `AGENTS.md` files when the migration
-lands.
+`luteal/AGENTS.md` §4 now records this split: the backend owns the transport
+contract and routing; content authority lives client-side. **A server that
+cannot read payloads cannot validate or compute them.** This is the central
+architectural consequence of E2EE; both `AGENTS.md` files reflect it.
 
 | Concern | Before | After |
 |---|---|---|
 | Content validation | `internal/domain` | Client, before sealing |
 | Computed estimates | `internal/cyclecalc`, `GET /v1/predictions/current` | Client `CycleEstimateCalculator` |
 | Conflict resolution | Server LWW on `updated_at` | Unchanged: routing metadata stays plaintext |
-| Schema authority | Server migrations | Client record schema, versioned inside the sealed payload |
+| Schema authority | Server migrations | Client record schema; additive-only until a `schema_version` lands inside the sealed payload (see below) |
 
-Retiring `internal/cyclecalc` also resolves two live defects found during the
+Retiring `internal/cyclecalc` also resolved two defects found during the
 audit:
 
-- It carries `minRangeRadiusDays = 2`, the same overconfidence already fixed on
-  the client, citing the same Bull 2019 source. The two estimators currently
-  disagree.
-- It computes ovulation and fertile windows (`lutealConstantDays`,
+- It carried `minRangeRadiusDays = 2`, the same overconfidence already fixed on
+  the client, citing the same Bull 2019 source. With the Go estimator gone,
+  the client's radius is the only one in the product.
+- It computed ovulation and fertile windows (`lutealConstantDays`,
   `spermSurvivalDays`, `eggSurvivalDays`), which conflicts with the client's
   explicit non-goal of presenting a fertile window derived from calendar data
   (`docs/product/CYCLE_TRACKER_FEATURE_RESEARCH.md`, "Explicit non-goals").
 
-Because payloads become opaque, the sealed plaintext must carry its own
-`schema_version` so the client can migrate its own records.
+Because payloads are opaque, the sealed plaintext should carry its own
+`schema_version` so the client can migrate its own records. This is not yet
+implemented: the sealed envelope has the `0x01` format byte (which covers the
+encryption format, not the record schema), and the record schemas have no
+version field. The gap is acceptable while record schemas only ever grow
+additively and `ignoreUnknownKeys` decoding tolerates them; it must be closed
+before the first breaking record-schema change (tracked in
+`BACKEND_INTEGRATION.md` Milestone 1).
 
 ---
 
-## 8. Remaining migration sequence
+## 8. Migration record (complete)
 
-Ordered so both repositories build and stay green at each step.
+The sequence below landed, ordered so both repositories built and stayed green
+at each step. Kept as a record of what changed and why.
 
 1. **Contract first.** `folicular/openapi/openapi.yaml` is the single source of
    truth; the Kotlin client is generated from it at build time
-   (`app/build.gradle.kts` reads it directly). Replace the typed `data` field on
-   `SyncChangeInput` / `SyncPullChange` with a base64 `ciphertext` field, remove
-   `/v1/predictions/current`, and add the device public key to registration.
-2. **Server schema.** Additive migration `000002`: create a `records` table
+   (`app/build.gradle.kts` reads the vendored snapshot under `contract/`).
+   `SyncChangeInput` / `SyncPullChange` now carry a base64 `ciphertext` field;
+   `/v1/predictions/current` is gone. The planned device public key on
+   registration was dropped: the key hierarchy derives from the account code,
+   so devices need no key material of their own.
+2. **Server schema.** Additive migration created the opaque `records` table
    (`account_id`, `entity_id`, `entity_type`, `ciphertext`, `client_rev`,
-   `updated_at`, `deleted_at`) and drop the seven typed record tables.
-   `sync_changes.payload` carries ciphertext. Regenerate with `sqlc generate`
-   (sqlc 1.31.1 and Go 1.25.5 are both installed).
-3. **Server handlers.** The seven-case `dispatchChange` switch in
-   `internal/api/sync.go` collapses to one opaque path — this deletes more code
-   than it adds. Envelope and routing validation stays; content validation goes.
-   Remove `internal/cyclecalc`, `internal/api/predictions.go`, and the typed
-   read endpoints `/v1/cycles` and `/v1/days`.
+   `updated_at`, `deleted_at`) and dropped the typed record tables.
+   `sync_changes.payload` carries ciphertext.
+3. **Server handlers.** The seven-case `dispatchChange` switch collapsed to
+   one opaque path. Envelope and routing validation stayed; content validation
+   went. `internal/cyclecalc`, `internal/api/predictions.go`, and the typed
+   read endpoints `/v1/cycles` and `/v1/days` were removed — which also
+   retired the Go estimator's `minRangeRadiusDays = 2` overconfidence and its
+   calendar-derived fertile window (see §7).
 4. **Client sync.** `SyncWire` carries the sealed envelope; `CycleSyncEngine`
-   seals before push and opens after pull. Master key is stored alongside the
-   device token in the existing Keystore-backed `EncryptedSyncCredentialStore`.
-5. **Duo.** X25519 identity keys, ECDH at accept time, client-composed encrypted
-   `DuoView`, device-enforced grants.
-6. **Docs and copy.** Both `AGENTS.md` files, `SYNC_BOUNDARY.md`,
-   `BACKEND_INTEGRATION.md`. Only after step 4 lands may
-   `sync_transport_notice` be replaced with an accurate end-to-end encryption
-   statement — and only after the safety-number screen for Duo.
+   seals before push and opens after pull. The account code (the key root) is
+   stored alongside the device token in the Keystore-backed
+   `EncryptedSyncCredentialStore`.
+5. **Duo.** Implemented as §5 describes — the link key travels in the pairing
+   URL fragment rather than via X25519 identity keys, which the server could
+   have substituted. Client-composed sealed `DuoView`, device-enforced grants,
+   sealed support thread.
+6. **Docs and copy.** `sync_transport_notice` states end-to-end encryption
+   after step 4 landed; both `AGENTS.md` files, `SYNC_BOUNDARY.md`, and
+   `BACKEND_INTEGRATION.md` describe the inverted authority model. The
+   safety-number screen was dropped with the design change in step 5: the
+   pairing link *is* the out-of-band channel.
 
-**Data loss note.** Step 2 drops the plaintext record tables. This is safe only
-because there is no production deployment yet. `folicular` currently has **no
-git commits at all** — every file is untracked, so there is no undo. Make a
-baseline commit there before starting step 2.
+The plaintext record tables were dropped before any production deployment, so
+no user data migrated through the change.
 
 ---
 
