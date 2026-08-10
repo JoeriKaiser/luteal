@@ -82,27 +82,11 @@ fun TodayScreen(
 
         CycleFactCard(state)
 
-        AdaptiveActionGroup(
-            primary = { actionModifier ->
-                LutealPrimaryButton(
-                    text = stringResource(R.string.action_start_period_short),
-                    onClick = onStartPeriod,
-                    icon = Icons.Rounded.WaterDrop,
-                    modifier = actionModifier
-                )
-            },
-            secondary = { actionModifier ->
-                LutealSecondaryButton(
-                    text = if (state.todayEntry != null) {
-                        stringResource(R.string.action_edit_today)
-                    } else {
-                        stringResource(R.string.action_log_entry_short)
-                    },
-                    onClick = onEditToday,
-                    icon = if (state.todayEntry != null) Icons.Rounded.Edit else Icons.Rounded.Add,
-                    modifier = actionModifier
-                )
-            }
+        LutealPrimaryButton(
+            text = stringResource(R.string.action_start_period_short),
+            onClick = onStartPeriod,
+            icon = Icons.Rounded.WaterDrop,
+            modifier = Modifier.fillMaxWidth()
         )
 
         TodayObservationCard(state = state, onEditToday = onEditToday)
