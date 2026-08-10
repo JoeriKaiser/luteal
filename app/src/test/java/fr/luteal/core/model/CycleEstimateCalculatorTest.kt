@@ -344,4 +344,14 @@ class CycleEstimateCalculatorTest {
         id = startDate.toString(),
         startDate = startDate
     )
+
+    @Test
+    fun `backfilled cycles properly close prior open cycles`() {
+        val c1 = Cycle(id = "1", startDate = LocalDate.parse("2026-05-24"))
+        val c2 = Cycle(id = "2", startDate = LocalDate.parse("2026-06-21"), endDate = null)
+        val closedC1 = c1.copy(endDate = c2.startDate.minusDays(1))
+
+        assertEquals(LocalDate.parse("2026-06-20"), closedC1.endDate)
+        assertEquals(28, closedC1.lengthInDays)
+    }
 }

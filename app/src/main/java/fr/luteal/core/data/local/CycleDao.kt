@@ -19,7 +19,7 @@ interface CycleDao {
     @Query("SELECT * FROM cycles WHERE id = :id")
     suspend fun getCycleById(id: String): CycleEntity?
 
-    @Query("SELECT * FROM cycles WHERE endDate IS NULL LIMIT 1")
+    @Query("SELECT * FROM cycles WHERE endDate IS NULL ORDER BY startDate DESC LIMIT 1")
     fun getCurrentCycle(): Flow<CycleEntity?>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

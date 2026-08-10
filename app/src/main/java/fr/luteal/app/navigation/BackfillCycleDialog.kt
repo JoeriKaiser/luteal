@@ -2,7 +2,6 @@ package fr.luteal.app.navigation
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -22,7 +21,7 @@ import fr.luteal.app.R
 import fr.luteal.core.designsystem.theme.LutealSpacing
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
+import java.time.ZoneOffset
 
 private const val BACKFILL_WINDOW_DAYS = 92L
 
@@ -35,29 +34,25 @@ fun BackfillCycleDialog(
 ) {
     val today = LocalDate.now()
     val earliest = today.minusDays(BACKFILL_WINDOW_DAYS)
-    val zone = ZoneId.systemDefault()
 
     val selectableDates = remember(existingCycleStarts) {
         object : SelectableDates {
             override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                val date = Instant.ofEpochMilli(utcTimeMillis)
-                    .atZone(zone)
-                    .toLocalDate()
-                return !date.isBefore(earliest) &&
-                    !date.isAfter(today) &&
-                    date !in existingCycleStarts
+                val date = Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate()
+                return !date.isAfter(today) &&
+                    !date.isBefore(earliest) &&
+                    !existingCycleStarts.contains(date)
             }
 
-            override fun isSelectableYear(year: Int): Boolean {
-                return year in earliest.year..today.year
-            }
+            override fun isSelectableYear(year: Int): Boolean =
+                year >= earliest.year && year <= today.year
         }
     }
 
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = today
             .minusDays(BACKFILL_WINDOW_DAYS / 2)
-            .atStartOfDay(zone)
+            .atStartOfDay(ZoneOffset.UTC)
             .toInstant()
             .toEpochMilli(),
         selectableDates = selectableDates
@@ -66,7 +61,7 @@ fun BackfillCycleDialog(
     val selectedDate by remember {
         derivedStateOf {
             datePickerState.selectedDateMillis?.let { millis ->
-                Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()
+                Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
             }
         }
     }
@@ -88,22 +83,27 @@ fun BackfillCycleDialog(
         }
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = LutealSpacing.md),
             verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
         ) {
             Text(
                 text = stringResource(R.string.backfill_title),
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(
+                    start = LutealSpacing.md,
+                    end = LutealSpacing.md,
+                    top = LutealSpacing.md
+                )
             )
             Text(
                 text = stringResource(R.string.backfill_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = LutealSpacing.xs)
+                modifier = Modifier.padding(horizontal = LutealSpacing.md)
             )
-            DatePicker(state = datePickerState)
+            DatePicker(
+                state = datePickerState,
+                title = null
+            )
         }
     }
 }
