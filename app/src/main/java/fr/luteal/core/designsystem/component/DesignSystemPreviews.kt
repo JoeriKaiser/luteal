@@ -78,6 +78,7 @@ private fun DesignSystemCatalogPreview() {
                 valueDescription = energyDescriptions::getValue,
                 modifier = Modifier.fillMaxWidth()
             )
+            CalendarLegendCard()
         }
     }
 }

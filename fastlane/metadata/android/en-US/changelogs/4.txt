@@ -1,0 +1,5 @@
+- Interactive month calendar grid in Journal with observation dots and estimate ranges.
+- Cycle start date editing and deletion with automatic interval reconciliation.
+- Complete offline data backup export in JSON and irreversible local data purge.
+- Evidence-based nutrition and hydration guidance tailored to each cycle phase.
+- Expanded observation catalog (pain, mood, energy, sleep, digestive changes).

@@ -1,0 +1,5 @@
+- Vue calendrier mensuel interactif dans le journal avec marqueurs d'observations et estimations.
+- Modification et suppression des dates de début de cycle avec réconciliation des intervalles.
+- Exportation complète des données au format JSON et effacement local irréversible.
+- Conseils nutrition et hydratation sourcés scientifiquement pour chaque phase du cycle.
+- Catalogue d'observations enrichi (douleurs, humeur, énergie, sommeil, digestion).

@@ -11,6 +11,9 @@ interface DailyEntryDao {
     @Query("SELECT * FROM daily_entries ORDER BY date DESC")
     fun observeEntries(): Flow<List<DailyEntryEntity>>
 
+    @Query("SELECT * FROM daily_entries ORDER BY date DESC")
+    suspend fun getAllEntriesOnce(): List<DailyEntryEntity>
+
     @Query("SELECT * FROM daily_entries WHERE date = :date LIMIT 1")
     fun observeEntry(date: String): Flow<DailyEntryEntity?>
 

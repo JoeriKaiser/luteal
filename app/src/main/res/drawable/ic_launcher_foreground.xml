@@ -4,22 +4,36 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Left 180-degree semicircle (Evergreen #235B4E) -->
+    <!-- Top Arc (Evergreen #235B4E) -->
     <path
         android:strokeColor="#235B4E"
         android:strokeWidth="6"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M52,26 A28,28 0 0,0 52,82" />
-    <!-- Right 180-degree semicircle (Luteal Indigo #5D587E) -->
+        android:pathData="M39.09,32.70 A26,26 0 0,1 68.91,32.70" />
+    <!-- Right Arc (Evergreen #235B4E) -->
     <path
-        android:strokeColor="#5D587E"
+        android:strokeColor="#235B4E"
         android:strokeWidth="6"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M56,26 A28,28 0 0,1 56,82" />
+        android:pathData="M75.30,39.09 A26,26 0 0,1 75.30,68.91" />
+    <!-- Bottom Arc (Evergreen #235B4E) -->
+    <path
+        android:strokeColor="#235B4E"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M68.91,75.30 A26,26 0 0,1 39.09,75.30" />
+    <!-- Left Arc (Evergreen #235B4E) -->
+    <path
+        android:strokeColor="#235B4E"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M32.70,68.91 A26,26 0 0,1 32.70,39.09" />
     <!-- Center focal node (Evergreen #235B4E) -->
     <path
         android:fillColor="#235B4E"
-        android:pathData="M54,50 A4,4 0 1,1 54,58 A4,4 0 1,1 54,50" />
+        android:pathData="M54,50.5 A3.5,3.5 0 1,1 54,57.5 A3.5,3.5 0 1,1 54,50.5" />
 </vector>

@@ -9,10 +9,16 @@ data class Symptom(
         val DEFAULT_SYMPTOMS: List<Symptom> = listOf(
             Symptom("cramps", SymptomCategory.PAIN, "cramps"),
             Symptom("headache", SymptomCategory.PAIN, "headache"),
+            Symptom("abdominal_pain", SymptomCategory.PAIN, "abdominal_pain"),
+            Symptom("backache", SymptomCategory.PAIN, "backache"),
+            Symptom("muscle_aches", SymptomCategory.PAIN, "muscle_aches"),
             Symptom("mood_changes", SymptomCategory.MOOD, "mood"),
             Symptom("anxiety", SymptomCategory.MOOD, "anxiety"),
             Symptom("fatigue", SymptomCategory.ENERGY, "fatigue"),
+            Symptom("sleep_issue", SymptomCategory.ENERGY, "sleep_issue"),
             Symptom("bloating", SymptomCategory.PHYSICAL, "bloating"),
+            Symptom("nausea", SymptomCategory.PHYSICAL, "nausea"),
+            Symptom("digestive_changes", SymptomCategory.PHYSICAL, "digestive_changes"),
             Symptom("acne", SymptomCategory.PHYSICAL, "acne"),
             Symptom("breast_tenderness", SymptomCategory.PHYSICAL, "tenderness"),
             // Offered only when endometriosis is declared; see

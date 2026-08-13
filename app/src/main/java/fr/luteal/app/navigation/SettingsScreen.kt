@@ -1,5 +1,7 @@
 package fr.luteal.app.navigation
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,7 @@ import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -63,6 +67,26 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val syncState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    var showWipeConfirmDialog by remember { mutableStateOf(false) }
+
+    val exportDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            viewModel.exportData(context, uri)
+        }
+    }
+
+    if (showWipeConfirmDialog) {
+        ClearAllDataDialog(
+            onConfirm = {
+                showWipeConfirmDialog = false
+                viewModel.purgeAllLocalData()
+            },
+            onDismiss = { showWipeConfirmDialog = false }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -121,6 +145,19 @@ fun SettingsScreen(
                 onDismissMessage = viewModel::clearTestDataMessage
             )
         }
+
+        SettingsSectionHeader(title = stringResource(R.string.settings_data_management_title))
+
+        DataManagementCard(
+            exportState = syncState.exportState,
+            wipeState = syncState.wipeState,
+            onExportRequested = {
+                exportDocumentLauncher.launch("luteal_backup_${LocalDate.now()}.json")
+            },
+            onWipeRequested = { showWipeConfirmDialog = true },
+            onDismissExportState = viewModel::clearExportState,
+            onDismissWipeState = viewModel::clearWipeState
+        )
 
         TrackingContextCard(
             declared = syncState.declaredContexts,
@@ -690,4 +727,139 @@ private fun SettingsInformationRow(
             )
         }
     }
+}
+
+@Composable
+private fun DataManagementCard(
+    exportState: DataExportState,
+    wipeState: DataWipeState,
+    onExportRequested: () -> Unit,
+    onWipeRequested: () -> Unit,
+    onDismissExportState: () -> Unit,
+    onDismissWipeState: () -> Unit
+) {
+    LutealCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
+            Text(
+                text = stringResource(R.string.settings_export_title),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.settings_export_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            LutealSecondaryButton(
+                text = when (exportState) {
+                    is DataExportState.Loading -> stringResource(R.string.settings_export_in_progress)
+                    else -> stringResource(R.string.settings_export_action)
+                },
+                onClick = onExportRequested,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = exportState !is DataExportState.Loading
+            )
+            when (exportState) {
+                is DataExportState.Success -> Text(
+                    text = stringResource(R.string.settings_export_success),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                is DataExportState.Error -> Column(
+                    verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_export_error),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    TextButton(onClick = onDismissExportState) {
+                        Text(text = stringResource(R.string.action_close))
+                    }
+                }
+                else -> Unit
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            Text(
+                text = stringResource(R.string.settings_wipe_title),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.settings_wipe_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            LutealSecondaryButton(
+                text = when (wipeState) {
+                    is DataWipeState.Loading -> stringResource(R.string.settings_wipe_in_progress)
+                    else -> stringResource(R.string.settings_wipe_action)
+                },
+                onClick = onWipeRequested,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = wipeState !is DataWipeState.Loading
+            )
+            when (wipeState) {
+                is DataWipeState.Success -> Text(
+                    text = stringResource(R.string.settings_wipe_success),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                is DataWipeState.Error -> Column(
+                    verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_export_error),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    TextButton(onClick = onDismissWipeState) {
+                        Text(text = stringResource(R.string.action_close))
+                    }
+                }
+                else -> Unit
+            }
+        }
+    }
+}
+
+@Composable
+private fun ClearAllDataDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(R.string.settings_wipe_dialog_title),
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        text = {
+            Text(
+                text = stringResource(R.string.settings_wipe_dialog_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_wipe_dialog_confirm),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(R.string.action_cancel))
+            }
+        }
+    )
 }

@@ -111,6 +111,7 @@
     <string name="phase_tip_menstrual_warmth">En cas de douleurs, une douche chaude ou une bouillotte enveloppée dans un tissu peut aider à les apaiser.</string>
     <string name="phase_tip_menstrual_movement">Un mouvement doux, comme la marche, le yoga, la natation ou le vélo, peut aider à apaiser les douleurs de règles.</string>
     <string name="phase_tip_menstrual_pain_support">Si les douleurs sont plus fortes que d’habitude ou empêchent vos activités quotidiennes, parlez-en à un professionnel de santé.</string>
+    <string name="phase_tip_menstrual_hydration">Une hydratation régulière et des repas équilibrés aident à compenser les pertes et à soutenir l’énergie pendant les règles.</string>
     <string name="phase_tip_follicular_varies">La durée de la phase folliculaire explique une grande partie des variations d’un cycle à l’autre. Elle ne suit pas un nombre fixe de jours.</string>
     <string name="phase_tip_follicular_own_history">Votre propre historique est plus utile qu’un cycle type pour situer cette phase, car sa durée peut changer d’un cycle à l’autre.</string>
     <string name="phase_tip_follicular_no_fixed_day">L’ovulation n’arrive pas automatiquement au quatorzième jour. La phase folliculaire peut donc être plus courte ou plus longue.</string>
@@ -120,6 +121,9 @@
     <string name="phase_tip_luteal_diary">Si vous observez des symptômes avant les règles, les noter pendant au moins deux cycles peut aider à décrire leur évolution.</string>
     <string name="phase_tip_luteal_daily_support">En cas de symptômes prémenstruels, une activité régulière, un sommeil suffisant et une réduction du stress peuvent aider.</string>
     <string name="phase_tip_luteal_seek_support">Si des symptômes prémenstruels affectent votre vie quotidienne, un professionnel de santé peut vous aider à examiner les options possibles.</string>
+    <string name="phase_tip_luteal_hydration">Boire régulièrement de l’eau peut aider à atténuer les sensations de gonflement et soutenir la digestion avant les règles.</string>
+    <string name="phase_tip_luteal_sodium_bloating">Modérer les apports très salés en phase lutéale peut contribuer à limiter la rétention d’eau et la sensation de gonflement.</string>
+    <string name="phase_tip_luteal_complex_carbs">Privilégier les glucides complexes et des repas réguliers peut aider à stabiliser l’énergie et les variations d’humeur.</string>
 
     <string name="journal_title">Journal</string>
     <string name="journal_subtitle">Retrouvez les faits que vous avez enregistrés, jour après jour.</string>
@@ -177,17 +181,28 @@
     <string name="editor_symptoms">Autres observations</string>
     <string name="symptom_cramps">Crampes</string>
     <string name="symptom_headache">Mal de tête</string>
+    <string name="symptom_abdominal_pain">Douleurs abdominales</string>
+    <string name="symptom_backache">Mal de dos</string>
+    <string name="symptom_muscle_aches">Courbatures</string>
     <string name="symptom_fatigue">Fatigue</string>
+    <string name="symptom_sleep_issue">Sommeil perturbé</string>
     <string name="symptom_bloating">Ballonnements</string>
+    <string name="symptom_nausea">Nausée</string>
+    <string name="symptom_digestive_changes">Troubles digestifs</string>
     <string name="symptom_breast_tenderness">Seins sensibles</string>
     <string name="symptom_mood_changes">Changements d’humeur</string>
+    <string name="symptom_anxiety">Anxiété</string>
     <string name="symptom_acne">Peau, acné</string>
     <string name="symptom_pelvic_pain_outside_period">Douleur pelvienne hors règles</string>
+    <string name="symptom_group_pain">Douleurs</string>
+    <string name="symptom_group_physical">Corps &amp; Digestion</string>
+    <string name="symptom_group_mood_energy">Humeur &amp; Énergie</string>
     <string name="editor_notes">Notes privées</string>
     <string name="editor_notes_hint">Ajoutez un contexte utile pour vous</string>
     <string name="action_save_entry">Enregistrer les observations</string>
     <string name="action_retry_save_entry">Réessayer l’enregistrement</string>
     <string name="action_close">Fermer</string>
+    <string name="action_cancel">Annuler</string>
     <string name="save_success_local">Observations enregistrées sur cet appareil.</string>
     <string name="save_error">Les modifications n’ont pas été enregistrées. Réessayez.</string>
     <string name="save_error_preserved">L’enregistrement a échoué. Vos modifications sont conservées ici ; vous pouvez réessayer.</string>
@@ -438,4 +453,50 @@
     <string name="duo_support_kind_practical">Pratique</string>
     <string name="duo_support_kind_space">Espace</string>
     <string name="duo_refresh">Actualiser</string>
+
+    <!-- Calendar Screen & Grid -->
+    <string name="calendar_title">Calendrier</string>
+    <string name="calendar_subtitle">Vue mensuelle de vos cycles et observations</string>
+    <string name="calendar_view_calendar">Calendrier</string>
+    <string name="calendar_view_list">Journal</string>
+    <string name="calendar_previous_month">Mois précédent</string>
+    <string name="calendar_next_month">Mois suivant</string>
+    <string name="calendar_today_button">Aujourd’hui</string>
+    <string name="calendar_legend_title">Légende</string>
+    <string name="calendar_legend_recorded_period">Règles enregistrées</string>
+    <string name="calendar_legend_estimated_period">Plage estimée</string>
+    <string name="calendar_legend_observation">Observations (douleur, humeur, etc.)</string>
+    <string name="calendar_day_cd_recorded">%1$s, règles (%2$s)</string>
+    <string name="calendar_day_cd_estimated">%1$s, plage estimée de règles</string>
+    <string name="calendar_day_cd_observations">%1$s, %2$d observation(s)</string>
+    <string name="calendar_day_empty_inspection">Aucune observation enregistrée pour cette journée.</string>
+    <string name="calendar_day_inspection_title">Détails de la journée</string>
+
+    <!-- Cycle Management -->
+    <string name="cycle_action_edit">Modifier le début du cycle</string>
+    <string name="cycle_action_delete">Supprimer le cycle</string>
+    <string name="cycle_edit_title">Modifier la date de début</string>
+    <string name="cycle_edit_body">Choisissez la date de début de ce cycle. Les durées des cycles adjacents seront automatiquement ajustées.</string>
+    <string name="cycle_edit_confirm">Enregistrer la date</string>
+    <string name="cycle_edit_collision_error">Un autre cycle commence déjà à cette date.</string>
+    <string name="cycle_delete_title">Supprimer ce cycle ?</string>
+    <string name="cycle_delete_body">La date de début de ce cycle sera supprimée. Les observations de la journée restent conservées dans le journal.</string>
+    <string name="cycle_delete_confirm">Supprimer</string>
+    <string name="cycle_start_badge">Début de cycle</string>
+    <!-- Data Portability and Local Wipe -->
+    <string name="settings_data_management_title">Gestion et sauvegarde des données</string>
+    <string name="settings_export_title">Exporter mes données (JSON)</string>
+    <string name="settings_export_body">Créez une archive complète et lisible de vos cycles, observations quotidiennes et préférences, directement sur votre appareil.</string>
+    <string name="settings_export_action">Exporter en JSON</string>
+    <string name="settings_export_in_progress">Exportation en cours…</string>
+    <string name="settings_export_success">Données exportées avec succès.</string>
+    <string name="settings_export_error">L’exportation a échoué. Veuillez réessayer.</string>
+    <string name="settings_wipe_title">Effacer toutes les données locales</string>
+    <string name="settings_wipe_body">Supprime immédiatement l’intégralité de vos observations, cycles, paramètres et clés de chiffrement de cet appareil.</string>
+    <string name="settings_wipe_action">Effacer les données locales</string>
+    <string name="settings_wipe_dialog_title">Effacer toutes les données locales ?</string>
+    <string name="settings_wipe_dialog_body">L’ensemble de vos cycles, observations de règles, symptômes, notes privées et clés d’accès seront définitivement supprimés de cet appareil. Cette action est irréversible.</string>
+    <string name="settings_wipe_dialog_confirm">Effacer définitivement</string>
+    <string name="settings_wipe_in_progress">Suppression en cours…</string>
+    <string name="settings_wipe_success">Toutes les données locales ont été effacées.</string>
 </resources>

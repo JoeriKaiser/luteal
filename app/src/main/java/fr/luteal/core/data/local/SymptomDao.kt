@@ -15,6 +15,9 @@ interface SymptomDao {
     @Query("SELECT * FROM symptom_logs ORDER BY timestampEpochMillis DESC")
     fun getAllSymptomLogs(): Flow<List<SymptomLogEntity>>
 
+    @Query("SELECT * FROM symptom_logs ORDER BY timestampEpochMillis DESC")
+    suspend fun getAllSymptomLogsOnce(): List<SymptomLogEntity>
+
     @Query("SELECT * FROM symptom_logs WHERE id = :id LIMIT 1")
     suspend fun getSymptomLogOnce(id: String): SymptomLogEntity?
 

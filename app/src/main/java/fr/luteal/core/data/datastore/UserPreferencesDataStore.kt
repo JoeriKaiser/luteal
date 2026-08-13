@@ -149,6 +149,8 @@ class UserPreferencesDataStore @Inject constructor(
         else preferences[COUPLE_PAIRING_CODE] = code
     }
 
+    suspend fun clear() = edit { it.clear() }
+
     private suspend fun edit(block: suspend (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         context.dataStore.edit(block)
     }

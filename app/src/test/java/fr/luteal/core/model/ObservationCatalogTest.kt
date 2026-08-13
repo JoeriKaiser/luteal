@@ -11,7 +11,21 @@ class ObservationCatalogTest {
     fun `base observations are offered when nothing is declared`() {
         val ids = ObservationCatalog.symptomIdsFor(emptySet())
 
-        assertEquals(listOf("cramps", "headache", "fatigue", "bloating"), ids)
+        assertEquals(
+            listOf(
+                "cramps",
+                "headache",
+                "abdominal_pain",
+                "backache",
+                "muscle_aches",
+                "fatigue",
+                "sleep_issue",
+                "bloating",
+                "nausea",
+                "digestive_changes"
+            ),
+            ids
+        )
     }
 
     @Test
@@ -22,7 +36,7 @@ class ObservationCatalogTest {
         assertTrue("mood_changes" in ids)
         assertTrue("acne" in ids)
         // The base set is never removed by a declaration.
-        assertTrue(ids.containsAll(listOf("cramps", "headache", "fatigue", "bloating")))
+        assertTrue(ids.containsAll(listOf("cramps", "headache", "fatigue", "bloating", "nausea", "abdominal_pain")))
     }
 
     @Test

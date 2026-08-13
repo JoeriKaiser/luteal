@@ -144,5 +144,11 @@ class KeystoreSecretStore(
 
     fun clear() {
         prefs.edit().clear().apply()
+        runCatching {
+            val keyStore = KeyStore.getInstance(KEYSTORE).apply { load(null) }
+            if (keyStore.containsAlias(keyAlias)) {
+                keyStore.deleteEntry(keyAlias)
+            }
+        }
     }
 }

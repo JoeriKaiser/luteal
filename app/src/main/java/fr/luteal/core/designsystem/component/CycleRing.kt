@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 /**
  * The Luteal emblem, sized up to frame the current cycle day.
  *
- * The two facing arcs are the launcher mark (`ic_launcher_foreground`) redrawn
+ * The four cardinal arcs match the launcher mark (`ic_launcher_foreground`) redrawn
  * at screen scale: restrained cyclical geometry, which is the one identity
  * gesture the design system allows.
  *
@@ -42,7 +42,7 @@ fun CycleDayRing(
     val fontScale = LocalDensity.current.fontScale.coerceIn(1f, 1.8f)
     val diameter = 132.dp * fontScale
     val stroke = 7.dp
-    // Both halves carry the same weight on purpose. An accented arc against a
+    // All arcs carry the same weight on purpose. An accented arc against a
     // pale one reads as a filled track, which is the progress meter this
     // component must not become.
     val arcColor = scheme.primary
@@ -59,23 +59,46 @@ fun CycleDayRing(
             val arcSize = Size(size.width - strokePx, size.height - strokePx)
             val topLeft = Offset(inset, inset)
             val style = Stroke(width = strokePx, cap = androidx.compose.ui.graphics.StrokeCap.Round)
-            // A gap at the top and bottom splits the ring into two facing
-            // halves, exactly as the launcher mark does.
-            val gapDegrees = 7f
-            val sweep = 180f - (gapDegrees * 2f)
+            // Four cardinal arcs (top, right, bottom, left) separated by 20-degree
+            // diagonal césures, matching the launcher mark.
+            val gapDegrees = 20f
+            val sweep = 90f - gapDegrees
+            val halfSweep = sweep / 2f
 
+            // Top arc (centered at 270 degrees)
             drawArc(
                 color = arcColor,
-                startAngle = 90f + gapDegrees,
+                startAngle = 270f - halfSweep,
                 sweepAngle = sweep,
                 useCenter = false,
                 topLeft = topLeft,
                 size = arcSize,
                 style = style
             )
+            // Right arc (centered at 0 degrees)
             drawArc(
                 color = arcColor,
-                startAngle = 270f + gapDegrees,
+                startAngle = 0f - halfSweep,
+                sweepAngle = sweep,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = style
+            )
+            // Bottom arc (centered at 90 degrees)
+            drawArc(
+                color = arcColor,
+                startAngle = 90f - halfSweep,
+                sweepAngle = sweep,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = style
+            )
+            // Left arc (centered at 180 degrees)
+            drawArc(
+                color = arcColor,
+                startAngle = 180f - halfSweep,
                 sweepAngle = sweep,
                 useCenter = false,
                 topLeft = topLeft,

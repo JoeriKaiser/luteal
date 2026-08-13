@@ -24,6 +24,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+import android.content.Context
+import android.net.Uri
+import fr.luteal.core.data.DataExportManager
+import fr.luteal.core.data.LocalDataPurgeManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
 /**
  * Drives the Settings sync controls. Sync itself runs in a background
  * WorkManager worker; this only flips [SyncMode], edits the base URL
@@ -38,7 +45,9 @@ class SettingsViewModel @Inject constructor(
     private val testDataSeeder: TestDataSeeder,
     private val credentialStore: SyncCredentialStore,
     private val apiClientFactory: FolicularApiClientFactory,
-    private val cursorStore: SyncCursorStore
+    private val cursorStore: SyncCursorStore,
+    private val dataExportManager: DataExportManager,
+    private val localDataPurgeManager: LocalDataPurgeManager
 ) : ViewModel() {
 
     /** Local edit buffer for the base URL field, kept out of the DataStore. */
@@ -54,10 +63,13 @@ class SettingsViewModel @Inject constructor(
     private val recoveryCodeDraft = MutableStateFlow("")
     private val recoveryState = MutableStateFlow<RecoveryState>(RecoveryState.Idle)
 
-    /** Text drafts folded into one flow: `combine` takes at most five. */
+    private val exportState = MutableStateFlow<DataExportState>(DataExportState.Idle)
+    private val wipeState = MutableStateFlow<DataWipeState>(DataWipeState.Idle)
+
+    /** Drafts folded into one flow: `combine` takes at most five. */
     private val drafts: Flow<Drafts> =
-        combine(baseUrlDraft, inviteCodeDraft, recoveryCodeDraft) { base, invite, recovery ->
-            Drafts(base, invite, recovery)
+        combine(baseUrlDraft, inviteCodeDraft, recoveryCodeDraft, exportState, wipeState) { base, invite, recovery, export, wipe ->
+            Drafts(base, invite, recovery, export, wipe)
         }
 
     val uiState: StateFlow<SettingsSyncUiState> = combine(
@@ -79,6 +91,8 @@ class SettingsViewModel @Inject constructor(
             testDataState = actionState,
             recoveryCodeDraft = draft.recoveryCode,
             recoveryState = recovery,
+            exportState = draft.exportState,
+            wipeState = draft.wipeState,
             hasAccount = credentialStore.load() != null,
             declaredContexts = preferences.declaredContexts,
             ageBand = AgeBand.fromId(preferences.ageBand)
@@ -212,6 +226,45 @@ class SettingsViewModel @Inject constructor(
     fun clearRecoveryState() {
         recoveryState.value = RecoveryState.Idle
     }
+
+    fun exportData(context: Context, uri: Uri) {
+        viewModelScope.launch {
+            exportState.value = DataExportState.Loading
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openOutputStream(uri)?.use { stream ->
+                        dataExportManager.exportToStream(stream)
+                    } ?: throw IllegalStateException("Cannot open output stream for URI")
+                }
+            }.onSuccess {
+                exportState.value = DataExportState.Success
+            }.onFailure { err ->
+                exportState.value = DataExportState.Error(err.message ?: "Export failed")
+            }
+        }
+    }
+
+    fun purgeAllLocalData(onPurged: () -> Unit = {}) {
+        viewModelScope.launch {
+            wipeState.value = DataWipeState.Loading
+            runCatching {
+                localDataPurgeManager.purgeAllLocalData()
+            }.onSuccess {
+                wipeState.value = DataWipeState.Success
+                onPurged()
+            }.onFailure { err ->
+                wipeState.value = DataWipeState.Error(err.message ?: "Purge failed")
+            }
+        }
+    }
+
+    fun clearExportState() {
+        exportState.value = DataExportState.Idle
+    }
+
+    fun clearWipeState() {
+        wipeState.value = DataWipeState.Idle
+    }
 }
 
 /** Copy shown when the device already belongs to an account. */
@@ -227,6 +280,20 @@ sealed interface RecoveryState {
     data class Error(val message: String) : RecoveryState
 }
 
+sealed interface DataExportState {
+    data object Idle : DataExportState
+    data object Loading : DataExportState
+    data object Success : DataExportState
+    data class Error(val message: String) : DataExportState
+}
+
+sealed interface DataWipeState {
+    data object Idle : DataWipeState
+    data object Loading : DataWipeState
+    data object Success : DataWipeState
+    data class Error(val message: String) : DataWipeState
+}
+
 data class SettingsSyncUiState(
     val onlineSyncEnabled: Boolean = false,
     val baseUrlDraft: String = "",
@@ -239,6 +306,8 @@ data class SettingsSyncUiState(
     val testDataState: TestDataActionState = TestDataActionState.Idle,
     val recoveryCodeDraft: String = "",
     val recoveryState: RecoveryState = RecoveryState.Idle,
+    val exportState: DataExportState = DataExportState.Idle,
+    val wipeState: DataWipeState = DataWipeState.Idle,
     /** True once this device holds credentials; recovery is offered only before. */
     val hasAccount: Boolean = false,
     /** Contexts the user has declared, editable after onboarding. */
@@ -251,7 +320,9 @@ data class SettingsSyncUiState(
 private data class Drafts(
     val baseUrl: String,
     val inviteCode: String,
-    val recoveryCode: String
+    val recoveryCode: String,
+    val exportState: DataExportState,
+    val wipeState: DataWipeState
 )
 
 sealed interface TestDataActionState {

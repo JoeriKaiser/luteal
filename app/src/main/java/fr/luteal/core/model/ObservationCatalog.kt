@@ -23,8 +23,14 @@ object ObservationCatalog {
     private val BASE = listOf(
         "cramps",
         "headache",
+        "abdominal_pain",
+        "backache",
+        "muscle_aches",
         "fatigue",
-        "bloating"
+        "sleep_issue",
+        "bloating",
+        "nausea",
+        "digestive_changes"
     )
 
     /**

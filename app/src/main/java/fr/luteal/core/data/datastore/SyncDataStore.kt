@@ -94,6 +94,8 @@ class SyncDataStore @Inject constructor(
         preferences[IN_PROGRESS] = false.toString()
     }
 
+    suspend fun clear(): Unit = edit { it.clear() }
+
     private suspend fun edit(block: suspend (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         context.syncDataStore.edit(block)
     }

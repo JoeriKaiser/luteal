@@ -85,6 +85,7 @@ class FakeDailyEntryDao : DailyEntryDao {
     val entries = LinkedHashMap<String, DailyEntryEntity>()
 
     override fun observeEntries() = kotlinx.coroutines.flow.flowOf(entries.values.toList())
+    override suspend fun getAllEntriesOnce(): List<DailyEntryEntity> = entries.values.toList()
     override fun observeEntry(date: String) = kotlinx.coroutines.flow.flowOf(entries[date])
     override suspend fun getEntryOnce(date: String): DailyEntryEntity? = entries[date]
     override suspend fun upsert(entry: DailyEntryEntity) { entries[entry.date] = entry }
@@ -100,6 +101,7 @@ class FakeSymptomDao : SymptomDao {
         kotlinx.coroutines.flow.flowOf(logs.values.filter { it.date == dateString })
     override fun getAllSymptomLogs() =
         kotlinx.coroutines.flow.flowOf(logs.values.toList())
+    override suspend fun getAllSymptomLogsOnce(): List<SymptomLogEntity> = logs.values.toList()
     override suspend fun getSymptomLogOnce(id: String): SymptomLogEntity? = logs[id]
     override suspend fun insertSymptomLog(log: SymptomLogEntity) { logs[log.id] = log }
     override suspend fun deleteSymptomLog(id: String) { logs.remove(id) }

@@ -23,11 +23,14 @@ object PhaseTips {
     private const val FEHRING_URL = "https://doi.org/10.1111/j.1552-6909.2006.00051.x"
     private const val GRIEGER = "Grieger & Norman, J Med Internet Res, 2020"
     private const val GRIEGER_URL = "https://pmc.ncbi.nlm.nih.gov/articles/PMC7381001/"
+    private const val ACOG_PMS = "ACOG, Premenstrual syndrome"
+    private const val ACOG_PMS_URL = "https://www.acog.org/womens-health/faqs/premenstrual-syndrome-pms"
 
     val ALL: List<PhaseTip> = listOf(
         PhaseTip("menstrual_warmth", CyclePhase.MENSTRUAL, NHS_PERIOD_PAIN, NHS_PERIOD_PAIN_URL),
         PhaseTip("menstrual_movement", CyclePhase.MENSTRUAL, NHS_PERIOD_PAIN, NHS_PERIOD_PAIN_URL),
         PhaseTip("menstrual_pain_support", CyclePhase.MENSTRUAL, NHS_PERIOD_PAIN, NHS_PERIOD_PAIN_URL),
+        PhaseTip("menstrual_hydration", CyclePhase.MENSTRUAL, NHS_PERIODS, NHS_PERIODS_URL),
         PhaseTip("follicular_varies", CyclePhase.FOLLICULAR, MIHM, MIHM_URL),
         PhaseTip("follicular_own_history", CyclePhase.FOLLICULAR, MIHM, MIHM_URL),
         PhaseTip("follicular_no_fixed_day", CyclePhase.FOLLICULAR, GRIEGER, GRIEGER_URL),
@@ -36,7 +39,10 @@ object PhaseTips {
         PhaseTip("ovulatory_not_day_14", CyclePhase.OVULATORY, GRIEGER, GRIEGER_URL),
         PhaseTip("luteal_diary", CyclePhase.LUTEAL, NHS_PMS, NHS_PMS_URL),
         PhaseTip("luteal_daily_support", CyclePhase.LUTEAL, NHS_PMS, NHS_PMS_URL),
-        PhaseTip("luteal_seek_support", CyclePhase.LUTEAL, NHS_PMS, NHS_PMS_URL)
+        PhaseTip("luteal_seek_support", CyclePhase.LUTEAL, NHS_PMS, NHS_PMS_URL),
+        PhaseTip("luteal_hydration", CyclePhase.LUTEAL, NHS_PMS, NHS_PMS_URL),
+        PhaseTip("luteal_sodium_bloating", CyclePhase.LUTEAL, ACOG_PMS, ACOG_PMS_URL),
+        PhaseTip("luteal_complex_carbs", CyclePhase.LUTEAL, ACOG_PMS, ACOG_PMS_URL)
     )
 
     fun forDate(phase: CyclePhase, date: LocalDate): PhaseTip {

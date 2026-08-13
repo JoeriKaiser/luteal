@@ -190,7 +190,8 @@ class LutealScreensTest {
             LutealTheme(darkTheme = false) {
                 JournalScreen(
                     state = LutealUiState(today = today),
-                    onSelectDate = {}
+                    onSelectDate = {},
+                    initialViewMode = JournalViewMode.TIMELINE
                 )
             }
         }
@@ -215,7 +216,8 @@ class LutealScreensTest {
                             DailyEntry(date = recordedDate, painLevel = 3)
                         )
                     ),
-                    onSelectDate = { selectedDate = it }
+                    onSelectDate = { selectedDate = it },
+                    initialViewMode = JournalViewMode.TIMELINE
                 )
             }
         }
@@ -226,6 +228,32 @@ class LutealScreensTest {
             string(R.string.level_a11y, string(R.string.level_label_pain), 3)
         ).performClick()
         assertEquals(recordedDate, selectedDate)
+    }
+
+    @Test
+    fun calendarViewShowsMonthGridAndInspectsSelectedDay() {
+        val today = LocalDate.parse("2026-08-13")
+        var openedDate: LocalDate? = null
+
+        composeRule.setContent {
+            LutealTheme(darkTheme = false) {
+                JournalScreen(
+                    state = LutealUiState(
+                        today = today,
+                        entries = listOf(
+                            DailyEntry(date = today, painLevel = 2)
+                        )
+                    ),
+                    onSelectDate = { openedDate = it },
+                    initialViewMode = JournalViewMode.CALENDAR
+                )
+            }
+        }
+
+        composeRule.onNodeWithText(string(R.string.calendar_view_calendar)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.calendar_legend_title)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.action_edit_today)).performClick()
+        assertEquals(today, openedDate)
     }
 
     // DuoScreen now uses hiltViewModel() internally and requires a Hilt

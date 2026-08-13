@@ -130,6 +130,59 @@ class LutealViewModel @Inject constructor(
         }
     }
 
+    fun editCycleStartDate(cycleId: String, newStartDate: LocalDate) {
+        viewModelScope.launch {
+            operationState.update { it.copy(failed = false) }
+            runCatching {
+                val existing = uiState.value.cycles
+                val targetCycle = existing.firstOrNull { it.id == cycleId }
+                    ?: error("Cycle introuvable.")
+                if (targetCycle.startDate == newStartDate) return@launch
+
+                require(existing.none { it.id != cycleId && it.startDate == newStartDate }) {
+                    "Un autre cycle commence déjà à cette date."
+                }
+
+                val updatedList = existing.map {
+                    if (it.id == cycleId) it.copy(startDate = newStartDate) else it
+                }.sortedBy { it.startDate }
+
+                for (i in updatedList.indices) {
+                    val current = updatedList[i]
+                    val nextStart = updatedList.getOrNull(i + 1)?.startDate
+                    val newEndDate = nextStart?.minusDays(1)
+                    val reconciled = current.copy(endDate = newEndDate)
+                    cycleRepository.saveCycle(reconciled)
+                }
+            }.onFailure {
+                operationState.update { it.copy(failed = true) }
+            }
+        }
+    }
+
+    fun deleteCycle(cycleId: String) {
+        viewModelScope.launch {
+            operationState.update { it.copy(failed = false) }
+            runCatching {
+                cycleRepository.deleteCycle(cycleId)
+                val remaining = uiState.value.cycles
+                    .filter { it.id != cycleId }
+                    .sortedBy { it.startDate }
+
+                for (i in remaining.indices) {
+                    val current = remaining[i]
+                    val nextStart = remaining.getOrNull(i + 1)?.startDate
+                    val newEndDate = nextStart?.minusDays(1)
+                    if (current.endDate != newEndDate) {
+                        cycleRepository.saveCycle(current.copy(endDate = newEndDate))
+                    }
+                }
+            }.onFailure {
+                operationState.update { it.copy(failed = true) }
+            }
+        }
+    }
+
     fun clearOperationError() {
         operationState.update { it.copy(failed = false) }
     }

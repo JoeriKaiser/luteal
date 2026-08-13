@@ -173,6 +173,12 @@ fun LutealMainScaffold(
                                 onSelectDate = {
                                     viewModel.clearEntrySaveState()
                                     editorRequest = EditorRequest(it, startPeriodIntent = false)
+                                },
+                                onEditCycle = { cycleId, newStartDate ->
+                                    viewModel.editCycleStartDate(cycleId, newStartDate)
+                                },
+                                onDeleteCycle = { cycleId ->
+                                    viewModel.deleteCycle(cycleId)
                                 }
                             )
                             LutealDestination.DUO -> DuoScreen(

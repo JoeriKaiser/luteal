@@ -117,6 +117,7 @@
     <string name="phase_tip_menstrual_warmth">If you have pain, a warm shower or a hot water bottle wrapped in fabric may help ease it.</string>
     <string name="phase_tip_menstrual_movement">Gentle movement such as walking, yoga, swimming or cycling may help ease period pain.</string>
     <string name="phase_tip_menstrual_pain_support">If pain is worse than usual or stops your daily activities, consider speaking with a health professional.</string>
+    <string name="phase_tip_menstrual_hydration">Staying well-hydrated and eating balanced meals can help offset fluid loss and maintain energy during your period.</string>
     <string name="phase_tip_follicular_varies">Follicular phase length accounts for much of the variation between cycles. It does not follow a fixed number of days.</string>
     <string name="phase_tip_follicular_own_history">Your own history is more useful than a standard cycle for placing this phase, because its length can change between cycles.</string>
     <string name="phase_tip_follicular_no_fixed_day">Ovulation does not automatically happen on day fourteen, so the follicular phase can be shorter or longer.</string>
@@ -126,6 +127,9 @@
     <string name="phase_tip_luteal_diary">If you notice symptoms before your period, recording them for at least two cycles can help describe how they change.</string>
     <string name="phase_tip_luteal_daily_support">For premenstrual symptoms, regular activity, enough sleep and reducing stress may help.</string>
     <string name="phase_tip_luteal_seek_support">If premenstrual symptoms affect daily life, a health professional can help you review possible options.</string>
+    <string name="phase_tip_luteal_hydration">Drinking water regularly can help ease feelings of bloating and support digestion before your period.</string>
+    <string name="phase_tip_luteal_sodium_bloating">Moderating high-sodium foods in the luteal phase can help reduce fluid retention and swelling sensations.</string>
+    <string name="phase_tip_luteal_complex_carbs">Focusing on complex carbohydrates and regular meals can help stabilize energy levels and mood changes.</string>
 
     <string name="journal_title">Journal</string>
     <string name="journal_subtitle">Look back at what you recorded, day by day.</string>
@@ -181,17 +185,28 @@
     <string name="editor_symptoms">Other observations</string>
     <string name="symptom_cramps">Cramps</string>
     <string name="symptom_headache">Headache</string>
+    <string name="symptom_abdominal_pain">Abdominal pain</string>
+    <string name="symptom_backache">Lower back pain</string>
+    <string name="symptom_muscle_aches">Muscle aches</string>
     <string name="symptom_fatigue">Fatigue</string>
+    <string name="symptom_sleep_issue">Sleep disturbance</string>
     <string name="symptom_bloating">Bloating</string>
+    <string name="symptom_nausea">Nausea</string>
+    <string name="symptom_digestive_changes">Digestive changes</string>
     <string name="symptom_breast_tenderness">Breast tenderness</string>
     <string name="symptom_mood_changes">Mood changes</string>
+    <string name="symptom_anxiety">Anxiety</string>
     <string name="symptom_acne">Skin, acne</string>
     <string name="symptom_pelvic_pain_outside_period">Pelvic pain outside your period</string>
+    <string name="symptom_group_pain">Pain</string>
+    <string name="symptom_group_physical">Body &amp; Digestion</string>
+    <string name="symptom_group_mood_energy">Mood &amp; Energy</string>
     <string name="editor_notes">Private notes</string>
     <string name="editor_notes_hint">Add any context that helps you</string>
     <string name="action_save_entry">Save observations</string>
     <string name="action_retry_save_entry">Try saving again</string>
     <string name="action_close">Close</string>
+    <string name="action_cancel">Cancel</string>
     <string name="save_success_local">Observations saved on this device.</string>
     <string name="save_error">Your changes were not saved. Please try again.</string>
     <string name="save_error_preserved">Saving failed. Your changes are kept here; you can try again.</string>
@@ -440,4 +455,50 @@
     <string name="duo_support_kind_practical">Practical</string>
     <string name="duo_support_kind_space">Space</string>
     <string name="duo_refresh">Refresh</string>
+
+    <!-- Calendar Screen & Grid -->
+    <string name="calendar_title">Calendar</string>
+    <string name="calendar_subtitle">Monthly view of your cycles and observations</string>
+    <string name="calendar_view_calendar">Calendar</string>
+    <string name="calendar_view_list">Journal</string>
+    <string name="calendar_previous_month">Previous month</string>
+    <string name="calendar_next_month">Next month</string>
+    <string name="calendar_today_button">Today</string>
+    <string name="calendar_legend_title">Legend</string>
+    <string name="calendar_legend_recorded_period">Recorded period</string>
+    <string name="calendar_legend_estimated_period">Estimated window</string>
+    <string name="calendar_legend_observation">Observations (pain, mood, etc.)</string>
+    <string name="calendar_day_cd_recorded">%1$s, period (%2$s)</string>
+    <string name="calendar_day_cd_estimated">%1$s, estimated period window</string>
+    <string name="calendar_day_cd_observations">%1$s, %2$d observation(s)</string>
+    <string name="calendar_day_empty_inspection">No observations recorded for this day.</string>
+    <string name="calendar_day_inspection_title">Day details</string>
+
+    <!-- Cycle Management -->
+    <string name="cycle_action_edit">Edit cycle start</string>
+    <string name="cycle_action_delete">Delete cycle</string>
+    <string name="cycle_edit_title">Edit start date</string>
+    <string name="cycle_edit_body">Choose the start date for this cycle. Adjacent cycle lengths will be adjusted automatically.</string>
+    <string name="cycle_edit_confirm">Save date</string>
+    <string name="cycle_edit_collision_error">Another cycle already starts on this date.</string>
+    <string name="cycle_delete_title">Delete this cycle?</string>
+    <string name="cycle_delete_body">The start date of this cycle will be removed. Your daily observations for this date will be kept in the journal.</string>
+    <string name="cycle_delete_confirm">Delete</string>
+    <string name="cycle_start_badge">Cycle start</string>
+    <!-- Data Portability and Local Wipe -->
+    <string name="settings_data_management_title">Data management &amp; backup</string>
+    <string name="settings_export_title">Export my data (JSON)</string>
+    <string name="settings_export_body">Create a complete, readable backup of your cycles, daily observations, and preferences directly on your device.</string>
+    <string name="settings_export_action">Export as JSON</string>
+    <string name="settings_export_in_progress">Export in progress…</string>
+    <string name="settings_export_success">Data exported successfully.</string>
+    <string name="settings_export_error">Export failed. Please try again.</string>
+    <string name="settings_wipe_title">Erase all local data</string>
+    <string name="settings_wipe_body">Immediately deletes all your observations, cycles, settings, and encryption keys from this device.</string>
+    <string name="settings_wipe_action">Erase local data</string>
+    <string name="settings_wipe_dialog_title">Erase all local data?</string>
+    <string name="settings_wipe_dialog_body">All your cycles, bleeding observations, symptoms, private notes, and access keys will be permanently removed from this device. This action cannot be undone.</string>
+    <string name="settings_wipe_dialog_confirm">Erase permanently</string>
+    <string name="settings_wipe_in_progress">Erasing data…</string>
+    <string name="settings_wipe_success">All local data has been erased.</string>
 </resources>

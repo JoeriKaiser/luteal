@@ -3,17 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Luteal — Variations Demi-Cercles</title>
+  <title>Luteal — Déclinaisons « Les 4 Temps »</title>
   <style>
     :root {
-      --bg-linen: #F7F4ED;
+      --bg-linen: #F1EDE1;
       --surface-light: #FCFAF5;
       --evergreen: #235B4E;
+      --evergreen-dark: #8FD4BE;
       --indigo: #5D587E;
-      --stone: #EDE9DF;
+      --stone: #E6E1D3;
       --quiet-ink: #646B66;
       --warm-ink: #252B27;
-      --border-light: #E5E0D8;
+      --border-light: #E0DBD0;
+      
+      /* Phase palette */
+      --menstrual-rust: #934545;
+      --follicular-moss: #486D55;
+      --ovulatory-ochre: #775F1D;
+      --luteal-indigo: #5D587E;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -21,25 +28,32 @@
       font-family: system-ui, -apple-system, sans-serif;
       background: var(--bg-linen);
       color: var(--warm-ink);
-      padding: 2rem 1rem;
+      padding: 2.5rem 1.5rem;
     }
 
     header {
-      max-width: 960px;
-      margin: 0 auto 2.5rem;
+      max-width: 980px;
+      margin: 0 auto 3rem;
       text-align: center;
     }
     header h1 {
-      font-size: 1.75rem;
+      font-size: 2rem;
       color: var(--evergreen);
       margin-bottom: 0.5rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    header p {
+      color: var(--quiet-ink);
+      font-size: 1rem;
+      line-height: 1.5;
     }
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
       gap: 2rem;
-      max-width: 960px;
+      max-width: 980px;
       margin: 0 auto;
     }
 
@@ -47,17 +61,54 @@
       background: var(--surface-light);
       border: 1px solid var(--border-light);
       border-radius: 16px;
-      padding: 1.5rem;
+      padding: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
+
+    .card-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      margin-bottom: 0.75rem;
+      align-self: flex-start;
+      background: #E2ECE8;
+      color: var(--evergreen);
+    }
+
     .card h2 {
-      font-size: 1.15rem;
+      font-size: 1.25rem;
       color: var(--evergreen);
       margin-bottom: 0.25rem;
+      font-weight: 600;
     }
     .card .subtitle {
       font-size: 0.875rem;
       color: var(--quiet-ink);
+      margin-bottom: 1.5rem;
+      line-height: 1.4;
+    }
+
+    .preview-section {
+      background: #EAE5D8;
+      padding: 1.25rem;
+      border-radius: 12px;
       margin-bottom: 1.25rem;
+    }
+
+    .preview-section-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      color: var(--quiet-ink);
+      margin-bottom: 0.75rem;
+      text-align: center;
     }
 
     .preview-row {
@@ -65,28 +116,24 @@
       gap: 1.5rem;
       align-items: center;
       justify-content: center;
-      background: #EFECE4;
-      padding: 1.5rem;
-      border-radius: 12px;
-      margin-bottom: 1rem;
     }
 
     .icon-box {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.4rem;
     }
-    .icon-box span { font-size: 0.75rem; color: var(--quiet-ink); }
+    .icon-box span { font-size: 0.75rem; color: var(--quiet-ink); font-weight: 500; }
 
     .icon-frame {
       width: 80px;
       height: 80px;
-      background: var(--bg-linen);
+      background: var(--surface-light);
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
       overflow: hidden;
     }
     .icon-frame.circle { border-radius: 50%; }
@@ -94,161 +141,292 @@
 
     .icon-frame svg { width: 100%; height: 100%; }
 
-    .description { font-size: 0.875rem; color: var(--quiet-ink); }
+    .description {
+      font-size: 0.9rem;
+      color: var(--warm-ink);
+      line-height: 1.5;
+    }
+    .description ul {
+      margin-top: 0.5rem;
+      padding-left: 1.2rem;
+      color: var(--quiet-ink);
+      font-size: 0.85rem;
+    }
   </style>
 </head>
 <body>
 
   <header>
-    <h1>Luteal — Variations en Demi-Cercles</h1>
-    <p>Formes géométriques nettes en demi-cercle (180°) pour l'icône Duo.</p>
+    <h1>Luteal — Déclinaisons « Les 4 Temps »</h1>
+    <p>3 variantes d'espacement, d'épaisseur et d'orientation pour l'anneau quadrant des 4 phases.</p>
   </header>
 
   <div class="grid">
 
-    <!-- Option 3A -->
+    <!-- Variante 3A: Micro-Césures -->
     <div class="card">
-      <h2>Option 3A : Demi-cercles Entrelacés (Ligne de séparation centrale)</h2>
-      <div class="subtitle">Deux demi-cercles nets (180°) séparés par un léger canal vertical (4px)</div>
+      <div>
+        <span class="card-badge">Variante 3A</span>
+        <h2>Micro-Césures (Espacement Fin / Horloger)</h2>
+        <div class="subtitle">Micro-espacements de 6° aux 4 points cardinaux. Silhouette quasi-continue et dense.</div>
 
-      <div class="preview-row">
-        <div class="icon-box">
-          <div class="icon-frame circle">
-            <svg viewBox="0 0 108 108">
-              <rect width="108" height="108" fill="#F7F4ED"/>
-              <!-- Left Semicircle (Evergreen #235B4E) -->
-              <path d="M52,26 A28,28 0 0,0 52,82" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
-              <!-- Right Semicircle (Indigo #5D587E) -->
-              <path d="M56,26 A28,28 0 0,1 56,82" fill="none" stroke="#5D587E" stroke-width="6" stroke-linecap="round"/>
-              <!-- Center node -->
-              <circle cx="54" cy="54" r="4" fill="#235B4E"/>
-            </svg>
+        <!-- Rendu Multicolore (Phases) -->
+        <div class="preview-section">
+          <div class="preview-section-title">Couleurs des 4 Phases</div>
+          <div class="preview-row">
+            <div class="icon-box">
+              <div class="icon-frame circle">
+                <svg viewBox="0 0 108 108">
+                  <rect width="108" height="108" fill="#FCFAF5"/>
+                  <!-- Top-Right: Follicular Moss -->
+                  <path d="M 55.41 27.04 A 27 27 0 0 1 80.96 52.59" fill="none" stroke="#486D55" stroke-width="5.5" stroke-linecap="round"/>
+                  <!-- Bottom-Right: Ovulatory Ochre -->
+                  <path d="M 80.96 55.41 A 27 27 0 0 1 55.41 80.96" fill="none" stroke="#775F1D" stroke-width="5.5" stroke-linecap="round"/>
+                  <!-- Bottom-Left: Luteal Indigo -->
+                  <path d="M 52.59 80.96 A 27 27 0 0 1 27.04 55.41" fill="none" stroke="#5D587E" stroke-width="5.5" stroke-linecap="round"/>
+                  <!-- Top-Left: Menstrual Rust -->
+                  <path d="M 27.04 52.59 A 27 27 0 0 1 52.59 27.04" fill="none" stroke="#934545" stroke-width="5.5" stroke-linecap="round"/>
+                  <!-- Center Point -->
+                  <circle cx="54" cy="54" r="3" fill="#235B4E"/>
+                </svg>
+              </div>
+              <span>Cercle</span>
+            </div>
+            <div class="icon-box">
+              <div class="icon-frame squircle">
+                <svg viewBox="0 0 108 108">
+                  <rect width="108" height="108" fill="#FCFAF5"/>
+                  <path d="M 55.41 27.04 A 27 27 0 0 1 80.96 52.59" fill="none" stroke="#486D55" stroke-width="5.5" stroke-linecap="round"/>
+                  <path d="M 80.96 55.41 A 27 27 0 0 1 55.41 80.96" fill="none" stroke="#775F1D" stroke-width="5.5" stroke-linecap="round"/>
+                  <path d="M 52.59 80.96 A 27 27 0 0 1 27.04 55.41" fill="none" stroke="#5D587E" stroke-width="5.5" stroke-linecap="round"/>
+                  <path d="M 27.04 52.59 A 27 27 0 0 1 52.59 27.04" fill="none" stroke="#934545" stroke-width="5.5" stroke-linecap="round"/>
+                  <circle cx="54" cy="54" r="3" fill="#235B4E"/>
+                </svg>
+              </div>
+              <span>Squircle</span>
+            </div>
           </div>
-          <span>Cercle</span>
         </div>
-        <div class="icon-box">
-          <div class="icon-frame squircle">
-            <svg viewBox="0 0 108 108">
-              <rect width="108" height="108" fill="#F7F4ED"/>
-              <path d="M52,26 A28,28 0 0,0 52,82" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
-              <path d="M56,26 A28,28 0 0,1 56,82" fill="none" stroke="#5D587E" stroke-width="6" stroke-linecap="round"/>
-              <circle cx="54" cy="54" r="4" fill="#235B4E"/>
-            </svg>
+
+        <!-- Rendu Monochrome (Evergreen épuré) -->
+        <div class="preview-section">
+          <div class="preview-section-title">Monochrome Evergreen</div>
+          <div class="preview-row">
+            <div class="icon-box">
+              <div class="icon-frame circle">
+                <svg viewBox="0 0 108 108">
+                  <rect width="108" height="108" fill="#FCFAF5"/>
+                  <path d="M 55.41 27.04 A 27 27 0 0 1 80.96 52.59" fill="none" stroke="#235B4E" stroke-width="5.5" stroke-linecap="round"/>
+                  <path d="M 80.96 55.41 A 27 27 0 0 1 55.41 80.96" fill="none" stroke="#235B4E" stroke-width="5.5" stroke-linecap="round"/>
+                  <path d="M 52.59 80.96 A 27 27 0 0 1 27.04 55.41" fill="none" stroke="#235B4E" stroke-width="5.5" stroke-linecap="round"/>
+                  <path d="M 27.04 52.59 A 27 27 0 0 1 52.59 27.04" fill="none" stroke="#235B4E" stroke-width="5.5" stroke-linecap="round"/>
+                  <circle cx="54" cy="54" r="3" fill="#235B4E"/>
+                </svg>
+              </div>
+              <span>Cercle</span>
+            </div>
+            <div class="icon-box">
+              <div class="icon-frame squircle">
+                <svg viewBox="0 0 108 108">
+                  <rect width="108" height="108" fill="#FCFAF5"/>
+                  <path d="M 55.41 27.04 A 27 27 0 0 1 80.96 52.59" fill="none" stroke="#235B4E" stroke-width="5.5" stroke-linecap="round"/>
+                  <path d="M 80.96 55.41 A 27 27 0 0 1 55.41 80.96" fill="none" stroke="#235B4E" stroke-width="5.5" stroke-linecap="round"/>
+                  <path d="M 52.59 80.96 A 27 27 0 0 1 27.04 55.41" fill="none" stroke="#235B4E" stroke-width="5.5" stroke-linecap="round"/>
+                  <path d="M 27.04 52.59 A 27 27 0 0 1 52.59 27.04" fill="none" stroke="#235B4E" stroke-width="5.5" stroke-linecap="round"/>
+                  <circle cx="54" cy="54" r="3" fill="#235B4E"/>
+                </svg>
+              </div>
+              <span>Squircle</span>
+            </div>
           </div>
-          <span>Squircle</span>
         </div>
+
       </div>
 
       <div class="description">
-        Deux demi-cercles parfaits à 180° se faisant face, séparés au centre.
+        <strong>Caractéristiques :</strong>
+        <ul>
+          <li>Précision chirurgicale : les 4 fentes sont nettes et discrètes comme une gravure de montre.</li>
+          <li>Grande présence visuelle et forte densité sur la grille des applications.</li>
+        </ul>
       </div>
     </div>
 
-    <!-- Option 3B -->
+    <!-- Variante 3B: Respiration Aérée -->
     <div class="card">
-      <h2>Option 3B : Demi-cercles Fermés (Formes en D)</h2>
-      <div class="subtitle">Deux demi-cercles fermés sur leur diamètre flat</div>
+      <div>
+        <span class="card-badge">Variante 3B</span>
+        <h2>Respiration Aérée (Espacement Large & Équilibré)</h2>
+        <div class="subtitle">Espacements généreux de 20° aux 4 points cardinaux. Arcs indépendants et légers.</div>
 
-      <div class="preview-row">
-        <div class="icon-box">
-          <div class="icon-frame circle">
-            <svg viewBox="0 0 108 108">
-              <rect width="108" height="108" fill="#F7F4ED"/>
-              <!-- Left Closed Semicircle -->
-              <path d="M51,26 A28,28 0 0,0 51,82 Z" fill="none" stroke="#235B4E" stroke-width="5" stroke-linejoin="round"/>
-              <!-- Right Closed Semicircle -->
-              <path d="M57,26 A28,28 0 0,1 57,82 Z" fill="none" stroke="#5D587E" stroke-width="5" stroke-linejoin="round"/>
-            </svg>
+        <!-- Rendu Multicolore -->
+        <div class="preview-section">
+          <div class="preview-section-title">Couleurs des 4 Phases</div>
+          <div class="preview-row">
+            <div class="icon-box">
+              <div class="icon-frame circle">
+                <svg viewBox="0 0 108 108">
+                  <rect width="108" height="108" fill="#FCFAF5"/>
+                  <!-- Top-Right -->
+                  <path d="M 58.51 28.39 A 26 26 0 0 1 79.61 49.49" fill="none" stroke="#486D55" stroke-width="6" stroke-linecap="round"/>
+                  <!-- Bottom-Right -->
+                  <path d="M 79.61 58.51 A 26 26 0 0 1 58.51 79.61" fill="none" stroke="#775F1D" stroke-width="6" stroke-linecap="round"/>
+                  <!-- Bottom-Left -->
+                  <path d="M 49.49 79.61 A 26 26 0 0 1 28.39 58.51" fill="none" stroke="#5D587E" stroke-width="6" stroke-linecap="round"/>
+                  <!-- Top-Left -->
+                  <path d="M 28.39 49.49 A 26 26 0 0 1 49.49 28.39" fill="none" stroke="#934545" stroke-width="6" stroke-linecap="round"/>
+                  <!-- Center Point -->
+                  <circle cx="54" cy="54" r="3.5" fill="#235B4E"/>
+                </svg>
+              </div>
+              <span>Cercle</span>
+            </div>
+            <div class="icon-box">
+              <div class="icon-frame squircle">
+                <svg viewBox="0 0 108 108">
+                  <rect width="108" height="108" fill="#FCFAF5"/>
+                  <path d="M 58.51 28.39 A 26 26 0 0 1 79.61 49.49" fill="none" stroke="#486D55" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 79.61 58.51 A 26 26 0 0 1 58.51 79.61" fill="none" stroke="#775F1D" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 49.49 79.61 A 26 26 0 0 1 28.39 58.51" fill="none" stroke="#5D587E" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 28.39 49.49 A 26 26 0 0 1 49.49 28.39" fill="none" stroke="#934545" stroke-width="6" stroke-linecap="round"/>
+                  <circle cx="54" cy="54" r="3.5" fill="#235B4E"/>
+                </svg>
+              </div>
+              <span>Squircle</span>
+            </div>
           </div>
-          <span>Cercle</span>
         </div>
-        <div class="icon-box">
-          <div class="icon-frame squircle">
-            <svg viewBox="0 0 108 108">
-              <rect width="108" height="108" fill="#F7F4ED"/>
-              <path d="M51,26 A28,28 0 0,0 51,82 Z" fill="none" stroke="#235B4E" stroke-width="5" stroke-linejoin="round"/>
-              <path d="M57,26 A28,28 0 0,1 57,82 Z" fill="none" stroke="#5D587E" stroke-width="5" stroke-linejoin="round"/>
-            </svg>
+
+        <!-- Rendu Monochrome -->
+        <div class="preview-section">
+          <div class="preview-section-title">Monochrome Evergreen</div>
+          <div class="preview-row">
+            <div class="icon-box">
+              <div class="icon-frame circle">
+                <svg viewBox="0 0 108 108">
+                  <rect width="108" height="108" fill="#FCFAF5"/>
+                  <path d="M 58.51 28.39 A 26 26 0 0 1 79.61 49.49" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 79.61 58.51 A 26 26 0 0 1 58.51 79.61" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 49.49 79.61 A 26 26 0 0 1 28.39 58.51" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 28.39 49.49 A 26 26 0 0 1 49.49 28.39" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+                  <circle cx="54" cy="54" r="3.5" fill="#235B4E"/>
+                </svg>
+              </div>
+              <span>Cercle</span>
+            </div>
+            <div class="icon-box">
+              <div class="icon-frame squircle">
+                <svg viewBox="0 0 108 108">
+                  <rect width="108" height="108" fill="#FCFAF5"/>
+                  <path d="M 58.51 28.39 A 26 26 0 0 1 79.61 49.49" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 79.61 58.51 A 26 26 0 0 1 58.51 79.61" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 49.49 79.61 A 26 26 0 0 1 28.39 58.51" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 28.39 49.49 A 26 26 0 0 1 49.49 28.39" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+                  <circle cx="54" cy="54" r="3.5" fill="#235B4E"/>
+                </svg>
+              </div>
+              <span>Squircle</span>
+            </div>
           </div>
-          <span>Squircle</span>
         </div>
+
       </div>
 
       <div class="description">
-        Les demi-cercles incluent leur ligne droite verticale (diamètre), formant deux silhouettes en "D" dos-à-dos ou face-à-face.
+        <strong>Caractéristiques :</strong>
+        <ul>
+          <li>Les 4 arcs se détachent clairement comme des modules distincts en sustentation.</li>
+          <li>Excellente lisibilité et sensation d'espace et d'ouverture.</li>
+        </ul>
       </div>
     </div>
 
-    <!-- Option 3C -->
+    <!-- Variante 3C: Pôles Cardinaux (Orientation Boussole) -->
     <div class="card">
-      <h2>Option 3C : Demi-cercles Décalés Verticalement (Équilibre dynamique)</h2>
-      <div class="subtitle">Un demi-cercle relevé et un demi-cercle abaissé</div>
+      <div>
+        <span class="card-badge">Variante 3C</span>
+        <h2>Pôles Cardinaux (Orientation Boussole / Haut-Bas-Gauche-Droite)</h2>
+        <div class="subtitle">Les 4 arcs sont centrés sur les pôles cardinaux avec des césures à 45° sur les diagonales.</div>
 
-      <div class="preview-row">
-        <div class="icon-box">
-          <div class="icon-frame circle">
-            <svg viewBox="0 0 108 108">
-              <rect width="108" height="108" fill="#F7F4ED"/>
-              <!-- Left Semicircle shifted UP -->
-              <path d="M52,20 A26,26 0 0,0 52,72" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
-              <!-- Right Semicircle shifted DOWN -->
-              <path d="M56,36 A26,26 0 0,1 56,88" fill="none" stroke="#5D587E" stroke-width="6" stroke-linecap="round"/>
-            </svg>
+        <!-- Rendu Multicolore -->
+        <div class="preview-section">
+          <div class="preview-section-title">Couleurs des 4 Phases</div>
+          <div class="preview-row">
+            <div class="icon-box">
+              <div class="icon-frame circle">
+                <svg viewBox="0 0 108 108">
+                  <rect width="108" height="108" fill="#FCFAF5"/>
+                  <!-- Top Arc: Follicular Moss (Centered at top) -->
+                  <path d="M 39.09 32.70 A 26 26 0 0 1 68.91 32.70" fill="none" stroke="#486D55" stroke-width="6" stroke-linecap="round"/>
+                  <!-- Right Arc: Ovulatory Ochre -->
+                  <path d="M 75.30 39.09 A 26 26 0 0 1 75.30 68.91" fill="none" stroke="#775F1D" stroke-width="6" stroke-linecap="round"/>
+                  <!-- Bottom Arc: Luteal Indigo -->
+                  <path d="M 68.91 75.30 A 26 26 0 0 1 39.09 75.30" fill="none" stroke="#5D587E" stroke-width="6" stroke-linecap="round"/>
+                  <!-- Left Arc: Menstrual Rust -->
+                  <path d="M 32.70 68.91 A 26 26 0 0 1 32.70 39.09" fill="none" stroke="#934545" stroke-width="6" stroke-linecap="round"/>
+                  <!-- Center Point -->
+                  <circle cx="54" cy="54" r="3.5" fill="#235B4E"/>
+                </svg>
+              </div>
+              <span>Cercle</span>
+            </div>
+            <div class="icon-box">
+              <div class="icon-frame squircle">
+                <svg viewBox="0 0 108 108">
+                  <rect width="108" height="108" fill="#FCFAF5"/>
+                  <path d="M 39.09 32.70 A 26 26 0 0 1 68.91 32.70" fill="none" stroke="#486D55" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 75.30 39.09 A 26 26 0 0 1 75.30 68.91" fill="none" stroke="#775F1D" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 68.91 75.30 A 26 26 0 0 1 39.09 75.30" fill="none" stroke="#5D587E" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 32.70 68.91 A 26 26 0 0 1 32.70 39.09" fill="none" stroke="#934545" stroke-width="6" stroke-linecap="round"/>
+                  <circle cx="54" cy="54" r="3.5" fill="#235B4E"/>
+                </svg>
+              </div>
+              <span>Squircle</span>
+            </div>
           </div>
-          <span>Cercle</span>
         </div>
-        <div class="icon-box">
-          <div class="icon-frame squircle">
-            <svg viewBox="0 0 108 108">
-              <rect width="108" height="108" fill="#F7F4ED"/>
-              <path d="M52,20 A26,26 0 0,0 52,72" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
-              <path d="M56,36 A26,26 0 0,1 56,88" fill="none" stroke="#5D587E" stroke-width="6" stroke-linecap="round"/>
-            </svg>
+
+        <!-- Rendu Monochrome -->
+        <div class="preview-section">
+          <div class="preview-section-title">Monochrome Evergreen</div>
+          <div class="preview-row">
+            <div class="icon-box">
+              <div class="icon-frame circle">
+                <svg viewBox="0 0 108 108">
+                  <rect width="108" height="108" fill="#FCFAF5"/>
+                  <path d="M 39.09 32.70 A 26 26 0 0 1 68.91 32.70" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 75.30 39.09 A 26 26 0 0 1 75.30 68.91" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 68.91 75.30 A 26 26 0 0 1 39.09 75.30" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 32.70 68.91 A 26 26 0 0 1 32.70 39.09" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+                  <circle cx="54" cy="54" r="3.5" fill="#235B4E"/>
+                </svg>
+              </div>
+              <span>Cercle</span>
+            </div>
+            <div class="icon-box">
+              <div class="icon-frame squircle">
+                <svg viewBox="0 0 108 108">
+                  <rect width="108" height="108" fill="#FCFAF5"/>
+                  <path d="M 39.09 32.70 A 26 26 0 0 1 68.91 32.70" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 75.30 39.09 A 26 26 0 0 1 75.30 68.91" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 68.91 75.30 A 26 26 0 0 1 39.09 75.30" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+                  <path d="M 32.70 68.91 A 26 26 0 0 1 32.70 39.09" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
+                  <circle cx="54" cy="54" r="3.5" fill="#235B4E"/>
+                </svg>
+              </div>
+              <span>Squircle</span>
+            </div>
           </div>
-          <span>Squircle</span>
         </div>
+
       </div>
 
       <div class="description">
-        Les deux demi-cercles de 180° glissent le long de l'axe central pour créer un mouvement cyclique.
-      </div>
-    </div>
-
-    <!-- Option 3D -->
-    <div class="card">
-      <h2>Option 3D : Demi-cercle Unique + Diamètre (Instrument Minimal)</h2>
-      <div class="subtitle">Un demi-cercle supérieur et inférieur formant une boussole / cadran</div>
-
-      <div class="preview-row">
-        <div class="icon-box">
-          <div class="icon-frame circle">
-            <svg viewBox="0 0 108 108">
-              <rect width="108" height="108" fill="#F7F4ED"/>
-              <!-- Top Semicircle -->
-              <path d="M26,54 A28,28 0 0,1 82,54" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
-              <!-- Horizontal axis line -->
-              <line x1="22" y1="54" x2="86" y2="54" stroke="#EDE9DF" stroke-width="3" stroke-linecap="round"/>
-              <!-- Bottom Semicircle -->
-              <path d="M26,54 A28,28 0 0,0 82,54" fill="none" stroke="#5D587E" stroke-width="6" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <span>Cercle</span>
-        </div>
-        <div class="icon-box">
-          <div class="icon-frame squircle">
-            <svg viewBox="0 0 108 108">
-              <rect width="108" height="108" fill="#F7F4ED"/>
-              <path d="M26,54 A28,28 0 0,1 82,54" fill="none" stroke="#235B4E" stroke-width="6" stroke-linecap="round"/>
-              <line x1="22" y1="54" x2="86" y2="54" stroke="#EDE9DF" stroke-width="3" stroke-linecap="round"/>
-              <path d="M26,54 A28,28 0 0,0 82,54" fill="none" stroke="#5D587E" stroke-width="6" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <span>Squircle</span>
-        </div>
-      </div>
-
-      <div class="description">
-        Demi-cercle supérieur (Evergreen) et inférieur (Indigo) séparés par une ligne d'horizon.
+        <strong>Caractéristiques :</strong>
+        <ul>
+          <li>L'arc supérieur coiffe le sommet, l'arc inférieur assoit la base, et les arcs latéraux équilibrent l'ensemble.</li>
+          <li>Évoque une boussole de précision, avec une stabilité axiale naturelle (Haut/Bas/Gauche/Droite).</li>
+        </ul>
       </div>
     </div>
 
