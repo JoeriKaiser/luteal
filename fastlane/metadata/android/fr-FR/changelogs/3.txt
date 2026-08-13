@@ -1,0 +1,1 @@
+Améliorations de la synchronisation chiffrée et des widgets responsifs. Conseils quotidiens sourcés et corrections de stabilité.
