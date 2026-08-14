@@ -95,6 +95,12 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    dependenciesInfo {
+        // Disables Google Play dependency metadata in the APK signing block.
+        // F-Droid scanner rejects APKs containing this extra block.
+        includeInApk = false
+        includeInBundle = false
+    }
 
     // Generated folicular API contract DTOs (see docs/architecture/BACKEND_INTEGRATION.md).
     // The spec is vendored at contract/openapi.yaml; override the path with
