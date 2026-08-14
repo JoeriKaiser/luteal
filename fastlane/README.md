@@ -18,28 +18,28 @@ fastlane/metadata/android/<locale>/
 language; English is carried so the listing is readable on the default
 F-Droid index.
 
-## Screenshots are still missing
+## Screenshots
 
-`images/phoneScreenshots/` is empty in both locales. F-Droid asks for at least
-two, and a listing without them looks abandoned. Capture them from a real
-device or emulator running the release build:
+`images/phoneScreenshots/` contains phone screenshots (`1_today.png` through
+`4_duo.png`) for both `en-US` and `fr-FR`, captured in portrait (1080x2410).
+
+To refresh them from a real device or emulator running the release build:
 
 ```sh
 ./gradlew installRelease
-adb shell screencap -p /sdcard/1.png
-adb pull /sdcard/1.png fastlane/metadata/android/en-US/images/phoneScreenshots/1.png
+adb shell screencap -p /sdcard/1_today.png
+adb pull /sdcard/1_today.png fastlane/metadata/android/en-US/images/phoneScreenshots/1_today.png
 ```
 
-Worth showing, in this order: the Today screen with a cycle under way and an
-estimate range visible; the daily observation editor; the journal with a few
-days filled in; the Duo sharing toggles.
+The current set shows:
+1. The Today screen with a cycle under way and an estimate range visible (`1_today.png`)
+2. The daily observation editor (`2_observations.png`)
+3. The journal month calendar grid (`3_journal.png`)
+4. The Duo sharing toggles (`4_duo.png`)
 
-Use demo data rather than real tracking history - Settings has a generator in
-debug builds. Screenshots are published, and a screenshot of your own cycle is
-not something to hand to a public repository.
-
-Take the French set with the device language set to French, and the English
-set with it set to English.
+Always use demo data rather than real tracking history when capturing screenshots.
+Take the French set with the device language set to French, and the English set
+with it set to English.
 
 ## Regenerating the icon
 

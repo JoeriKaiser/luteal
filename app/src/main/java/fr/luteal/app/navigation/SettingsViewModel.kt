@@ -31,11 +31,15 @@ import fr.luteal.core.data.LocalDataPurgeManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+import androidx.annotation.StringRes
+import fr.luteal.app.R
+
 /**
- * Drives the Settings sync controls. Sync itself runs in a background
- * WorkManager worker; this only flips [SyncMode], edits the base URL
- * (debug-only local trial), enqueues a sync, and observes the outcome. The
- * rest of the app keeps observing Room and never waits on this.
+ * Settings tab view model.
+ *
+ * Connects the UI to [UserRepository] for local configuration, [SyncDataStore]
+ * and [SyncScheduler] for online sync, [DataExportManager] for JSON backups,
+ * and [LocalDataPurgeManager] for local data wiping.
  */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -53,11 +57,7 @@ class SettingsViewModel @Inject constructor(
     /** Local edit buffer for the base URL field, kept out of the DataStore. */
     private val baseUrlDraft = MutableStateFlow("")
 
-    /** Local edit buffer for the invite code field, kept out of the DataStore. */
-    private val inviteCodeDraft = MutableStateFlow("")
-
     private val testDataActionState = MutableStateFlow<TestDataActionState>(TestDataActionState.Idle)
-
     /** Account-code recovery buffers. Declared before [uiState] so the
      *  initializer below can observe them. */
     private val recoveryCodeDraft = MutableStateFlow("")
@@ -68,10 +68,9 @@ class SettingsViewModel @Inject constructor(
 
     /** Drafts folded into one flow: `combine` takes at most five. */
     private val drafts: Flow<Drafts> =
-        combine(baseUrlDraft, inviteCodeDraft, recoveryCodeDraft, exportState, wipeState) { base, invite, recovery, export, wipe ->
-            Drafts(base, invite, recovery, export, wipe)
+        combine(baseUrlDraft, recoveryCodeDraft, exportState, wipeState) { base, recovery, export, wipe ->
+            Drafts(base, recovery, export, wipe)
         }
-
     val uiState: StateFlow<SettingsSyncUiState> = combine(
         userRepository.getUserPreferences(),
         syncDataStore.syncPreferencesFlow,
@@ -83,8 +82,6 @@ class SettingsViewModel @Inject constructor(
             onlineSyncEnabled = preferences.syncMode == SyncMode.ONLINE_CLOUD.name,
             baseUrlDraft = draft.baseUrl,
             storedBaseUrl = syncPreferences.baseUrl.orEmpty(),
-            inviteCodeDraft = draft.inviteCode,
-            storedInviteCode = syncPreferences.inviteCode.orEmpty(),
             inProgress = syncPreferences.inProgress,
             lastSyncedEpochMillis = syncPreferences.lastSyncedEpochMillis,
             lastError = syncPreferences.lastError,
@@ -127,16 +124,10 @@ class SettingsViewModel @Inject constructor(
         baseUrlDraft.update { value }
     }
 
-    fun onInviteCodeChange(value: String) {
-        inviteCodeDraft.update { value }
-    }
-
-    /** Persists the invite code (all builds) and the dev base URL. */
+    /** Persists the custom sync server base URL. */
     fun saveSyncSettings() {
-        val invite = inviteCodeDraft.value.trim()
         val base = baseUrlDraft.value.trim()
         viewModelScope.launch {
-            syncDataStore.setInviteCode(invite.ifBlank { null })
             syncDataStore.setBaseUrl(base.ifBlank { null })
         }
     }
@@ -153,7 +144,10 @@ class SettingsViewModel @Inject constructor(
             }.onSuccess {
                 testDataActionState.value = TestDataActionState.SuccessSeeded
             }.onFailure {
-                testDataActionState.value = TestDataActionState.Error(it.message ?: "Error seeding data")
+                testDataActionState.value = TestDataActionState.Error(
+                    message = it.message,
+                    messageResId = if (it.message.isNullOrBlank()) R.string.settings_test_data_error_seed else null
+                )
             }
         }
     }
@@ -166,7 +160,10 @@ class SettingsViewModel @Inject constructor(
             }.onSuccess {
                 testDataActionState.value = TestDataActionState.SuccessCleared
             }.onFailure {
-                testDataActionState.value = TestDataActionState.Error(it.message ?: "Error clearing data")
+                testDataActionState.value = TestDataActionState.Error(
+                    message = it.message,
+                    messageResId = if (it.message.isNullOrBlank()) R.string.settings_test_data_error_clear else null
+                )
             }
         }
     }
@@ -195,7 +192,7 @@ class SettingsViewModel @Inject constructor(
         val code = recoveryCodeDraft.value.trim()
         if (code.isBlank()) return
         if (credentialStore.load() != null) {
-            recoveryState.value = RecoveryState.Error(RECOVERY_ALREADY_LINKED)
+            recoveryState.value = RecoveryState.Error(messageResId = R.string.settings_recovery_error_already_linked)
             return
         }
         viewModelScope.launch {
@@ -218,7 +215,10 @@ class SettingsViewModel @Inject constructor(
                 recoveryCodeDraft.value = ""
                 syncScheduler.syncNow()
             }.onFailure { err ->
-                recoveryState.value = RecoveryState.Error(err.message ?: RECOVERY_FAILED)
+                recoveryState.value = RecoveryState.Error(
+                    message = err.message,
+                    messageResId = if (err.message.isNullOrBlank()) R.string.settings_recovery_error_failed else null
+                )
             }
         }
     }
@@ -267,17 +267,11 @@ class SettingsViewModel @Inject constructor(
     }
 }
 
-/** Copy shown when the device already belongs to an account. */
-const val RECOVERY_ALREADY_LINKED =
-    "Cet appareil est déjà relié à un compte. Effacez les données locales avant de restaurer un autre compte."
-
-const val RECOVERY_FAILED = "La restauration a échoué."
-
 sealed interface RecoveryState {
     data object Idle : RecoveryState
     data object Loading : RecoveryState
     data object Success : RecoveryState
-    data class Error(val message: String) : RecoveryState
+    data class Error(val message: String? = null, @param:StringRes val messageResId: Int? = null) : RecoveryState
 }
 
 sealed interface DataExportState {
@@ -298,8 +292,6 @@ data class SettingsSyncUiState(
     val onlineSyncEnabled: Boolean = false,
     val baseUrlDraft: String = "",
     val storedBaseUrl: String = "",
-    val inviteCodeDraft: String = "",
-    val storedInviteCode: String = "",
     val inProgress: Boolean = false,
     val lastSyncedEpochMillis: Long? = null,
     val lastError: String? = null,
@@ -319,7 +311,6 @@ data class SettingsSyncUiState(
 /** Text drafts held together so [combine] stays within its five-flow limit. */
 private data class Drafts(
     val baseUrl: String,
-    val inviteCode: String,
     val recoveryCode: String,
     val exportState: DataExportState,
     val wipeState: DataWipeState
@@ -330,5 +321,5 @@ sealed interface TestDataActionState {
     data object Loading : TestDataActionState
     data object SuccessSeeded : TestDataActionState
     data object SuccessCleared : TestDataActionState
-    data class Error(val message: String) : TestDataActionState
+    data class Error(val message: String? = null, @param:StringRes val messageResId: Int? = null) : TestDataActionState
 }

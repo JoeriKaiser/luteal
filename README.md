@@ -57,9 +57,8 @@ build is left unsigned rather than falling back to the debug key.
 
 Sync talks to [folicular](https://github.com/JoeriKaiser/folicular), a Go
 service. It is optional: the app is fully usable without it. The server address
-is set by `BuildConfig.SYNC_BASE_URL`, and account registration is currently
-invitation-only.
-
+defaults to the official Luteal service (`BuildConfig.SYNC_BASE_URL`) and can be
+pointed to any self-hosted folicular instance in Settings.
 ## Licence
 
 GNU General Public License v3.0 or later. See [LICENSE](LICENSE).

@@ -82,7 +82,7 @@ class E2eRoundTripTest {
         val sealer = RecordSealer(store)
 
         // 1. Register an anonymous account.
-        val registration = client.register("e2e-trial", "")
+        val registration = client.register("e2e-trial")
         store.save(
             SyncCredentials(
                 accountId = registration.account.id.toString(),
@@ -136,7 +136,7 @@ class E2eRoundTripTest {
             // Device one writes a sealed record.
             val storeA = MutableCredentialStore()
             val sealerA = RecordSealer(storeA)
-            val registration = client.register("e2e-device-a", "")
+            val registration = client.register("e2e-device-a")
             storeA.save(
                 SyncCredentials(
                     accountId = registration.account.id.toString(),

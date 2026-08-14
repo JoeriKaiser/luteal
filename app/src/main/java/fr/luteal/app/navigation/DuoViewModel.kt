@@ -25,17 +25,20 @@ import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.util.Base64
+import androidx.annotation.StringRes
+import fr.luteal.app.R
 import fr.luteal.core.network.contract.models.DuoLink
 import fr.luteal.core.network.contract.models.DuoView
 import fr.luteal.core.network.contract.models.GrantField
 import fr.luteal.core.network.contract.models.Invitation
 import fr.luteal.core.network.contract.models.SupportKind
-import javax.inject.Inject
+import fr.luteal.core.network.contract.models.SupportRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @HiltViewModel
 class DuoViewModel @Inject constructor(
@@ -237,7 +240,7 @@ class DuoViewModel @Inject constructor(
     fun acceptInvitation(pairingLink: String) {
         val pairing = runCatching { DuoCrypto.parsePairing(pairingLink) }.getOrNull()
         if (pairing == null) {
-            _uiState.update { it.copy(error = INVALID_PAIRING_LINK, isLoading = false) }
+            _uiState.update { it.copy(error = null, errorResId = R.string.duo_error_invalid_pairing_link, isLoading = false) }
             return
         }
         viewModelScope.launch {
@@ -261,8 +264,6 @@ class DuoViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { duoRepository.patchGrants(linkId, field, granted) }
                 .onSuccess {
-                    grantsConfirmed = true
-                    // Apply the change before republishing: the sealed
                     // projection must reflect the new grant immediately (a
                     // republish against the stale map would keep revoked
                     // fields flowing and delay newly granted ones).
@@ -305,7 +306,7 @@ class DuoViewModel @Inject constructor(
             ?: return
         val key = duoKeyStore.load(linkId)
         if (key == null) {
-            _uiState.update { it.copy(error = INVALID_PAIRING_LINK) }
+            _uiState.update { it.copy(error = null, errorResId = R.string.duo_error_invalid_pairing_link) }
             return
         }
         viewModelScope.launch {
@@ -340,7 +341,7 @@ class DuoViewModel @Inject constructor(
     }
 
     fun clearError() {
-        _uiState.update { it.copy(error = null) }
+        _uiState.update { it.copy(error = null, errorResId = null) }
     }
 
 
@@ -440,10 +441,6 @@ class DuoViewModel @Inject constructor(
     }
 }
 
-/** Shown when a pasted pairing link carries no key fragment. */
-const val INVALID_PAIRING_LINK =
-    "Lien de partage incomplet : utilisez le lien complet fourni par votre partenaire."
-
 enum class DuoPhase {
     NoAccount,
     NoLink,
@@ -456,6 +453,7 @@ data class DuoUiState(
     val phase: DuoPhase = DuoPhase.NoAccount,
     val isLoading: Boolean = false,
     val error: String? = null,
+    @param:StringRes val errorResId: Int? = null,
     val invitation: Invitation? = null,
     val duoView: DuoView? = null,
     /** Decrypted projection; null when absent or the link key is missing. */

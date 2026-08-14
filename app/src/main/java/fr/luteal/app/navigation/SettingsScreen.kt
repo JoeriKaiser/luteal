@@ -128,7 +128,6 @@ fun SettingsScreen(
         SyncCard(
             state = syncState,
             onToggleOnline = viewModel::setOnlineSyncEnabled,
-            onInviteCodeChange = viewModel::onInviteCodeChange,
             onBaseUrlChange = viewModel::onBaseUrlChange,
             onSave = viewModel::saveSyncSettings,
             onSyncNow = viewModel::syncNow,
@@ -386,11 +385,14 @@ private fun TestDataCard(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    is TestDataActionState.Error -> Text(
-                        text = stringResource(R.string.settings_test_data_error, state.message),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error
-                    )
+                    is TestDataActionState.Error -> {
+                        val errorMsg = state.messageResId?.let { stringResource(it) } ?: state.message.orEmpty()
+                        Text(
+                            text = stringResource(R.string.settings_test_data_error, errorMsg),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                     else -> { /* Idle or Loading: no message */ }
                 }
             }
@@ -421,12 +423,10 @@ private fun TestDataCard(
         )
     }
 }
-
 @Composable
 private fun SyncCard(
     state: SettingsSyncUiState,
     onToggleOnline: (Boolean) -> Unit,
-    onInviteCodeChange: (String) -> Unit,
     onBaseUrlChange: (String) -> Unit,
     onSave: () -> Unit,
     onSyncNow: () -> Unit,
@@ -447,7 +447,7 @@ private fun SyncCard(
                 )
 
                 // Stated before the toggle: enabling sync is the moment data
-                // leaves the device, and it is not end-to-end encrypted.
+                // leaves the device.
                 Text(
                     text = stringResource(R.string.sync_transport_notice),
                     style = MaterialTheme.typography.bodySmall,
@@ -462,46 +462,26 @@ private fun SyncCard(
                 if (state.onlineSyncEnabled) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-                    // Invite code: required to create an account when the
-                    // server gates registration (closed rollout).
                     Text(
-                        text = stringResource(R.string.settings_sync_invite_body),
+                        text = stringResource(R.string.settings_sync_server_body),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+
                     OutlinedTextField(
-                        value = state.inviteCodeDraft,
-                        onValueChange = onInviteCodeChange,
-                        label = { Text(stringResource(R.string.settings_sync_invite_label)) },
+                        value = state.baseUrlDraft,
+                        onValueChange = onBaseUrlChange,
+                        label = { Text(stringResource(R.string.settings_sync_base_url_label)) },
+                        placeholder = { Text(BuildConfig.SYNC_BASE_URL) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    // Local-trial server address: debug/dev only. The release
-                    // build syncs against the production API (BuildConfig) and
-                    // does not expose a cleartext URL editor.
-                    if (BuildConfig.DEBUG) {
-                        Text(
-                            text = stringResource(R.string.settings_sync_trial_body),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        OutlinedTextField(
-                            value = state.baseUrlDraft,
-                            onValueChange = onBaseUrlChange,
-                            label = { Text(stringResource(R.string.settings_sync_base_url_label)) },
-                            placeholder = { Text(stringResource(R.string.settings_sync_base_url_default)) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        Text(
-                            text = "${stringResource(R.string.settings_sync_base_url_label)} : ${state.storedBaseUrl.ifBlank { stringResource(R.string.settings_sync_base_url_default) }}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text(
+                        text = "${stringResource(R.string.settings_sync_base_url_label)} : ${state.storedBaseUrl.ifBlank { BuildConfig.SYNC_BASE_URL }}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -648,8 +628,9 @@ private fun AccountRecoverySection(
             is RecoveryState.Error -> Column(
                 verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)
             ) {
+                val errorMsg = recovery.messageResId?.let { stringResource(it) } ?: recovery.message.orEmpty()
                 Text(
-                    text = recovery.message,
+                    text = errorMsg,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )
@@ -809,7 +790,7 @@ private fun DataManagementCard(
                     verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)
                 ) {
                     Text(
-                        text = stringResource(R.string.settings_export_error),
+                        text = stringResource(R.string.settings_wipe_error),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )

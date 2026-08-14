@@ -101,7 +101,8 @@ fun DuoScreen(
             CircularProgressIndicator(modifier = Modifier.padding(LutealSpacing.sm))
         }
 
-        state.error?.let { error ->
+        val errorMessage = state.errorResId?.let { stringResource(it) } ?: state.error
+        errorMessage?.let { error ->
             LutealCard(modifier = Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
                     Text(

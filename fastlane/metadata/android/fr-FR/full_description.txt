@@ -28,7 +28,7 @@ SYNCHRONISATION OPTIONNELLE
 
 La synchronisation entre vos appareils est désactivée par défaut. Une fois activée, vos enregistrements sont chiffrés de bout en bout sur votre appareil avant tout envoi : le serveur ne conserve que des données illisibles pour lui. Votre code de compte est la seule clé ; le perdre signifie que personne, pas même le développeur, ne peut récupérer les données synchronisées.
 
-Le serveur de synchronisation est pour l'instant accessible sur invitation : un code est nécessaire pour créer un compte. L'application reste entièrement utilisable hors-ligne sans code.
+L’application se connecte par défaut au service de synchronisation Luteal, et vous pouvez également configurer votre propre serveur folicular auto-hébergé. L’application reste entièrement utilisable hors-ligne sans synchronisation.
 
 AUCUN PISTAGE
 

@@ -242,6 +242,7 @@
     <string name="duo_preview_energy">Énergie partagée : %1$d sur 5</string>
     <string name="duo_preview_support_ready">Demandes de soutien que vous formulez</string>
     <string name="duo_preview_local_label">Aperçu local</string>
+    <string name="duo_error_invalid_pairing_link">Lien de partage incomplet : utilisez le lien complet fourni par votre partenaire.</string>
     <string name="duo_private_notes_never_shared">Les notes privées ne sont jamais incluses dans le partage Duo.</string>
 
     <string name="settings_title">Réglages</string>
@@ -257,8 +258,7 @@
     <string name="sync_transport_notice">Vos observations sont chiffrées de bout en bout sur cet appareil avant tout envoi : le serveur ne conserve que des données illisibles pour lui. Il voit malgré tout la date de vos synchronisations et le nombre d’enregistrements. Votre code de compte est la seule clé : sans lui, personne ne peut déchiffrer vos données, y compris nous.</string>
     <string name="settings_sync_online_title">Mode en ligne</string>
     <string name="settings_sync_online_body">Active la synchronisation avec le serveur Luteal. Désactivée par défaut.</string>
-    <string name="settings_sync_invite_label">Code d’invitation</string>
-    <string name="settings_sync_invite_body">La synchronisation est accessible sur invitation. Saisissez le code qui vous a été transmis pour créer votre compte.</string>
+    <string name="settings_sync_server_body">Par défaut, la synchronisation utilise le serveur officiel Luteal. Vous pouvez également renseigner l’adresse de votre propre instance folicular auto-hébergée.</string>
     <string name="settings_sync_base_url_label">Adresse du serveur</string>
     <string name="settings_sync_base_url_default">http://10.0.2.2:8080</string>
     <string name="settings_sync_save">Enregistrer</string>
@@ -276,6 +276,8 @@
     <string name="settings_recovery_action">Restaurer ce compte</string>
     <string name="settings_recovery_in_progress">Restauration en cours…</string>
     <string name="settings_recovery_success">Compte restauré. La synchronisation va récupérer votre historique.</string>
+    <string name="settings_recovery_error_already_linked">Cet appareil est déjà relié à un compte. Effacez les données locales avant de restaurer un autre compte.</string>
+    <string name="settings_recovery_error_failed">La restauration a échoué. Vérifiez le code de compte et votre connexion.</string>
     <string name="settings_sync_last_success">Dernière synchronisation : %1$s</string>
     <string name="settings_sync_last_error">Échec de la synchronisation : %1$s</string>
     <string name="settings_appearance_title">Apparence</string>
@@ -491,6 +493,9 @@
     <string name="settings_export_in_progress">Exportation en cours…</string>
     <string name="settings_export_success">Données exportées avec succès.</string>
     <string name="settings_export_error">L’exportation a échoué. Veuillez réessayer.</string>
+    <string name="settings_wipe_error">L’effacement des données a échoué. Veuillez réessayer.</string>
+    <string name="settings_test_data_error_seed">Erreur lors de la génération des données de test.</string>
+    <string name="settings_test_data_error_clear">Erreur lors de la suppression des données de test.</string>
     <string name="settings_wipe_title">Effacer toutes les données locales</string>
     <string name="settings_wipe_body">Supprime immédiatement l’intégralité de vos observations, cycles, paramètres et clés de chiffrement de cet appareil.</string>
     <string name="settings_wipe_action">Effacer les données locales</string>

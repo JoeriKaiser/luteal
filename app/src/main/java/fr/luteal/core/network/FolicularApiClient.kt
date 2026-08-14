@@ -22,10 +22,9 @@ interface FolicularApiClient {
 
     /**
      * POST /v1/auth/register - create an anonymous account + first device.
-     * [inviteCode] is required when the server gates registration (closed
-     * rollout); pass an empty string when registration is open.
+     * [inviteCode] is optional; pass null or omit when registration is open.
      */
-    suspend fun register(deviceName: String, inviteCode: String): Register201Response
+    suspend fun register(deviceName: String, inviteCode: String? = null): Register201Response
 
     /**
      * POST /v1/auth/devices - attach this device to an EXISTING account using

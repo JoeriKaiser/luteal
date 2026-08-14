@@ -124,7 +124,6 @@ class FakeCredentialStore(var credentials: SyncCredentials? = null) : SyncCreden
 class FakeCursorStore(
     private var cursor: Long = 0L,
     private val baseUrl: String = "http://test.local:8080",
-    private val inviteCode: String = "",
     private val deviceLabel: String = "test-device"
 ) : SyncCursorStore {
     override suspend fun getCursor(): Long = cursor
@@ -133,7 +132,6 @@ class FakeCursorStore(
     }
 
     override suspend fun getBaseUrl(): String = baseUrl
-    override suspend fun getInviteCode(): String = inviteCode
     override suspend fun getDeviceLabel(): String = deviceLabel
 }
 
@@ -151,9 +149,9 @@ class FakeApiClient : FolicularApiClient {
     val pushCalls = mutableListOf<List<PushChangeWire>>()
     val pullSinceValues = mutableListOf<Long>()
 
-    override suspend fun register(deviceName: String, inviteCode: String): Register201Response {
+    override suspend fun register(deviceName: String, inviteCode: String?): Register201Response {
         registerCalls++
-        registerInviteCodes += inviteCode
+        if (inviteCode != null) registerInviteCodes += inviteCode
         return registerResponse
     }
 

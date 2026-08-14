@@ -61,9 +61,6 @@ interface SyncCursorStore {
     suspend fun setCursor(cursor: Long)
     suspend fun getBaseUrl(): String
 
-    /** Invite code for gated registration (closed rollout); empty when open. */
-    suspend fun getInviteCode(): String
-
     /**
      * Stable, non-identifying label for this device, generated once and
      * persisted. Deliberately not the hardware model: see
@@ -138,7 +135,7 @@ class CycleSyncEngine(
 
     private suspend fun ensureRegistered(client: FolicularApiClient): Pair<SyncCredentials, Boolean> {
         credentialStore.load()?.let { return it to false }
-        val response = client.register(cursorStore.getDeviceLabel(), cursorStore.getInviteCode())
+        val response = client.register(cursorStore.getDeviceLabel())
         val credentials = SyncCredentials(
             accountId = response.account.id.toString(),
             accountCode = response.account.code,

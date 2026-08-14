@@ -39,10 +39,10 @@ class OkHttpFolicularApiClient(
         val EMPTY_BODY = "".toRequestBody(null)
     }
 
-    override suspend fun register(deviceName: String, inviteCode: String): Register201Response = withContext(Dispatchers.IO) {
+    override suspend fun register(deviceName: String, inviteCode: String?): Register201Response = withContext(Dispatchers.IO) {
         val body = ContractJson.encodeToString(
             RegisterRequest.serializer(),
-            RegisterRequest(deviceName = deviceName, inviteCode = inviteCode.ifBlank { null })
+            RegisterRequest(deviceName = deviceName, inviteCode = inviteCode?.ifBlank { null })
         )
         val request = Request.Builder()
             .url("$root/v1/auth/register")

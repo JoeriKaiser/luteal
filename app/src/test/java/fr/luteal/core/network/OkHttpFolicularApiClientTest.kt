@@ -41,7 +41,7 @@ class OkHttpFolicularApiClientTest {
             )
         )
 
-        val response = client.register("Pixel 9", "")
+        val response = client.register("Pixel 9")
 
         assertEquals("LTL-8K3FQ-Z2WNT-7HJMC-4XRDB", response.account.code)
         assertEquals("ltok_abc", response.device.token)

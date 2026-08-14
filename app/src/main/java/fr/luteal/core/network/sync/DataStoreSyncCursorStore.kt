@@ -23,9 +23,6 @@ class DataStoreSyncCursorStore(
     override suspend fun getBaseUrl(): String =
         syncDataStore.syncPreferencesFlow.first().baseUrl?.takeIf { it.isNotBlank() } ?: defaultBaseUrl
 
-    override suspend fun getInviteCode(): String =
-        syncDataStore.syncPreferencesFlow.first().inviteCode.orEmpty()
-
     override suspend fun getDeviceLabel(): String {
         syncDataStore.syncPreferencesFlow.first().deviceLabel
             ?.takeIf { it.isNotBlank() }

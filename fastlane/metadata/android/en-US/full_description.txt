@@ -28,7 +28,7 @@ OPTIONAL SYNC
 
 Sync across your devices is off by default. When enabled, your records are end-to-end encrypted on your device before upload: the server stores only ciphertext it cannot read. Your account code is the only key, and losing it means the synced data cannot be recovered by anyone, including the developer.
 
-The sync backend is currently invitation-only, so a code is needed to create an account. The app is fully usable offline without one.
+The app connects by default to the official Luteal sync service, and you can also connect to your own self-hosted folicular server. The app is fully usable offline without sync.
 
 NO TRACKING
 

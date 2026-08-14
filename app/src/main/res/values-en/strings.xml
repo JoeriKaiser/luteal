@@ -246,6 +246,7 @@
     <string name="duo_preview_energy">Shared energy: %1$d out of 5</string>
     <string name="duo_preview_support_ready">Support requests you make</string>
     <string name="duo_preview_local_label">Local preview</string>
+    <string name="duo_error_invalid_pairing_link">Incomplete sharing link: use the full link provided by your partner.</string>
     <string name="duo_private_notes_never_shared">Private notes are never included in Duo sharing.</string>
 
     <string name="settings_title">Settings</string>
@@ -261,8 +262,7 @@
     <string name="sync_transport_notice">Your observations are end-to-end encrypted on this device before anything is sent: the server only ever holds data it cannot read. It does still see when you sync and how many records you have. Your account code is the only key: without it nobody can decrypt your data, including us.</string>
     <string name="settings_sync_online_title">Online mode</string>
     <string name="settings_sync_online_body">Turns on sync with the Luteal server. Off by default.</string>
-    <string name="settings_sync_invite_label">Invitation code</string>
-    <string name="settings_sync_invite_body">Sync is invitation-only. Enter the code you were given to create your account.</string>
+    <string name="settings_sync_server_body">By default, sync connects to the official Luteal server. You can also enter the address of your own self-hosted folicular instance.</string>
     <string name="settings_sync_base_url_label">Server address</string>
     <string name="settings_sync_base_url_default">http://10.0.2.2:8080</string>
     <string name="settings_sync_save">Save</string>
@@ -280,6 +280,8 @@
     <string name="settings_recovery_action">Restore this account</string>
     <string name="settings_recovery_in_progress">Restoring…</string>
     <string name="settings_recovery_success">Account restored. Sync will now retrieve your history.</string>
+    <string name="settings_recovery_error_already_linked">This device is already linked to an account. Erase local data before restoring another account.</string>
+    <string name="settings_recovery_error_failed">Account restoration failed. Check your account code and connection.</string>
     <string name="settings_sync_last_success">Last sync: %1$s</string>
     <string name="settings_sync_last_error">Sync failed: %1$s</string>
     <string name="settings_appearance_title">Appearance</string>
@@ -493,6 +495,9 @@
     <string name="settings_export_in_progress">Export in progress…</string>
     <string name="settings_export_success">Data exported successfully.</string>
     <string name="settings_export_error">Export failed. Please try again.</string>
+    <string name="settings_wipe_error">Data wipe failed. Please try again.</string>
+    <string name="settings_test_data_error_seed">Error generating test data.</string>
+    <string name="settings_test_data_error_clear">Error clearing test data.</string>
     <string name="settings_wipe_title">Erase all local data</string>
     <string name="settings_wipe_body">Immediately deletes all your observations, cycles, settings, and encryption keys from this device.</string>
     <string name="settings_wipe_action">Erase local data</string>

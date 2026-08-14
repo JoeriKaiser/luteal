@@ -38,7 +38,7 @@ class LutealApp : Application(), Configuration.Provider {
                 resTheme = R.style.Theme_Luteal
             }
             mailSender {
-                mailTo = "crash@waldemar.site"
+                mailTo = "joeri.waldemar@gmail.com"
                 subject = "Rapport de plantage Luteal"
                 body = getString(R.string.crash_mail_body)
             }
