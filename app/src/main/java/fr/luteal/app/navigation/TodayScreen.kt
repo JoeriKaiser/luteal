@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.pluralStringResource
@@ -44,7 +45,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import fr.luteal.app.LutealUiState
 import fr.luteal.app.R
-import fr.luteal.core.common.FrenchDateFormatter
+import fr.luteal.core.common.LocalizedDateFormatter
 import fr.luteal.core.designsystem.component.CycleDayRing
 import fr.luteal.core.designsystem.component.LutealCard
 import fr.luteal.core.designsystem.component.LutealCardEmphasis
@@ -74,6 +75,7 @@ fun TodayScreen(
     onEditToday: () -> Unit,
     onBackfillCycle: () -> Unit
 ) {
+    val locale = LocalConfiguration.current.locales[0]
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -83,7 +85,7 @@ fun TodayScreen(
     ) {
         ScreenHeader(
             title = stringResource(R.string.today_title),
-            subtitle = FrenchDateFormatter.formatFullDate(state.today)
+            subtitle = LocalizedDateFormatter.formatFullDate(state.today, locale)
         )
 
         CycleHeroCard(state)
@@ -113,6 +115,7 @@ fun TodayScreen(
 @Composable
 private fun CycleHeroCard(state: LutealUiState) {
     val cycle = state.currentCycle
+    val locale = LocalConfiguration.current.locales[0]
     LutealCard(
         modifier = Modifier.fillMaxWidth(),
         emphasis = LutealCardEmphasis.HERO
@@ -156,7 +159,7 @@ private fun CycleHeroCard(state: LutealUiState) {
                 Text(
                     text = stringResource(
                         R.string.cycle_day_recorded_support,
-                        FrenchDateFormatter.formatShortDate(cycle.startDate)
+                        LocalizedDateFormatter.formatShortDate(cycle.startDate, locale)
                     ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -340,6 +343,7 @@ private fun TodayObservationCard(
 
 @Composable
 private fun EstimateSection(state: LutealUiState, onBackfillCycle: () -> Unit) {
+    val locale = LocalConfiguration.current.locales[0]
     LutealCard(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -404,8 +408,8 @@ private fun EstimateSection(state: LutealUiState, onBackfillCycle: () -> Unit) {
                 Text(
                     text = stringResource(
                         R.string.estimate_range,
-                        FrenchDateFormatter.formatShortDate(estimate.earliestDate),
-                        FrenchDateFormatter.formatShortDate(estimate.latestDate)
+                        LocalizedDateFormatter.formatShortDate(estimate.earliestDate, locale),
+                        LocalizedDateFormatter.formatShortDate(estimate.latestDate, locale)
                     ),
                     style = MaterialTheme.typography.titleLarge
                 )
@@ -439,7 +443,7 @@ private fun EstimateSection(state: LutealUiState, onBackfillCycle: () -> Unit) {
                     EstimateWindowTrack(
                         leadDays = daysUntil,
                         windowDays = windowDays,
-                        latestLabel = FrenchDateFormatter.formatShortDate(estimate.latestDate)
+                        latestLabel = LocalizedDateFormatter.formatShortDate(estimate.latestDate, locale)
                     )
                 }
 

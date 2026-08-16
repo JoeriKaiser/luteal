@@ -43,6 +43,25 @@ class MonthCalendarProjectionTest {
     }
 
     @Test
+    fun projectsStandardMonthWithSundayStart() {
+        val targetMonth = YearMonth.of(2026, 8) // August 2026: Aug 1 is Saturday
+        val today = LocalDate.of(2026, 8, 13)
+
+        val projection = MonthCalendarProjectionCalculator.project(
+            targetMonth = targetMonth,
+            today = today,
+            cycles = emptyList(),
+            entries = emptyList(),
+            estimateResult = CycleEstimateResult.NeedsMoreHistory,
+            firstDayOfWeek = DayOfWeek.SUNDAY
+        )
+
+        // With a Sunday start, the grid begins on Sunday July 26, 2026.
+        val firstDay = projection.weeks.first().first()
+        assertEquals(DayOfWeek.SUNDAY, firstDay.date.dayOfWeek)
+        assertEquals(LocalDate.of(2026, 7, 26), firstDay.date)
+    }
+    @Test
     fun projectsRecordedBleedingAndObservations() {
         val targetMonth = YearMonth.of(2026, 8)
         val today = LocalDate.of(2026, 8, 13)

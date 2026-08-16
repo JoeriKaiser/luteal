@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -39,7 +40,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.AnnotatedString
 import androidx.hilt.navigation.compose.hiltViewModel
 import fr.luteal.app.R
-import fr.luteal.core.common.FrenchDateFormatter
+import fr.luteal.core.common.LocalizedDateFormatter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import fr.luteal.core.designsystem.component.LutealCard
@@ -559,6 +560,7 @@ private fun PartnerActiveSection(
 @Composable
 private fun SharedProjectionList(state: DuoUiState) {
     val projection = state.projection
+    val locale = LocalConfiguration.current.locales[0]
 
     when {
         // The link key lives only on the paired devices. Without it the payload
@@ -584,8 +586,8 @@ private fun SharedProjectionList(state: DuoUiState) {
                     add(
                         stringResource(
                             R.string.duo_view_estimate,
-                            FrenchDateFormatter.formatShortDate(LocalDate.parse(it.windowStart)),
-                            FrenchDateFormatter.formatShortDate(LocalDate.parse(it.windowEnd))
+                            LocalizedDateFormatter.formatShortDate(LocalDate.parse(it.windowStart), locale),
+                            LocalizedDateFormatter.formatShortDate(LocalDate.parse(it.windowEnd), locale)
                         )
                     )
                 }
@@ -634,6 +636,7 @@ private fun SupportThreadSection(
     onSupportDraftChange: (String) -> Unit,
     isSendingSupport: Boolean
 ) {
+    val locale = LocalConfiguration.current.locales[0]
     LutealCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
             Text(
@@ -687,8 +690,9 @@ private fun SupportThreadSection(
                             }
                         }
                         Text(
-                            text = FrenchDateFormatter.formatShortDate(
-                                request.createdAt.toLocalDate()
+                            text = LocalizedDateFormatter.formatShortDate(
+                                request.createdAt.toLocalDate(),
+                                locale
                             ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant

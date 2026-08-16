@@ -41,7 +41,7 @@ import fr.luteal.app.widget.WidgetTheme
 import fr.luteal.app.widget.widgetEntryPoint
 import fr.luteal.app.widget.widgetLaunchIntent
 import fr.luteal.app.widget.widgetSurface
-import fr.luteal.core.common.FrenchDateFormatter
+import fr.luteal.core.common.LocalizedDateFormatter
 import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -201,6 +201,7 @@ private fun DuoAvailableContent(
     refreshPending: Boolean
 ) {
     val context = LocalContext.current
+    val locale = context.resources.configuration.locales[0]
     val cycleContent: @Composable () -> Unit = {
         Column {
             Text(
@@ -226,8 +227,8 @@ private fun DuoAvailableContent(
                 text = if (snapshot.estimateStart != null && snapshot.estimateEnd != null) {
                     context.getString(
                         R.string.widget_estimate_range_short,
-                        FrenchDateFormatter.formatShortDate(snapshot.estimateStart),
-                        FrenchDateFormatter.formatShortDate(snapshot.estimateEnd)
+                        LocalizedDateFormatter.formatShortDate(snapshot.estimateStart, locale),
+                        LocalizedDateFormatter.formatShortDate(snapshot.estimateEnd, locale)
                     )
                 } else {
                     context.getString(R.string.widget_duo_estimate_not_shared)
@@ -258,7 +259,7 @@ private fun DuoAvailableContent(
             text = context.getString(
                 if (snapshot.freshness == WidgetFreshness.STALE) R.string.widget_duo_stale
                 else R.string.widget_duo_last_updated,
-                FrenchDateFormatter.formatShortDate(date)
+                LocalizedDateFormatter.formatShortDate(date, locale)
             ),
             style = WidgetTheme.supportingText,
             maxLines = 2

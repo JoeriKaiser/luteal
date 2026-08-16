@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -35,16 +36,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.luteal.app.R
-import fr.luteal.core.common.FrenchDateFormatter
+import fr.luteal.core.common.LocalizedDateFormatter
 import fr.luteal.core.designsystem.theme.LocalPhaseColors
 import fr.luteal.core.designsystem.theme.LutealSpacing
 import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.model.CalendarDayProjection
 import fr.luteal.core.model.MonthCalendarProjection
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.TextStyle
-import java.util.Locale
+import java.time.temporal.WeekFields
 
 @Composable
 fun MonthCalendarGrid(
@@ -79,15 +79,9 @@ fun MonthCalendarGrid(
 
 @Composable
 private fun WeekdayHeaderRow() {
-    val daysOfWeek = listOf(
-        DayOfWeek.MONDAY,
-        DayOfWeek.TUESDAY,
-        DayOfWeek.WEDNESDAY,
-        DayOfWeek.THURSDAY,
-        DayOfWeek.FRIDAY,
-        DayOfWeek.SATURDAY,
-        DayOfWeek.SUNDAY
-    )
+    val locale = LocalConfiguration.current.locales[0]
+    val firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek
+    val daysOfWeek = (0L..6L).map { firstDayOfWeek.plus(it) }
 
     Row(
         modifier = Modifier
@@ -96,9 +90,9 @@ private fun WeekdayHeaderRow() {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         daysOfWeek.forEach { day ->
-            val label = day.getDisplayName(TextStyle.NARROW, Locale.FRENCH)
+            val label = day.getDisplayName(TextStyle.NARROW, locale)
             Text(
-                text = label.uppercase(Locale.FRENCH),
+                text = label.uppercase(locale),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -137,7 +131,8 @@ fun CalendarDayCell(
         else -> MaterialTheme.colorScheme.onSurface
     }
 
-    val cdFormattedDate = FrenchDateFormatter.formatFullDate(day.date)
+    val locale = LocalConfiguration.current.locales[0]
+    val cdFormattedDate = LocalizedDateFormatter.formatFullDate(day.date, locale)
     val cdString = buildString {
         append(cdFormattedDate)
         if (day.isToday) {

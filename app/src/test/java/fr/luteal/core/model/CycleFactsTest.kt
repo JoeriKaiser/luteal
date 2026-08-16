@@ -74,7 +74,7 @@ class CycleFactsTest {
 
         val folders = translations.map { (folder, _) -> folder }
         assertTrue("Missing values/strings.xml, found $folders", "values" in folders)
-        assertTrue("Missing values-en/strings.xml, found $folders", "values-en" in folders)
+        assertTrue("Missing values-fr/strings.xml, found $folders", "values-fr" in folders)
 
         translations.forEach { (folder, file) ->
             val text = file.readText()

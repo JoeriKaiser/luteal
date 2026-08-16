@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -47,7 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import fr.luteal.app.BuildConfig
 import fr.luteal.app.R
-import fr.luteal.core.common.FrenchDateFormatter
+import fr.luteal.core.common.LocalizedDateFormatter
 import fr.luteal.core.designsystem.component.LutealCard
 import fr.luteal.core.designsystem.component.LutealCheckboxRow
 import fr.luteal.core.designsystem.component.LutealPrimaryButton
@@ -61,6 +62,7 @@ import fr.luteal.core.model.TrackingContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.Locale
 
 @Composable
 fun SettingsScreen(
@@ -658,12 +660,13 @@ private fun OnlineSyncToggle(
 
 @Composable
 private fun SyncStatusText(state: SettingsSyncUiState) {
+    val locale = LocalConfiguration.current.locales[0]
     val text = when {
         state.inProgress -> stringResource(R.string.settings_sync_in_progress)
         state.lastError != null -> stringResource(R.string.settings_sync_last_error, state.lastError)
         state.lastSyncedEpochMillis != null -> stringResource(
             R.string.settings_sync_last_success,
-            formatSyncInstant(state.lastSyncedEpochMillis)
+            formatSyncInstant(state.lastSyncedEpochMillis, locale)
         )
         else -> stringResource(R.string.settings_sync_idle)
     }
@@ -674,11 +677,11 @@ private fun SyncStatusText(state: SettingsSyncUiState) {
     )
 }
 
-private fun formatSyncInstant(epochMillis: Long): String {
+private fun formatSyncInstant(epochMillis: Long, locale: Locale): String {
     val date: LocalDate = Instant.ofEpochMilli(epochMillis)
         .atZone(ZoneId.systemDefault())
         .toLocalDate()
-    return FrenchDateFormatter.formatFullDate(date)
+    return LocalizedDateFormatter.formatFullDate(date, locale)
 }
 
 @Composable

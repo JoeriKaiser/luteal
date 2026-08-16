@@ -21,8 +21,8 @@ class StringFormatSpecifierTest {
 
     /**
      * Every translation, discovered rather than listed, so a new locale is
-     * covered the moment its folder exists. `values/` holds French (the
-     * fallback for untranslated locales); `values-en/` holds English.
+     * covered the moment its folder exists. `values/` holds English (the
+     * fallback for untranslated locales); `values-fr/` holds French.
      */
     private val translations = File("src/main/res")
         .listFiles { file -> file.isDirectory && file.name.startsWith("values") }
@@ -46,10 +46,10 @@ class StringFormatSpecifierTest {
             .toSet()
 
     @Test
-    fun `default and english resource files are present`() {
+    fun `default and french resource files are present`() {
         val found = translations.map { it.folder }
         assertTrue("Missing values/strings.xml, found $found", "values" in found)
-        assertTrue("Missing values-en/strings.xml, found $found", "values-en" in found)
+        assertTrue("Missing values-fr/strings.xml, found $found", "values-fr" in found)
     }
 
     @Test

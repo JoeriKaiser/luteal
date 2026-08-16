@@ -37,7 +37,7 @@ import fr.luteal.app.widget.WidgetTheme
 import fr.luteal.app.widget.widgetEntryPoint
 import fr.luteal.app.widget.widgetLaunchIntent
 import fr.luteal.app.widget.widgetSurface
-import fr.luteal.core.common.FrenchDateFormatter
+import fr.luteal.core.common.LocalizedDateFormatter
 import fr.luteal.core.model.CycleEstimateResult
 import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.Dispatchers
@@ -147,6 +147,7 @@ private fun PersonalCompactContent(snapshot: PersonalWidgetSnapshot) {
 @Composable
 private fun PersonalStandardContent(snapshot: PersonalWidgetSnapshot) {
     val context = LocalContext.current
+    val locale = context.resources.configuration.locales[0]
     when (snapshot) {
         PersonalWidgetSnapshot.OnboardingRequired -> WidgetMessage(
             context.getString(R.string.widget_onboarding_title),
@@ -167,7 +168,7 @@ private fun PersonalStandardContent(snapshot: PersonalWidgetSnapshot) {
                 maxLines = 1
             )
             Text(
-                text = context.getString(R.string.widget_recorded_from, FrenchDateFormatter.formatShortDate(snapshot.recordedStart)),
+                text = context.getString(R.string.widget_recorded_from, LocalizedDateFormatter.formatShortDate(snapshot.recordedStart, locale)),
                 style = WidgetTheme.labelText,
                 maxLines = 1
             )
@@ -265,6 +266,7 @@ private fun estimateSummary(
     shortRange: Boolean = false
 ): String {
     val context = LocalContext.current
+    val locale = context.resources.configuration.locales[0]
     return when (result) {
         CycleEstimateResult.NeedsMoreHistory ->
             context.getString(R.string.widget_estimate_needs_history)
@@ -285,8 +287,8 @@ private fun estimateSummary(
                 else -> context.getString(
                     if (shortRange) R.string.widget_estimate_range_short
                     else R.string.widget_estimate_range,
-                    FrenchDateFormatter.formatShortDate(result.estimate.earliestDate),
-                    FrenchDateFormatter.formatShortDate(result.estimate.latestDate)
+                    LocalizedDateFormatter.formatShortDate(result.estimate.earliestDate, locale),
+                    LocalizedDateFormatter.formatShortDate(result.estimate.latestDate, locale)
                 )
             }
         }

@@ -208,7 +208,7 @@ fun LutealMainScaffold(
     editorRequest?.let { req ->
         DailyEntrySheet(
             date = req.date,
-            existingEntry = if (req.date == uiState.today) uiState.todayEntry else null,
+            existingEntry = uiState.entries.firstOrNull { it.date == req.date },
             currentCycle = uiState.currentCycle,
             offeredSymptomIds = ObservationCatalog.symptomIdsFor(
                 uiState.preferences.declaredContexts

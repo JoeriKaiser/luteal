@@ -27,11 +27,11 @@ android {
             useSupportLibrary = true
         }
 
-        // Ship French and English only. The app is French-first - French lives
-        // in the default `values/` folder, so it is also the fallback for every
-        // untranslated locale - but AndroidX and Material bring translations
-        // for 84 locales, which is most of resources.arsc. Keep this in step
-        // with res/xml/locales_config.xml and the values-* folders.
+        // Ship French and English only. French lives in res/values-fr/; the
+        // default res/values/ is English, so devices in any other locale fall
+        // back to English. AndroidX and Material would bring translations for
+        // 84 locales (most of resources.arsc); keep this in step with
+        // res/xml/locales_config.xml and the values-* folders.
         @Suppress("DEPRECATION")
         resourceConfigurations += listOf("fr", "en")
 

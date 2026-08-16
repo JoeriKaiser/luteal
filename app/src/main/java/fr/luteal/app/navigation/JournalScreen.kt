@@ -51,6 +51,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -59,7 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fr.luteal.app.LutealUiState
 import fr.luteal.app.R
-import fr.luteal.core.common.FrenchDateFormatter
+import fr.luteal.core.common.LocalizedDateFormatter
 import fr.luteal.core.designsystem.component.AdaptiveActionGroup
 import fr.luteal.core.designsystem.component.CalendarLegendCard
 import fr.luteal.core.designsystem.component.LutealCard
@@ -74,6 +75,7 @@ import fr.luteal.core.model.MonthCalendarProjectionCalculator
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.temporal.WeekFields
 
 enum class JournalViewMode {
     CALENDAR,
@@ -91,6 +93,7 @@ fun JournalScreen(
     var viewMode by rememberSaveable { mutableStateOf(initialViewMode) }
     var currentMonth by rememberSaveable { mutableStateOf(YearMonth.from(state.today)) }
     var selectedDate by rememberSaveable { mutableStateOf(state.today) }
+    val locale = LocalConfiguration.current.locales[0]
     var showDatePicker by remember { mutableStateOf(false) }
     var cycleToEdit by remember { mutableStateOf<Cycle?>(null) }
     var cycleToDelete by remember { mutableStateOf<Cycle?>(null) }
@@ -105,13 +108,14 @@ fun JournalScreen(
         state.entries.associateBy(DailyEntry::date)
     }
 
-    val calendarProjection = remember(currentMonth, state.today, state.cycles, state.entries, state.estimateResult) {
+    val calendarProjection = remember(currentMonth, state.today, state.cycles, state.entries, state.estimateResult, locale) {
         MonthCalendarProjectionCalculator.project(
             targetMonth = currentMonth,
             today = state.today,
             cycles = state.cycles,
             entries = state.entries,
-            estimateResult = state.estimateResult
+            estimateResult = state.estimateResult,
+            firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek
         )
     }
 
@@ -267,7 +271,7 @@ fun JournalScreen(
                     .forEach { (_, monthEntries) ->
                         item(key = "month-${monthEntries.first().date}") {
                             Text(
-                                text = FrenchDateFormatter.formatMonthYear(monthEntries.first().date),
+                                text = LocalizedDateFormatter.formatMonthYear(monthEntries.first().date, locale),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(top = LutealSpacing.xs)
@@ -334,6 +338,7 @@ private fun MonthNavigationBar(
     onJumpToToday: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val locale = LocalConfiguration.current.locales[0]
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -354,7 +359,7 @@ private fun MonthNavigationBar(
             }
 
             Text(
-                text = FrenchDateFormatter.formatMonthYear(currentMonth.atDay(1)),
+                text = LocalizedDateFormatter.formatMonthYear(currentMonth.atDay(1), locale),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -393,6 +398,7 @@ private fun SelectedDayInspectionCard(
     modifier: Modifier = Modifier
 ) {
     val hasObservations = entry?.hasObservations == true
+    val locale = LocalConfiguration.current.locales[0]
 
     LutealCard(modifier = modifier.fillMaxWidth()) {
         Column(
@@ -411,13 +417,13 @@ private fun SelectedDayInspectionCard(
                         text = if (isToday) {
                             stringResource(R.string.journal_today)
                         } else {
-                            FrenchDateFormatter.formatFullDate(date)
+                            LocalizedDateFormatter.formatFullDate(date, locale)
                         },
                         style = MaterialTheme.typography.titleMedium
                     )
                     if (isToday) {
                         Text(
-                            text = FrenchDateFormatter.formatFullDate(date),
+                            text = LocalizedDateFormatter.formatFullDate(date, locale),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -537,6 +543,7 @@ private fun JournalEntryRow(
     onDeleteCycle: (Cycle) -> Unit,
     onClick: () -> Unit
 ) {
+    val locale = LocalConfiguration.current.locales[0]
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)
@@ -609,7 +616,7 @@ private fun JournalEntryRow(
                         text = if (isToday) {
                             stringResource(R.string.journal_today)
                         } else {
-                            FrenchDateFormatter.formatFullDate(entry.date)
+                            LocalizedDateFormatter.formatFullDate(entry.date, locale)
                         },
                         style = MaterialTheme.typography.titleMedium
                     )

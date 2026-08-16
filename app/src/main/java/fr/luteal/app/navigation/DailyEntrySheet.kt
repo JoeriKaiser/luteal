@@ -1,5 +1,6 @@
 package fr.luteal.app.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -26,20 +27,26 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import kotlinx.coroutines.launch
 import fr.luteal.app.R
-import fr.luteal.core.common.FrenchDateFormatter
+import fr.luteal.core.common.LocalizedDateFormatter
 import fr.luteal.core.designsystem.component.LutealCheckboxRow
 import fr.luteal.core.designsystem.component.LutealPrimaryButton
 import fr.luteal.core.designsystem.component.LutealSecondaryButton
@@ -79,7 +86,9 @@ fun DailyEntrySheet(
     }
     var notes by rememberSaveable(stateKey) { mutableStateOf(existingEntry?.notes.orEmpty()) }
     val initialStartsNewCycle = startPeriodIntent || currentCycle == null
-    var startsNewCycle by rememberSaveable(stateKey) {
+    var startsNewCycle by rememberSaveable(
+        "${date}-${existingEntry?.updatedAt}-$startPeriodIntent"
+    ) {
         mutableStateOf(initialStartsNewCycle)
     }
     var showOptional by rememberSaveable(stateKey) {
@@ -97,6 +106,12 @@ fun DailyEntrySheet(
         notes != existingEntry?.notes.orEmpty() ||
         startsNewCycle != initialStartsNewCycle
 
+    // rememberModalBottomSheetState captures its confirmValueChange lambda at
+    // first composition; rememberUpdatedState keeps the hasChanges read fresh.
+    val currentHasChanges by rememberUpdatedState(hasChanges)
+
+    val locale = LocalConfiguration.current.locales[0]
+    val scope = rememberCoroutineScope()
     val requestDismiss = {
         when {
             isSaving -> Unit
@@ -104,7 +119,32 @@ fun DailyEntrySheet(
             else -> onDismiss()
         }
     }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { target ->
+            if (target == SheetValue.Hidden) {
+                if (currentHasChanges) {
+                    showDiscardConfirmation = true
+                    false
+                } else {
+                    true
+                }
+            } else {
+                true
+            }
+        }
+    )
+
+    BackHandler(enabled = sheetState.isVisible) {
+        if (hasChanges) {
+            showDiscardConfirmation = true
+        } else {
+            scope.launch {
+                sheetState.hide()
+                onDismiss()
+            }
+        }
+    }
 
     val painDescriptions = scaleDescriptions(R.string.editor_pain_value_description)
     val moodDescriptions = scaleDescriptions(R.string.editor_mood_value_description)
@@ -113,6 +153,7 @@ fun DailyEntrySheet(
     ModalBottomSheet(
         onDismissRequest = requestDismiss,
         sheetState = sheetState,
+        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
         containerColor = MaterialTheme.colorScheme.surface
     ) {
         Column(
@@ -137,7 +178,7 @@ fun DailyEntrySheet(
                     Text(
                         text = stringResource(
                             R.string.editor_title,
-                            FrenchDateFormatter.formatShortDate(date)
+                            LocalizedDateFormatter.formatShortDate(date, locale)
                         ),
                         style = MaterialTheme.typography.headlineMedium
                     )
@@ -302,7 +343,12 @@ fun DailyEntrySheet(
 
     if (showDiscardConfirmation) {
         AlertDialog(
-            onDismissRequest = { showDiscardConfirmation = false },
+            onDismissRequest = {
+                showDiscardConfirmation = false
+                if (sheetState.currentValue == SheetValue.Hidden) {
+                    scope.launch { sheetState.show() }
+                }
+            },
             title = { Text(stringResource(R.string.editor_discard_title)) },
             text = { Text(stringResource(R.string.editor_discard_body)) },
             confirmButton = {
@@ -311,7 +357,14 @@ fun DailyEntrySheet(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDiscardConfirmation = false }) {
+                TextButton(
+                    onClick = {
+                        showDiscardConfirmation = false
+                        if (sheetState.currentValue == SheetValue.Hidden) {
+                            scope.launch { sheetState.show() }
+                        }
+                    }
+                ) {
                     Text(stringResource(R.string.editor_keep_editing))
                 }
             }
