@@ -1,6 +1,5 @@
 package fr.luteal.app.navigation
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -27,18 +26,15 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalConfiguration
@@ -106,9 +102,10 @@ fun DailyEntrySheet(
         notes != existingEntry?.notes.orEmpty() ||
         startsNewCycle != initialStartsNewCycle
 
-    // rememberModalBottomSheetState captures its confirmValueChange lambda at
-    // first composition; rememberUpdatedState keeps the hasChanges read fresh.
-    val currentHasChanges by rememberUpdatedState(hasChanges)
+    // Material3's ModalBottomSheet lives in its own dialog window: back presses
+    // and gestures there are handled by M3 itself, which hides the sheet first
+    // and then invokes onDismissRequest. We therefore gate everything in
+    // requestDismiss and restore the sheet from the confirm dialog.
 
     val locale = LocalConfiguration.current.locales[0]
     val scope = rememberCoroutineScope()
@@ -119,41 +116,16 @@ fun DailyEntrySheet(
             else -> onDismiss()
         }
     }
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true,
-        confirmValueChange = { target ->
-            if (target == SheetValue.Hidden) {
-                if (currentHasChanges) {
-                    showDiscardConfirmation = true
-                    false
-                } else {
-                    true
-                }
-            } else {
-                true
-            }
-        }
-    )
-
-    BackHandler(enabled = sheetState.isVisible) {
-        if (hasChanges) {
-            showDiscardConfirmation = true
-        } else {
-            scope.launch {
-                sheetState.hide()
-                onDismiss()
-            }
-        }
-    }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val painDescriptions = scaleDescriptions(R.string.editor_pain_value_description)
+
     val moodDescriptions = scaleDescriptions(R.string.editor_mood_value_description)
     val energyDescriptions = scaleDescriptions(R.string.editor_energy_value_description)
 
     ModalBottomSheet(
         onDismissRequest = requestDismiss,
         sheetState = sheetState,
-        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
         containerColor = MaterialTheme.colorScheme.surface
     ) {
         Column(
@@ -345,9 +317,7 @@ fun DailyEntrySheet(
         AlertDialog(
             onDismissRequest = {
                 showDiscardConfirmation = false
-                if (sheetState.currentValue == SheetValue.Hidden) {
-                    scope.launch { sheetState.show() }
-                }
+                scope.launch { sheetState.show() }
             },
             title = { Text(stringResource(R.string.editor_discard_title)) },
             text = { Text(stringResource(R.string.editor_discard_body)) },
@@ -360,9 +330,7 @@ fun DailyEntrySheet(
                 TextButton(
                     onClick = {
                         showDiscardConfirmation = false
-                        if (sheetState.currentValue == SheetValue.Hidden) {
-                            scope.launch { sheetState.show() }
-                        }
+                        scope.launch { sheetState.show() }
                     }
                 ) {
                     Text(stringResource(R.string.editor_keep_editing))
