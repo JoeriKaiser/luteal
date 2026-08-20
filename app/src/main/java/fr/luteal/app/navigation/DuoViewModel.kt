@@ -83,15 +83,19 @@ class DuoViewModel @Inject constructor(
                 _uiState.update { it.copy(phase = DuoPhase.NoAccount, isLoading = false) }
                 return@launch
             }
-
             // Show cached projection immediately so offline and demo data render instantly
-            applyCachedProjection()
+            if (cached != null) {
+                applyCachedProjection()
+                _uiState.update { it.copy(isLoading = false) }
+            } else {
+                _uiState.update { it.copy(isLoading = true, error = null) }
+            }
             seedGrantsFromCache()
 
             if (!duoRepository.hasAccount()) {
                 return@launch
             }
-            _uiState.update { it.copy(isLoading = true, error = null) }
+
             runCatching { duoRepository.duoView() }
                 .onSuccess { view ->
                     val isTracker =
