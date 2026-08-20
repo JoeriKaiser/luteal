@@ -35,7 +35,7 @@ class DataExportManager @Inject constructor(
         ignoreUnknownKeys = true
     }
 
-    suspend fun createBackupPayload(appVersion: String = "1.2.0"): LutealBackupPayload {
+    suspend fun createBackupPayload(appVersion: String = "1.3.0"): LutealBackupPayload {
         val cycles = cycleDao.getAllCyclesOnce().map { entity ->
             val periodDays = mutableListOf<PeriodDayBackupDto>()
             if (entity.periodDaysJson.isNotBlank()) {
@@ -157,12 +157,12 @@ class DataExportManager @Inject constructor(
         )
     }
 
-    suspend fun exportToJsonString(appVersion: String = "1.2.0"): String {
+    suspend fun exportToJsonString(appVersion: String = "1.3.0"): String {
         val payload = createBackupPayload(appVersion)
         return json.encodeToString(payload)
     }
 
-    suspend fun exportToStream(outputStream: OutputStream, appVersion: String = "1.2.0") {
+    suspend fun exportToStream(outputStream: OutputStream, appVersion: String = "1.3.0") {
         val jsonString = exportToJsonString(appVersion)
         outputStream.bufferedWriter(Charsets.UTF_8).use { writer ->
             writer.write(jsonString)

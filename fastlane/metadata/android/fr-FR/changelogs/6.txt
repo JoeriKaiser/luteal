@@ -1,0 +1,8 @@
+- Import et restauration de sauvegardes locales JSON avec gestion des conflits.
+- Verrouillage sécurisé par code PIN et biométrie avec masquage d'écran.
+- Historique longitudinal des cycles et visualiseur de variabilité (détection des écarts STRAW).
+- Export de récapitulatifs de consultation médicale au format PDF et HTML.
+- Notifications et rappels locaux respectueux de la vie privée (point quotidien, règles à venir).
+- Suivi des biomarqueurs : température basale (°C/°F), glaire cervicale et décalage thermique.
+- Conseils contextuels et requêtes d'entraide pour le mode Duo avec chiffrement de bout en bout.
+- Icône d'application adaptative et dynamique (Material You).

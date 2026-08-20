@@ -1,0 +1,8 @@
+- Local JSON backup import and restore with merge conflict resolution.
+- Secure PIN and biometric app lock with recent apps screen masking.
+- Longitudinal cycle history and variability visualizer with STRAW swing detection.
+- Clinician consultation summary report export in PDF and HTML formats.
+- Privacy-safe local notification reminders (daily check-in, period window, late cycle).
+- Biomarker tracking: basal body temperature (C/F), cervical fluid, and thermal shift chart.
+- Contextual partner guidance and support requests in Duo with end-to-end encryption.
+- Material You themed adaptive app icon.
