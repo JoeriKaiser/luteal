@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Monochrome layer for Android 13+ (API 33+) Material You dynamic theming.
+  Launchers tint this layer dynamically using the wallpaper/theme palette.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Top Arc -->
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M39.09,32.70 A26,26 0 0,1 68.91,32.70" />
+    <!-- Right Arc -->
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M75.30,39.09 A26,26 0 0,1 75.30,68.91" />
+    <!-- Bottom Arc -->
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M68.91,75.30 A26,26 0 0,1 39.09,75.30" />
+    <!-- Left Arc -->
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M32.70,68.91 A26,26 0 0,1 32.70,39.09" />
+    <!-- Center focal node -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M54,50.5 A3.5,3.5 0 1,1 54,57.5 A3.5,3.5 0 1,1 54,50.5" />
+</vector>
