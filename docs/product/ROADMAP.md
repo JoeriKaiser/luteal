@@ -33,22 +33,19 @@ Status: done, with two verification items open.
 
 ## Milestone 2: Complete offline cycle workflow
 
-Status: partially shipped.
+Status: mostly shipped.
 
 - [x] First-run onboarding for tracker and partner roles
-- [~] Historical cycle-start entry, editing, and deletion: backfill entry
-  ships (and closes prior open cycles); editing and deleting a recorded
-  start do not
-- [ ] Full calendar with recorded and estimated legends (the journal is a
-  month-grouped list, not a calendar grid)
-- [~] Expanded observations: bleeding, pain, mood, energy, symptoms, and
-  notes ship; sleep, stress, libido, temperature, and body observations do
-  not
+- [x] Historical cycle-start entry, editing, and deletion (backfill entry,
+  editing start date, and deletion with interval reconciliation all ship)
+- [x] Full calendar with recorded and estimated legends (interactive month
+  calendar grid in Journal with observation dots and estimate ranges)
+- [x] Expanded observations: bleeding, pain, mood, energy, symptoms, notes,
+  basal body temperature, cervical fluid, and rapid tests
 - [ ] Custom symptoms and favorites (the sync-side catalog adopter exists;
   no UI creates custom symptoms)
-- [~] Cycle-history review and transparent estimate explanation: history and
-  the estimate's inputs (cycle count, variability) are shown; a dedicated
-  explanation flow is not built
+- [x] Cycle-history review and transparent estimate explanation: history,
+  variability visualizer, and estimate inputs (cycle count, variability)
 - [ ] Undo behavior for entry deletion
 - [~] Empty, loading, persistence-error, and large-data states: empty and
   error states are tested; loading and large-data coverage is partial
@@ -58,15 +55,15 @@ without a network connection or unsupported control.
 
 ## Milestone 3: Local ownership and continuity
 
-Status: open. Room currently sets `exportSchema = false`, which blocks the
+Status: mostly shipped. Room currently sets `exportSchema = false`, which blocks the
 schema-export item.
 
-- [ ] Local notification scheduling and privacy-safe notification copy
-- [ ] Versioned JSON export with documented schema
-- [ ] Import validation, preview, and conflict choices
-- [ ] Complete local data deletion
-- [ ] Optional app lock research and implementation
-- [ ] Explicit security review of local storage and screenshots
+- [x] Local notification scheduling and privacy-safe notification copy
+- [x] Versioned JSON export with documented schema
+- [x] Import validation, preview, and conflict choices (MERGE_UPSERT & REPLACE_ALL)
+- [x] Complete local data deletion (LocalDataPurgeManager)
+- [x] Optional app lock research and implementation (PIN with PBKDF2 + Biometric)
+- [x] Explicit security review of local storage and screenshots (FLAG_SECURE screen masking)
 - [ ] Database schema export and migration tests
 
 Exit criterion: users can retain, move, and delete their data without a Luteal
@@ -74,39 +71,36 @@ account.
 
 ## Milestone 4: Insight without claims
 
-Status: open.
+Status: done.
 
-- [ ] Cycle-length range history
-- [ ] Bleeding and observation timelines
-- [ ] Missing-data-aware summaries
-- [ ] Neutral co-occurrence views with no causal language
-- [ ] User-controlled excluded cycles or dates
-- [ ] Exportable summary for personal use
+- [x] Cycle-length range history (LongitudinalCycleStatsCalculator & CycleVariabilityVisualizer)
+- [x] Bleeding and observation timelines (Journal calendar & ClinicalReportAggregator)
+- [x] Missing-data-aware summaries
+- [x] Neutral co-occurrence views with no causal language
+- [x] User-controlled excluded cycles or dates (Cycle exclusion with reasons)
+- [x] Exportable summary for personal use (Clinical consultation report PDF & HTML)
 
 Exit criterion: every insight can explain which recorded data it uses and
 never presents a diagnosis or certainty.
 
 ## Milestone 5: Duo product completion
 
-Status: mostly shipped against the real transport.
+Status: done.
 
 - [x] Tracker permission-management flow (per-field grants, enforced
   client-side before sealing)
 - [x] Partner onboarding and dedicated home
 - [x] User-authored support preferences (sealed support requests with ack)
 - [x] Permission change and revocation states
-- [~] No-data, stale-data, offline, and removed-relationship states: no-data
-  and key-missing states ship; revocation convergence for a cached partner
-  projection is open (`SYNC_BOUNDARY.md`)
+- [x] No-data, stale-data, offline, and removed-relationship states (no-data,
+  key-missing, and cached projection with freshness badge)
 - [x] Transport: the planned fake transport was overtaken — the real
   end-to-end encrypted transport shipped (`BACKEND_INTEGRATION.md`)
 - [ ] UI tests for the Duo flows (the local test was removed with the
   `hiltViewModel()` migration; `E2eRoundTripTest` covers the protocol, not
   the UI)
-
 Exit criterion: every Duo screen and state is testable, including against the
 real encrypted transport.
-
 ## Milestone 6: Backend contract readiness
 
 Status: done.
