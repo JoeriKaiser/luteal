@@ -1,8 +1,10 @@
 package fr.luteal.core.network.sync
 
+import fr.luteal.core.data.entity.BiomarkerObservationEntity
 import fr.luteal.core.data.entity.DailyEntryEntity
 import fr.luteal.core.data.entity.SyncStateEntity
 import fr.luteal.core.data.entity.SymptomLogEntity
+import fr.luteal.core.data.local.BiomarkerDao
 import fr.luteal.core.data.local.DailyEntryDao
 import fr.luteal.core.data.local.SyncStateDao
 import fr.luteal.core.data.local.SymptomDao
@@ -41,6 +43,16 @@ class FakeCycleRepository(initial: List<Cycle> = emptyList()) : CycleRepository 
         cycles.remove(id)
         deletedIds += id
     }
+
+    override suspend fun updateCycleExclusion(
+        id: String,
+        isExcluded: Boolean,
+        reason: fr.luteal.core.model.CycleExclusionReason?
+    ) {
+        cycles[id]?.let {
+            cycles[id] = it.copy(isExcludedFromEstimates = isExcluded, exclusionReason = reason)
+        }
+    }
 }
 
 /** In-memory [SyncStateDao] for engine tests. */
@@ -54,6 +66,8 @@ class FakeSyncStateDao : SyncStateDao {
 
     override suspend fun getDirtyStatesByType(entityType: String): List<SyncStateEntity> =
         states.values.filter { it.dirty && it.entityType == entityType }
+
+    override suspend fun getAllStates(): List<SyncStateEntity> = states.values.toList()
 
     override suspend fun upsert(state: SyncStateEntity) {
         states[state.entityId] = state
@@ -91,6 +105,29 @@ class FakeDailyEntryDao : DailyEntryDao {
     override suspend fun upsert(entry: DailyEntryEntity) { entries[entry.date] = entry }
     override suspend fun delete(date: String) { entries.remove(date) }
     override suspend fun deleteAllEntries() { entries.clear() }
+}
+
+/** In-memory [BiomarkerDao] for engine tests. */
+class FakeBiomarkerDao : BiomarkerDao {
+    val observations = LinkedHashMap<String, BiomarkerObservationEntity>()
+
+    override fun observeObservations() = kotlinx.coroutines.flow.flowOf(observations.values.toList())
+    override suspend fun getAllObservationsOnce() = observations.values.toList()
+    override fun observeObservation(date: String) = kotlinx.coroutines.flow.flowOf(observations[date])
+    override suspend fun getObservationOnce(date: String) = observations[date]
+    override fun getObservationsBetween(startDate: String, endDate: String) =
+        kotlinx.coroutines.flow.flowOf(
+            observations.values.filter { it.date >= startDate && it.date <= endDate }
+        )
+    override suspend fun upsert(entity: BiomarkerObservationEntity) {
+        observations[entity.date] = entity
+    }
+    override suspend fun deleteForDate(date: String) {
+        observations.remove(date)
+    }
+    override suspend fun deleteAll() {
+        observations.clear()
+    }
 }
 
 /** In-memory [SymptomDao] for engine tests. */

@@ -30,6 +30,15 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 
+# Keep model @Serializable types (LutealBackupPayload, backup DTOs, etc.).
+-keep,includedescriptorclasses class fr.luteal.core.model.**$$serializer { *; }
+-keepclassmembers class fr.luteal.core.model.** {
+    *** Companion;
+}
+-keepclasseswithmembers class fr.luteal.core.model.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+
 # --- OkHttp ---
 -dontwarn okhttp3.**
 -dontwarn okio.**

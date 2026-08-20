@@ -7,6 +7,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import fr.luteal.app.BuildConfig
 import fr.luteal.core.data.datastore.SyncDataStore
+import fr.luteal.core.data.local.BiomarkerDao
 import fr.luteal.core.data.local.DailyEntryDao
 import fr.luteal.core.data.local.SyncStateDao
 import fr.luteal.core.data.local.SymptomDao
@@ -72,6 +73,7 @@ abstract class SyncModule {
             syncStateDao: SyncStateDao,
             dailyEntryDao: DailyEntryDao,
             symptomDao: SymptomDao,
+            biomarkerDao: BiomarkerDao,
             credentialStore: SyncCredentialStore,
             apiClientFactory: FolicularApiClientFactory,
             cursorStore: SyncCursorStore,
@@ -81,6 +83,7 @@ abstract class SyncModule {
             syncStateDao = syncStateDao,
             dailyEntryDao = dailyEntryDao,
             symptomDao = symptomDao,
+            biomarkerDao = biomarkerDao,
             credentialStore = credentialStore,
             apiClientFactory = apiClientFactory,
             cursorStore = cursorStore,

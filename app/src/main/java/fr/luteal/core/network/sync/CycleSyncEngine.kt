@@ -1,6 +1,7 @@
 package fr.luteal.core.network.sync
 
 import fr.luteal.core.data.entity.SyncStateEntity
+import fr.luteal.core.data.local.BiomarkerDao
 import fr.luteal.core.data.local.DailyEntryDao
 import fr.luteal.core.data.local.SyncStateDao
 import fr.luteal.core.data.local.SymptomDao
@@ -37,7 +38,12 @@ import fr.luteal.core.network.toBleedingObservationData
 import fr.luteal.core.network.toCycleData
 import fr.luteal.core.network.toDailyEntryData
 import fr.luteal.core.network.toSymptomLogData
+import fr.luteal.core.network.toBiomarkerObservationPayload
 import fr.luteal.core.network.toJsonElement
+import fr.luteal.core.network.mapping.deterministicId
+import fr.luteal.core.network.mapping.toDomainObservation
+import fr.luteal.core.network.mapping.toEntity
+import fr.luteal.core.network.mapping.toPayload
 import fr.luteal.core.model.DailyEntry
 import fr.luteal.core.model.SymptomLog
 import java.time.Instant
@@ -104,6 +110,7 @@ class CycleSyncEngine(
     private val syncStateDao: SyncStateDao,
     private val dailyEntryDao: DailyEntryDao,
     private val symptomDao: SymptomDao,
+    private val biomarkerDao: BiomarkerDao,
     private val credentialStore: SyncCredentialStore,
     private val apiClientFactory: FolicularApiClientFactory,
     private val cursorStore: SyncCursorStore,
@@ -160,6 +167,7 @@ class CycleSyncEngine(
 
         val changes = mutableListOf<PushChangeWire>()
         val pushedIds = mutableSetOf<String>()
+        val localIdByWireId = mutableMapOf<UUID, String>()
 
         // Group dirty states by type for efficient lookup.
         val cyclesById = cycleRepository.getCyclesOnce().associateBy { it.id }
@@ -181,6 +189,9 @@ class CycleSyncEngine(
                 SyncStateEntity.TYPE_SYMPTOM_LOG -> {
                     pushSymptomLog(state, meta, changes, pushedIds)
                 }
+                SyncStateEntity.TYPE_BIOMARKER_OBSERVATION -> {
+                    pushBiomarker(state, meta, changes, pushedIds)
+                }
                 else -> {
                     // Unknown type (e.g. bleeding_observation pushed as part of
                     // a cycle fan-out): clean up orphaned state.
@@ -190,6 +201,9 @@ class CycleSyncEngine(
         }
 
         if (changes.isEmpty()) return PushOutcome(0, 0, emptyList(), 0)
+        for (state in dirtyStates) {
+            wireIdFor(state)?.let { localIdByWireId[it] = state.entityId }
+        }
 
         val result = runCatching { client.syncPush(token, changes) }
             .onFailure { if (it.isAuthFailure()) { credentialStore.clear(); recordSealer.invalidate() } }
@@ -197,20 +211,21 @@ class CycleSyncEngine(
 
         var appliedCount = 0
         for (applied in result.applied) {
-            val idStr = applied.entityId.toString()
-            val state = syncStateDao.getState(idStr)
+            val localId = localIdByWireId[applied.entityId] ?: applied.entityId.toString()
+            val state = syncStateDao.getState(localId)
             if (state?.deletedAtEpochMillis != null) {
-                syncStateDao.delete(idStr)
+                syncStateDao.delete(localId)
             } else {
-                syncStateDao.markClean(idStr)
+                syncStateDao.markClean(localId)
             }
             appliedCount++
         }
 
         val rejectedDetails = result.rejected.map { rejected ->
-            val id = rejected.entityId?.toString()
-            if (id != null) {
-                syncStateDao.markRejected(id, rejected.detail)
+            val wireId = rejected.entityId
+            val localId = wireId?.let { localIdByWireId[it] ?: it.toString() }
+            if (localId != null) {
+                syncStateDao.markRejected(localId, rejected.detail)
             }
             "${rejected.entityType.value}: ${rejected.detail}"
         }
@@ -219,6 +234,12 @@ class CycleSyncEngine(
         for (conflict in result.conflicts) {
             when (conflict.entityType) {
                 EntityType.CYCLE -> {
+                    if (conflict.currentDeleted) {
+                        cycleRepository.deleteCycle(conflict.entityId.toString())
+                        syncStateDao.delete(conflict.entityId.toString())
+                        conflictsAdopted++
+                        continue
+                    }
                     val serverCycle = conflict.openCurrent(recordSealer)?.toCycleData() ?: continue
                     val localPeriodDays = cycleRepository.getCyclesOnce()
                         .firstOrNull { it.id == serverCycle.id.toString() }
@@ -227,13 +248,34 @@ class CycleSyncEngine(
                     conflictsAdopted++
                 }
                 EntityType.DAILY_ENTRY -> {
+                    if (conflict.currentDeleted) {
+                        adoptDailyEntryTombstone(conflict.entityId)
+                        conflictsAdopted++
+                        continue
+                    }
                     val serverEntry = conflict.openCurrent(recordSealer)?.toDailyEntryData() ?: continue
                     adoptDailyEntry(serverEntry)
                     conflictsAdopted++
                 }
                 EntityType.SYMPTOM_LOG -> {
+                    if (conflict.currentDeleted) {
+                        symptomDao.deleteSymptomLog(conflict.entityId.toString())
+                        syncStateDao.delete(conflict.entityId.toString())
+                        conflictsAdopted++
+                        continue
+                    }
                     val serverLog = conflict.openCurrent(recordSealer)?.toSymptomLogData() ?: continue
                     adoptSymptomLog(serverLog)
+                    conflictsAdopted++
+                }
+                EntityType.BIOMARKER_OBSERVATION -> {
+                    if (conflict.currentDeleted) {
+                        adoptBiomarkerTombstone(conflict.entityId)
+                        conflictsAdopted++
+                        continue
+                    }
+                    val server = conflict.openCurrent(recordSealer)?.toBiomarkerObservationPayload() ?: continue
+                    adoptBiomarker(server)
                     conflictsAdopted++
                 }
                 else -> { /* bleeding conflicts are resolved via cycle re-pull */ }
@@ -374,6 +416,34 @@ class CycleSyncEngine(
         pushedIds += state.entityId
     }
 
+    private suspend fun pushBiomarker(
+        state: SyncStateEntity,
+        meta: SyncMeta,
+        changes: MutableList<PushChangeWire>,
+        pushedIds: MutableSet<String>
+    ) {
+        val date = SyncStateEntity.biomarkerDateFromEntityId(state.entityId)
+            ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+        if (date == null) {
+            syncStateDao.delete(state.entityId)
+            return
+        }
+        if (state.deletedAtEpochMillis != null) {
+            val data = fr.luteal.core.model.BiomarkerObservation(date = date).toPayload(meta)
+            changes += data.toPushChange(recordSealer)
+            pushedIds += state.entityId
+            return
+        }
+        val entity = biomarkerDao.getObservationOnce(date.toString())
+        if (entity == null) {
+            syncStateDao.delete(state.entityId)
+            return
+        }
+        val observation = entity.toDomainObservation()
+        changes += observation.toPayload(meta).toPushChange(recordSealer)
+        pushedIds += state.entityId
+    }
+
     // --- 3. Pull since cursor and apply ------------------------------------
 
     private data class PullOutcome(
@@ -444,11 +514,8 @@ class CycleSyncEngine(
                     }
                 }
                 EntityType.DAILY_ENTRY -> {
-                    val entryId = change.entityId.toString()
                     if (change.deleted) {
-                        // Daily entry ids are deterministic from the date; extract it.
-                        dailyEntryDao.delete(entryId)
-                        syncStateDao.delete(entryId)
+                        adoptDailyEntryTombstone(change.entityId)
                         tombstones++
                     } else {
                         val entryData = runCatching {
@@ -469,6 +536,18 @@ class CycleSyncEngine(
                             change.openPayload(recordSealer)?.toSymptomLogData()
                         }.getOrNull() ?: continue
                         adoptSymptomLog(logData)
+                        recordsApplied++
+                    }
+                }
+                EntityType.BIOMARKER_OBSERVATION -> {
+                    if (change.deleted) {
+                        adoptBiomarkerTombstone(change.entityId)
+                        tombstones++
+                    } else {
+                        val payload = runCatching {
+                            change.openPayload(recordSealer)?.toBiomarkerObservationPayload()
+                        }.getOrNull() ?: continue
+                        adoptBiomarker(payload)
                         recordsApplied++
                     }
                 }
@@ -512,7 +591,7 @@ class CycleSyncEngine(
             )
         )
         syncStateDao.upsert(SyncStateEntity(
-            entityId = entryData.id.toString(),
+            entityId = entry.date.toString(),
             entityType = SyncStateEntity.TYPE_DAILY_ENTRY,
             clientRev = entryData.clientRev.toString(),
             createdAtEpochMillis = entryData.createdAt.toInstant().toEpochMilli(),
@@ -546,6 +625,73 @@ class CycleSyncEngine(
             dirty = false,
             lastPushError = null
         ))
+    }
+
+    private suspend fun adoptBiomarker(payload: fr.luteal.core.network.mapping.BiomarkerObservationPayload) {
+        biomarkerDao.upsert(payload.toEntity())
+        syncStateDao.upsert(
+            SyncStateEntity(
+                entityId = SyncStateEntity.biomarkerEntityId(payload.observedDate),
+                entityType = SyncStateEntity.TYPE_BIOMARKER_OBSERVATION,
+                clientRev = payload.clientRev,
+                createdAtEpochMillis = payload.wireUpdatedAt.toInstant().toEpochMilli(),
+                updatedAtEpochMillis = payload.wireUpdatedAt.toInstant().toEpochMilli(),
+                deletedAtEpochMillis = payload.wireDeletedAt?.toInstant()?.toEpochMilli(),
+                dirty = false,
+                lastPushError = null
+            )
+        )
+    }
+
+    private suspend fun adoptBiomarkerTombstone(wireId: UUID) {
+        val localId = resolveBiomarkerLocalId(wireId)
+        val date = localId?.let { SyncStateEntity.biomarkerDateFromEntityId(it) }
+            ?: biomarkerDao.getAllObservationsOnce().firstOrNull {
+                deterministicId("biomarker", it.date) == wireId
+            }?.date
+        if (date != null) {
+            biomarkerDao.deleteForDate(date)
+            syncStateDao.delete(SyncStateEntity.biomarkerEntityId(date))
+        } else if (localId != null) {
+            syncStateDao.delete(localId)
+        }
+    }
+
+    private suspend fun adoptDailyEntryTombstone(wireId: UUID) {
+        val date = dailyEntryDao.getAllEntriesOnce().firstOrNull {
+            deterministicId("daily-entry", it.date) == wireId
+        }?.date
+            ?: syncStateDao.getAllStates()
+                .firstOrNull { it.entityType == SyncStateEntity.TYPE_DAILY_ENTRY && wireIdFor(it) == wireId }
+                ?.entityId
+        if (date != null) {
+            dailyEntryDao.delete(date)
+            syncStateDao.delete(date)
+        }
+        syncStateDao.delete(wireId.toString())
+    }
+
+    private suspend fun resolveBiomarkerLocalId(wireId: UUID): String? {
+        syncStateDao.getAllStates()
+            .firstOrNull { it.entityType == SyncStateEntity.TYPE_BIOMARKER_OBSERVATION && wireIdFor(it) == wireId }
+            ?.entityId
+            ?.let { return it }
+        return biomarkerDao.getAllObservationsOnce().firstOrNull {
+            deterministicId("biomarker", it.date) == wireId
+        }?.let { SyncStateEntity.biomarkerEntityId(it.date) }
+    }
+
+    private fun wireIdFor(state: SyncStateEntity): UUID? = when (state.entityType) {
+        SyncStateEntity.TYPE_CYCLE, SyncStateEntity.TYPE_SYMPTOM_LOG ->
+            runCatching { UUID.fromString(state.entityId) }.getOrNull()
+        SyncStateEntity.TYPE_DAILY_ENTRY ->
+            runCatching { LocalDate.parse(state.entityId) }.getOrNull()
+                ?.let { deterministicId("daily-entry", it.toString()) }
+                ?: runCatching { UUID.fromString(state.entityId) }.getOrNull()
+        SyncStateEntity.TYPE_BIOMARKER_OBSERVATION ->
+            SyncStateEntity.biomarkerDateFromEntityId(state.entityId)
+                ?.let { deterministicId("biomarker", it) }
+        else -> null
     }
 
     // --- Envelope mapping ---------------------------------------------------

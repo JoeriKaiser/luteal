@@ -13,6 +13,8 @@ import fr.luteal.core.model.LutealBackupPayload
 import fr.luteal.core.network.auth.EncryptedSyncCredentialStore
 import fr.luteal.core.network.auth.SyncCredentials
 import fr.luteal.core.network.crypto.DuoKeyStore
+import fr.luteal.core.data.security.InMemoryPinSecretStore
+import fr.luteal.core.data.security.PinCryptoManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -56,6 +58,7 @@ class DataExportManagerTest {
             cycleDao = database.cycleDao(),
             dailyEntryDao = database.dailyEntryDao(),
             symptomDao = database.symptomDao(),
+            biomarkerDao = database.biomarkerDao(),
             userPreferencesDataStore = userPreferencesDataStore
         )
 
@@ -64,7 +67,8 @@ class DataExportManagerTest {
             userPreferencesDataStore = userPreferencesDataStore,
             syncDataStore = syncDataStore,
             syncCredentialStore = credentialStore,
-            duoKeyStore = duoKeyStore
+            duoKeyStore = duoKeyStore,
+            pinCryptoManager = PinCryptoManager(InMemoryPinSecretStore())
         )
     }
 

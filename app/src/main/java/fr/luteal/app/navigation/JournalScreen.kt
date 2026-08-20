@@ -1,5 +1,7 @@
 package fr.luteal.app.navigation
 
+import android.content.Context
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +15,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.platform.LocalContext
+import fr.luteal.core.model.ClinicalReportConfig
+import fr.luteal.core.model.ReportFormat
+import androidx.compose.material.icons.automirrored.rounded.ShowChart
+import fr.luteal.core.model.CycleExclusionReason
+import fr.luteal.core.model.LongitudinalCycleStatsCalculator
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -23,6 +35,7 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.DeviceThermostat
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.FormatListBulleted
 import androidx.compose.material.icons.rounded.Remove
@@ -36,7 +49,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -68,9 +81,13 @@ import fr.luteal.core.designsystem.component.LutealEmptyState
 import fr.luteal.core.designsystem.component.LutealPrimaryButton
 import fr.luteal.core.designsystem.component.LutealSecondaryButton
 import fr.luteal.core.designsystem.component.MonthCalendarGrid
+import fr.luteal.core.designsystem.component.ThermalShiftChart
 import fr.luteal.core.designsystem.theme.LutealSpacing
 import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.model.DailyEntry
+import fr.luteal.core.model.TemperatureUnit
+import fr.luteal.core.model.ThermalShiftCalculator
+import fr.luteal.core.model.ThermalShiftResult
 import fr.luteal.core.model.MonthCalendarProjectionCalculator
 import java.time.Instant
 import java.time.LocalDate
@@ -79,7 +96,9 @@ import java.time.temporal.WeekFields
 
 enum class JournalViewMode {
     CALENDAR,
-    TIMELINE
+    TIMELINE,
+    VARIABILITY,
+    THERMAL
 }
 
 @Composable
@@ -88,8 +107,12 @@ fun JournalScreen(
     onSelectDate: (LocalDate) -> Unit,
     onEditCycle: (cycleId: String, newStartDate: LocalDate) -> Unit = { _, _ -> },
     onDeleteCycle: (cycleId: String) -> Unit = {},
+    onToggleCycleExclusion: (cycleId: String, isExcluded: Boolean, reason: CycleExclusionReason?) -> Unit = { _, _, _ -> },
+    onExportClinicalReport: (Context, android.net.Uri, ClinicalReportConfig) -> Unit = { _, _, _ -> },
+    onStartPeriod: () -> Unit = {},
     initialViewMode: JournalViewMode = JournalViewMode.CALENDAR
 ) {
+    val context = LocalContext.current
     var viewMode by rememberSaveable { mutableStateOf(initialViewMode) }
     var currentMonth by rememberSaveable { mutableStateOf(YearMonth.from(state.today)) }
     var selectedDate by rememberSaveable { mutableStateOf(state.today) }
@@ -97,6 +120,44 @@ fun JournalScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var cycleToEdit by remember { mutableStateOf<Cycle?>(null) }
     var cycleToDelete by remember { mutableStateOf<Cycle?>(null) }
+    var cycleToManageExclusion by remember { mutableStateOf<Cycle?>(null) }
+    var showReportDialog by remember { mutableStateOf(false) }
+    var pendingReportConfig by remember { mutableStateOf<ClinicalReportConfig?>(null) }
+    val reportPdfLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri ->
+        val config = pendingReportConfig
+        if (uri != null && config != null) {
+            onExportClinicalReport(context, uri, config)
+        }
+        pendingReportConfig = null
+    }
+    val reportHtmlLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/html")
+    ) { uri ->
+        val config = pendingReportConfig
+        if (uri != null && config != null) {
+            onExportClinicalReport(context, uri, config)
+        }
+        pendingReportConfig = null
+    }
+
+    if (showReportDialog) {
+        ClinicalReportDialog(
+            onDismiss = { showReportDialog = false },
+            onExport = { config ->
+                showReportDialog = false
+                pendingReportConfig = config
+                val ext = if (config.format == ReportFormat.HTML) "html" else "pdf"
+                val name = "luteal_recapitulatif_medical_${LocalDate.now()}.$ext"
+                if (config.format == ReportFormat.HTML) {
+                    reportHtmlLauncher.launch(name)
+                } else {
+                    reportPdfLauncher.launch(name)
+                }
+            }
+        )
+    }
 
     val recordedEntries = remember(state.entries) {
         state.entries
@@ -119,6 +180,17 @@ fun JournalScreen(
         )
     }
 
+    cycleToManageExclusion?.let { cycle ->
+        CycleExclusionDialog(
+            cycle = cycle,
+            onDismiss = { cycleToManageExclusion = null },
+            onConfirm = { isExcluded, reason ->
+                onToggleCycleExclusion(cycle.id, isExcluded, reason)
+                cycleToManageExclusion = null
+            }
+        )
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -128,17 +200,31 @@ fun JournalScreen(
         verticalArrangement = Arrangement.spacedBy(LutealSpacing.md)
     ) {
         item {
-            ScreenHeader(
-                title = stringResource(R.string.journal_title),
-                subtitle = stringResource(R.string.journal_subtitle)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ScreenHeader(
+                    title = stringResource(R.string.journal_title),
+                    subtitle = stringResource(R.string.journal_subtitle)
+                )
+                IconButton(onClick = { showReportDialog = true }) {
+                    Icon(
+                        imageVector = Icons.Rounded.Description,
+                        contentDescription = stringResource(R.string.report_dialog_title),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
         }
 
         item {
-            TabRow(
+            ScrollableTabRow(
                 selectedTabIndex = viewMode.ordinal,
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.primary,
+                edgePadding = 0.dp,
                 divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }
             ) {
                 Tab(
@@ -169,6 +255,38 @@ fun JournalScreen(
                     icon = {
                         Icon(
                             imageVector = Icons.Rounded.FormatListBulleted,
+                            contentDescription = null
+                        )
+                    }
+                )
+                Tab(
+                    selected = viewMode == JournalViewMode.VARIABILITY,
+                    onClick = { viewMode = JournalViewMode.VARIABILITY },
+                    text = {
+                        Text(
+                            text = stringResource(R.string.journal_view_variability),
+                            style = MaterialTheme.typography.titleSmall
+                         )
+                    },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ShowChart,
+                            contentDescription = null
+                        )
+                    }
+                )
+                Tab(
+                    selected = viewMode == JournalViewMode.THERMAL,
+                    onClick = { viewMode = JournalViewMode.THERMAL },
+                    text = {
+                        Text(
+                            text = stringResource(R.string.journal_view_thermal),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Rounded.DeviceThermostat,
                             contentDescription = null
                         )
                     }
@@ -213,8 +331,7 @@ fun JournalScreen(
                     onEditOrAdd = { onSelectDate(selectedDate) }
                 )
             }
-        } else {
-            // Timeline View Mode
+        } else if (viewMode == JournalViewMode.TIMELINE) {
             if (recordedEntries.isEmpty()) {
                 item {
                     LutealEmptyState(
@@ -291,6 +408,23 @@ fun JournalScreen(
                         }
                     }
             }
+        } else if (viewMode == JournalViewMode.VARIABILITY) {
+            item {
+                val stats = remember(state.cycles) {
+                    LongitudinalCycleStatsCalculator.calculate(state.cycles)
+                }
+                CycleVariabilityVisualizer(
+                    stats = stats,
+                    onManageExclusion = { cycleId ->
+                        cycleToManageExclusion = state.cycles.firstOrNull { it.id == cycleId }
+                    },
+                    onStartPeriod = onStartPeriod
+                )
+            }
+        } else {
+            item {
+                ThermalHistoryCard(state = state)
+            }
         }
     }
 
@@ -305,24 +439,24 @@ fun JournalScreen(
         )
     }
 
-    if (cycleToEdit != null) {
+    cycleToEdit?.let { cycle ->
         EditCycleDialog(
-            cycle = cycleToEdit!!,
+            cycle = cycle,
             existingCycles = state.cycles,
             today = state.today,
             onDismiss = { cycleToEdit = null },
             onConfirm = { newStartDate ->
-                onEditCycle(cycleToEdit!!.id, newStartDate)
+                onEditCycle(cycle.id, newStartDate)
                 cycleToEdit = null
             }
         )
     }
 
-    if (cycleToDelete != null) {
+    cycleToDelete?.let { cycle ->
         DeleteCycleConfirmDialog(
             onDismiss = { cycleToDelete = null },
             onConfirm = {
-                onDeleteCycle(cycleToDelete!!.id)
+                onDeleteCycle(cycle.id)
                 cycleToDelete = null
             }
         )
@@ -757,6 +891,79 @@ private fun bleedingLabel(intensity: BleedingIntensity): String = stringResource
         BleedingIntensity.HEAVY -> R.string.bleeding_heavy
     }
 )
+
+@Composable
+private fun ThermalHistoryCard(state: LutealUiState) {
+    val cycle = state.currentCycle
+    val unit = TemperatureUnit.entries.firstOrNull {
+        it.name == state.preferences.temperatureUnit
+    } ?: TemperatureUnit.CELSIUS
+    if (cycle == null) {
+        LutealCard(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
+                Text(text = stringResource(R.string.thermal_empty_title), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = stringResource(R.string.thermal_empty_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        return
+    }
+    val observations = state.biomarkers.filter { it.date >= cycle.startDate }
+    val shift = remember(cycle.startDate, observations) {
+        ThermalShiftCalculator.evaluateCycle(cycle.startDate, observations)
+    }
+    LutealCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
+            Text(
+                text = stringResource(R.string.thermal_chart_title),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.thermal_chart_subtitle),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (observations.none { it.bbt != null }) {
+                Text(
+                    text = stringResource(R.string.thermal_empty_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                ThermalShiftChart(
+                    cycleStart = cycle.startDate,
+                    observations = observations,
+                    shift = shift,
+                    unit = unit,
+                    contentDescription = stringResource(
+                        R.string.thermal_chart_summary,
+                        observations.count { it.bbt != null },
+                        observations.count { it.bbt?.isDisturbed == true },
+                        if (shift is ThermalShiftResult.Confirmed) {
+                            stringResource(R.string.thermal_shift_confirmed)
+                        } else {
+                            stringResource(R.string.thermal_chart_no_shift)
+                        }
+                    )
+                )
+                if (shift is ThermalShiftResult.Confirmed) {
+                    Text(
+                        text = stringResource(R.string.thermal_shift_confirmed),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = stringResource(R.string.coverline_label),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

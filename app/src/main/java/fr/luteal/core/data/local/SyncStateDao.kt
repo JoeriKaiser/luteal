@@ -18,6 +18,9 @@ interface SyncStateDao {
     @Query("SELECT * FROM sync_state WHERE dirty = 1 AND entityType = :entityType")
     suspend fun getDirtyStatesByType(entityType: String): List<SyncStateEntity>
 
+    @Query("SELECT * FROM sync_state")
+    suspend fun getAllStates(): List<SyncStateEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(state: SyncStateEntity)
 

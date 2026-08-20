@@ -36,7 +36,24 @@ data class UserPreferences(
     /** Optional; null means the user did not declare one. */
     val ageBand: String? = null,
     val couplePairingCode: String? = null,
-    val duoSharing: DuoSharingPreferences = DuoSharingPreferences()
+    val duoSharing: DuoSharingPreferences = DuoSharingPreferences(),
+    val isAppLockEnabled: Boolean = false,
+    val isBiometricEnabled: Boolean = false,
+    val autoLockTimeout: String = "IMMEDIATE",
+    val isScreenMaskingEnabled: Boolean = false,
+    val consecutivePinFailures: Int = 0,
+    val lockoutUntilEpochMillis: Long = 0L,
+    val isNotificationsEnabled: Boolean = false,
+    val isDailyCheckInEnabled: Boolean = false,
+    val dailyCheckInTime: String = "21:00",
+    val isPeriodWindowEnabled: Boolean = false,
+    val periodWindowLeadDays: Int = 2,
+    val isLateCycleEnabled: Boolean = false,
+    val lateCycleGraceDays: Int = 1,
+    val notificationVisibilityMode: String = "CONCEALED",
+    val notificationCustomTitle: String = "",
+    val notificationCustomBody: String = "",
+    val temperatureUnit: String = "CELSIUS"
 ) {
     /** Contexts the user declared during onboarding. */
     val declaredContexts: Set<TrackingContext>
@@ -82,6 +99,23 @@ class UserPreferencesDataStore @Inject constructor(
         val SHARE_MOOD = booleanPreferencesKey("share_mood")
         val SHARE_ENERGY = booleanPreferencesKey("share_energy")
         val SHARE_SUPPORT_REQUESTS = booleanPreferencesKey("share_support_requests")
+        val IS_APP_LOCK_ENABLED = booleanPreferencesKey("is_app_lock_enabled")
+        val IS_BIOMETRIC_ENABLED = booleanPreferencesKey("is_biometric_enabled")
+        val AUTO_LOCK_TIMEOUT = stringPreferencesKey("auto_lock_timeout")
+        val IS_SCREEN_MASKING_ENABLED = booleanPreferencesKey("is_screen_masking_enabled")
+        val CONSECUTIVE_PIN_FAILURES = androidx.datastore.preferences.core.intPreferencesKey("consecutive_pin_failures")
+        val LOCKOUT_UNTIL_EPOCH_MILLIS = androidx.datastore.preferences.core.longPreferencesKey("lockout_until_epoch_millis")
+        val NOTIF_ENABLED = booleanPreferencesKey("notif_enabled")
+        val NOTIF_DAILY_ENABLED = booleanPreferencesKey("notif_daily_enabled")
+        val NOTIF_DAILY_TIME = stringPreferencesKey("notif_daily_time")
+        val NOTIF_WINDOW_ENABLED = booleanPreferencesKey("notif_window_enabled")
+        val NOTIF_WINDOW_LEAD_DAYS = androidx.datastore.preferences.core.intPreferencesKey("notif_window_lead_days")
+        val NOTIF_LATE_ENABLED = booleanPreferencesKey("notif_late_enabled")
+        val NOTIF_LATE_GRACE_DAYS = androidx.datastore.preferences.core.intPreferencesKey("notif_late_grace_days")
+        val NOTIF_VISIBILITY_MODE = stringPreferencesKey("notif_visibility_mode")
+        val NOTIF_CUSTOM_TITLE = stringPreferencesKey("notif_custom_title")
+        val NOTIF_CUSTOM_BODY = stringPreferencesKey("notif_custom_body")
+        val TEMPERATURE_UNIT = stringPreferencesKey("temperature_unit")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -112,7 +146,24 @@ class UserPreferencesDataStore @Inject constructor(
                     shareMood = preferences[SHARE_MOOD] ?: false,
                     shareEnergy = preferences[SHARE_ENERGY] ?: false,
                     shareSupportRequests = preferences[SHARE_SUPPORT_REQUESTS] ?: false
-                )
+                ),
+                isAppLockEnabled = preferences[IS_APP_LOCK_ENABLED] ?: false,
+                isBiometricEnabled = preferences[IS_BIOMETRIC_ENABLED] ?: false,
+                autoLockTimeout = preferences[AUTO_LOCK_TIMEOUT] ?: "IMMEDIATE",
+                isScreenMaskingEnabled = preferences[IS_SCREEN_MASKING_ENABLED] ?: false,
+                consecutivePinFailures = preferences[CONSECUTIVE_PIN_FAILURES] ?: 0,
+                lockoutUntilEpochMillis = preferences[LOCKOUT_UNTIL_EPOCH_MILLIS] ?: 0L,
+                isNotificationsEnabled = preferences[NOTIF_ENABLED] ?: false,
+                isDailyCheckInEnabled = preferences[NOTIF_DAILY_ENABLED] ?: false,
+                dailyCheckInTime = preferences[NOTIF_DAILY_TIME] ?: "21:00",
+                isPeriodWindowEnabled = preferences[NOTIF_WINDOW_ENABLED] ?: false,
+                periodWindowLeadDays = preferences[NOTIF_WINDOW_LEAD_DAYS] ?: 2,
+                isLateCycleEnabled = preferences[NOTIF_LATE_ENABLED] ?: false,
+                lateCycleGraceDays = preferences[NOTIF_LATE_GRACE_DAYS] ?: 1,
+                notificationVisibilityMode = preferences[NOTIF_VISIBILITY_MODE] ?: "CONCEALED",
+                notificationCustomTitle = preferences[NOTIF_CUSTOM_TITLE] ?: "",
+                notificationCustomBody = preferences[NOTIF_CUSTOM_BODY] ?: "",
+                temperatureUnit = preferences[TEMPERATURE_UNIT] ?: "CELSIUS"
             )
         }
 
@@ -149,6 +200,30 @@ class UserPreferencesDataStore @Inject constructor(
         else preferences[COUPLE_PAIRING_CODE] = code
     }
 
+
+    suspend fun setAppLockEnabled(enabled: Boolean) = edit { it[IS_APP_LOCK_ENABLED] = enabled }
+    suspend fun setBiometricEnabled(enabled: Boolean) = edit { it[IS_BIOMETRIC_ENABLED] = enabled }
+    suspend fun setAutoLockTimeout(timeout: String) = edit { it[AUTO_LOCK_TIMEOUT] = timeout }
+    suspend fun setScreenMaskingEnabled(enabled: Boolean) = edit { it[IS_SCREEN_MASKING_ENABLED] = enabled }
+    suspend fun setConsecutivePinFailures(count: Int) = edit { it[CONSECUTIVE_PIN_FAILURES] = count }
+    suspend fun setLockoutUntilEpochMillis(timestampMillis: Long) = edit { it[LOCKOUT_UNTIL_EPOCH_MILLIS] = timestampMillis }
+
+    suspend fun resetPinFailures() = edit {
+        it[CONSECUTIVE_PIN_FAILURES] = 0
+        it[LOCKOUT_UNTIL_EPOCH_MILLIS] = 0L
+    }
+
+    suspend fun setNotificationsEnabled(enabled: Boolean) = edit { it[NOTIF_ENABLED] = enabled }
+    suspend fun setDailyCheckInEnabled(enabled: Boolean) = edit { it[NOTIF_DAILY_ENABLED] = enabled }
+    suspend fun setDailyCheckInTime(time: String) = edit { it[NOTIF_DAILY_TIME] = time }
+    suspend fun setPeriodWindowNotificationEnabled(enabled: Boolean) = edit { it[NOTIF_WINDOW_ENABLED] = enabled }
+    suspend fun setPeriodWindowLeadDays(days: Int) = edit { it[NOTIF_WINDOW_LEAD_DAYS] = days }
+    suspend fun setLateCycleNotificationEnabled(enabled: Boolean) = edit { it[NOTIF_LATE_ENABLED] = enabled }
+    suspend fun setLateCycleGraceDays(days: Int) = edit { it[NOTIF_LATE_GRACE_DAYS] = days }
+    suspend fun setNotificationVisibilityMode(mode: String) = edit { it[NOTIF_VISIBILITY_MODE] = mode }
+    suspend fun setNotificationCustomTitle(title: String) = edit { it[NOTIF_CUSTOM_TITLE] = title }
+    suspend fun setNotificationCustomBody(body: String) = edit { it[NOTIF_CUSTOM_BODY] = body }
+    suspend fun setTemperatureUnit(unit: String) = edit { it[TEMPERATURE_UNIT] = unit }
     suspend fun clear() = edit { it.clear() }
 
     private suspend fun edit(block: suspend (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {

@@ -33,6 +33,23 @@ import kotlinx.coroutines.withContext
 
 import androidx.annotation.StringRes
 import fr.luteal.app.R
+import fr.luteal.core.data.datastore.UserPreferencesDataStore
+import fr.luteal.core.data.security.AppLockManager
+import fr.luteal.core.data.security.PinCryptoManager
+import fr.luteal.core.model.AutoLockTimeout
+import fr.luteal.core.data.DataImportManager
+import fr.luteal.core.model.DataImportError
+import fr.luteal.core.data.ClinicalReportAggregator
+import fr.luteal.core.data.report.HtmlReportBuilder
+import fr.luteal.core.data.report.PdfReportBuilder
+import fr.luteal.core.model.ClinicalReportConfig
+import fr.luteal.core.model.ReportFormat
+import fr.luteal.app.notification.NotificationScheduler
+import fr.luteal.core.model.NotificationVisibility
+import fr.luteal.core.model.ImportStrategy
+import fr.luteal.core.model.ImportSummary
+import fr.luteal.core.model.LutealBackupPayload
+import fr.luteal.core.model.LutealBackupPreview
 
 /**
  * Settings tab view model.
@@ -51,7 +68,13 @@ class SettingsViewModel @Inject constructor(
     private val apiClientFactory: FolicularApiClientFactory,
     private val cursorStore: SyncCursorStore,
     private val dataExportManager: DataExportManager,
-    private val localDataPurgeManager: LocalDataPurgeManager
+    private val dataImportManager: DataImportManager,
+    private val localDataPurgeManager: LocalDataPurgeManager,
+    private val userPreferencesDataStore: UserPreferencesDataStore,
+    private val pinCryptoManager: PinCryptoManager,
+    private val appLockManager: AppLockManager,
+    private val clinicalReportAggregator: ClinicalReportAggregator,
+    private val notificationScheduler: NotificationScheduler
 ) : ViewModel() {
 
     /** Local edit buffer for the base URL field, kept out of the DataStore. */
@@ -65,11 +88,18 @@ class SettingsViewModel @Inject constructor(
 
     private val exportState = MutableStateFlow<DataExportState>(DataExportState.Idle)
     private val wipeState = MutableStateFlow<DataWipeState>(DataWipeState.Idle)
+    private val importState = MutableStateFlow<DataImportState>(DataImportState.Idle)
 
-    /** Drafts folded into one flow: `combine` takes at most five. */
+    private val reportExportState = MutableStateFlow<DataExportState>(DataExportState.Idle)
+
+    private val fileOps: Flow<FileOps> =
+        combine(exportState, wipeState, importState, reportExportState) { export, wipe, importOp, report ->
+            FileOps(export, wipe, importOp, report)
+        }
+
     private val drafts: Flow<Drafts> =
-        combine(baseUrlDraft, recoveryCodeDraft, exportState, wipeState) { base, recovery, export, wipe ->
-            Drafts(base, recovery, export, wipe)
+        combine(baseUrlDraft, recoveryCodeDraft, fileOps) { base, recovery, files ->
+            Drafts(base, recovery, files.export, files.wipe, files.importOp, files.report)
         }
     val uiState: StateFlow<SettingsSyncUiState> = combine(
         userRepository.getUserPreferences(),
@@ -90,9 +120,28 @@ class SettingsViewModel @Inject constructor(
             recoveryState = recovery,
             exportState = draft.exportState,
             wipeState = draft.wipeState,
+            importState = draft.importState,
+            reportExportState = draft.reportExportState,
             hasAccount = credentialStore.load() != null,
             declaredContexts = preferences.declaredContexts,
-            ageBand = AgeBand.fromId(preferences.ageBand)
+            ageBand = AgeBand.fromId(preferences.ageBand),
+            isAppLockEnabled = preferences.isAppLockEnabled,
+            isBiometricEnabled = preferences.isBiometricEnabled,
+            isBiometricHardwareAvailable = appLockManager.isBiometricHardwareAvailable(),
+            autoLockTimeout = AutoLockTimeout.fromName(preferences.autoLockTimeout),
+            isScreenMaskingEnabled = preferences.isScreenMaskingEnabled,
+            hasPinConfigured = pinCryptoManager.hasPinConfigured(),
+            isNotificationsEnabled = preferences.isNotificationsEnabled,
+            isDailyCheckInEnabled = preferences.isDailyCheckInEnabled,
+            dailyCheckInTime = preferences.dailyCheckInTime,
+            isPeriodWindowEnabled = preferences.isPeriodWindowEnabled,
+            periodWindowLeadDays = preferences.periodWindowLeadDays,
+            isLateCycleEnabled = preferences.isLateCycleEnabled,
+            lateCycleGraceDays = preferences.lateCycleGraceDays,
+            notificationVisibilityMode = NotificationVisibility.fromName(preferences.notificationVisibilityMode),
+            notificationCustomTitle = preferences.notificationCustomTitle,
+            notificationCustomBody = preferences.notificationCustomBody,
+            temperatureUnit = preferences.temperatureUnit
         )
     }.stateIn(
         scope = viewModelScope,
@@ -117,6 +166,12 @@ class SettingsViewModel @Inject constructor(
     fun setAgeBand(band: AgeBand?) {
         viewModelScope.launch {
             userRepository.setAgeBand(band?.id)
+        }
+    }
+
+    fun setTemperatureUnit(unit: String) {
+        viewModelScope.launch {
+            userPreferencesDataStore.setTemperatureUnit(unit)
         }
     }
 
@@ -251,6 +306,7 @@ class SettingsViewModel @Inject constructor(
                 localDataPurgeManager.purgeAllLocalData()
             }.onSuccess {
                 wipeState.value = DataWipeState.Success
+                notificationScheduler.reconcileAllSchedules()
                 onPurged()
             }.onFailure { err ->
                 wipeState.value = DataWipeState.Error(err.message ?: "Purge failed")
@@ -265,6 +321,205 @@ class SettingsViewModel @Inject constructor(
     fun clearWipeState() {
         wipeState.value = DataWipeState.Idle
     }
+
+    fun inspectBackup(context: Context, uri: Uri) {
+        viewModelScope.launch {
+            importState.value = DataImportState.Inspecting
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        dataImportManager.inspectBackup(stream)
+                    } ?: throw IllegalStateException("Cannot open input stream for URI")
+                }
+            }.onSuccess { result ->
+                result.fold(
+                    onSuccess = { (preview, payload) ->
+                        importState.value = DataImportState.PreviewReady(preview, payload)
+                    },
+                    onFailure = { err ->
+                        val resId = when (err) {
+                            is DataImportError.InvalidJsonSyntax -> R.string.settings_import_error_syntax
+                            is DataImportError.UnsupportedSchemaVersion -> R.string.settings_import_error_schema
+                            else -> R.string.settings_import_error_generic
+                        }
+                        importState.value = DataImportState.Error(message = err.message, messageResId = resId)
+                    }
+                )
+            }.onFailure { err ->
+                importState.value = DataImportState.Error(
+                    message = err.message,
+                    messageResId = R.string.settings_import_error_generic
+                )
+            }
+        }
+    }
+
+    fun confirmRestore(payload: LutealBackupPayload, strategy: ImportStrategy, onRestored: () -> Unit = {}) {
+        viewModelScope.launch {
+            importState.value = DataImportState.Restoring
+            val result = dataImportManager.restoreBackup(payload, strategy)
+            result.fold(
+                onSuccess = { summary ->
+                    importState.value = DataImportState.Success(summary)
+                    notificationScheduler.reconcileAllSchedules()
+                    onRestored()
+                },
+                onFailure = { err ->
+                    importState.value = DataImportState.Error(
+                        message = err.message,
+                        messageResId = R.string.settings_import_error_generic
+                    )
+                }
+            )
+        }
+    }
+
+    fun dismissImportPreview() {
+        importState.value = DataImportState.Idle
+    }
+
+    fun clearImportState() {
+        importState.value = DataImportState.Idle
+    }
+
+    fun setAppLockEnabledWithPin(pin: String) {
+        viewModelScope.launch {
+            pinCryptoManager.setPin(pin)
+            userPreferencesDataStore.setAppLockEnabled(true)
+        }
+    }
+
+    fun disableAppLock(currentPin: String): Boolean {
+        if (!pinCryptoManager.verifyPin(currentPin)) return false
+        viewModelScope.launch {
+            userPreferencesDataStore.setAppLockEnabled(false)
+            userPreferencesDataStore.setBiometricEnabled(false)
+            pinCryptoManager.clearPin()
+        }
+        return true
+    }
+
+    fun setBiometricEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesDataStore.setBiometricEnabled(enabled)
+        }
+    }
+
+    fun setAutoLockTimeout(timeout: AutoLockTimeout) {
+        viewModelScope.launch {
+            userPreferencesDataStore.setAutoLockTimeout(timeout.name)
+        }
+    }
+
+    fun setScreenMaskingEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesDataStore.setScreenMaskingEnabled(enabled)
+        }
+    }
+
+    fun changePin(oldPin: String, newPin: String): Boolean {
+        if (!pinCryptoManager.verifyPin(oldPin)) return false
+        pinCryptoManager.setPin(newPin)
+        return true
+    }
+
+
+    fun exportClinicalReport(context: Context, uri: Uri, config: ClinicalReportConfig) {
+        viewModelScope.launch {
+            reportExportState.value = DataExportState.Loading
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val data = clinicalReportAggregator.aggregate(config)
+                    context.contentResolver.openOutputStream(uri)?.use { stream ->
+                        if (config.format == ReportFormat.PDF) {
+                            PdfReportBuilder.writePdfToStream(data, stream)
+                        } else {
+                            HtmlReportBuilder.writeHtmlToStream(data, stream)
+                        }
+                    } ?: throw IllegalStateException("Cannot open output stream for URI")
+                }
+            }.onSuccess {
+                reportExportState.value = DataExportState.Success
+            }.onFailure { err ->
+                reportExportState.value = DataExportState.Error(err.message ?: "Export failed")
+            }
+        }
+    }
+
+    fun clearReportExportState() {
+        reportExportState.value = DataExportState.Idle
+    }
+
+    fun setNotificationsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesDataStore.setNotificationsEnabled(enabled)
+            notificationScheduler.reconcileAllSchedules()
+        }
+    }
+
+    fun setDailyCheckInEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesDataStore.setDailyCheckInEnabled(enabled)
+            notificationScheduler.reconcileAllSchedules()
+        }
+    }
+
+    fun setDailyCheckInTime(time: String) {
+        viewModelScope.launch {
+            userPreferencesDataStore.setDailyCheckInTime(time)
+            notificationScheduler.reconcileAllSchedules()
+        }
+    }
+
+    fun setPeriodWindowNotificationEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesDataStore.setPeriodWindowNotificationEnabled(enabled)
+            notificationScheduler.reconcileAllSchedules()
+        }
+    }
+
+    fun setPeriodWindowLeadDays(days: Int) {
+        viewModelScope.launch {
+            userPreferencesDataStore.setPeriodWindowLeadDays(days)
+            notificationScheduler.reconcileAllSchedules()
+        }
+    }
+
+    fun setLateCycleNotificationEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesDataStore.setLateCycleNotificationEnabled(enabled)
+            notificationScheduler.reconcileAllSchedules()
+        }
+    }
+
+    fun setLateCycleGraceDays(days: Int) {
+        viewModelScope.launch {
+            userPreferencesDataStore.setLateCycleGraceDays(days)
+            notificationScheduler.reconcileAllSchedules()
+        }
+    }
+
+    fun setNotificationVisibilityMode(mode: NotificationVisibility) {
+        viewModelScope.launch {
+            userPreferencesDataStore.setNotificationVisibilityMode(mode.name)
+            notificationScheduler.reconcileAllSchedules()
+        }
+    }
+
+    fun setNotificationCustomTitle(title: String) {
+        viewModelScope.launch {
+            userPreferencesDataStore.setNotificationCustomTitle(title)
+            notificationScheduler.reconcileAllSchedules()
+        }
+    }
+
+    fun setNotificationCustomBody(body: String) {
+        viewModelScope.launch {
+            userPreferencesDataStore.setNotificationCustomBody(body)
+            notificationScheduler.reconcileAllSchedules()
+        }
+    }
+    fun verifyPin(pin: String): Boolean = pinCryptoManager.verifyPin(pin)
 }
 
 sealed interface RecoveryState {
@@ -288,6 +543,15 @@ sealed interface DataWipeState {
     data class Error(val message: String) : DataWipeState
 }
 
+sealed interface DataImportState {
+    data object Idle : DataImportState
+    data object Inspecting : DataImportState
+    data class PreviewReady(val preview: LutealBackupPreview, val payload: LutealBackupPayload) : DataImportState
+    data object Restoring : DataImportState
+    data class Success(val summary: ImportSummary) : DataImportState
+    data class Error(val message: String? = null, @param:StringRes val messageResId: Int? = null) : DataImportState
+}
+
 data class SettingsSyncUiState(
     val onlineSyncEnabled: Boolean = false,
     val baseUrlDraft: String = "",
@@ -300,20 +564,47 @@ data class SettingsSyncUiState(
     val recoveryState: RecoveryState = RecoveryState.Idle,
     val exportState: DataExportState = DataExportState.Idle,
     val wipeState: DataWipeState = DataWipeState.Idle,
-    /** True once this device holds credentials; recovery is offered only before. */
+    val importState: DataImportState = DataImportState.Idle,
+    val reportExportState: DataExportState = DataExportState.Idle,
     val hasAccount: Boolean = false,
     /** Contexts the user has declared, editable after onboarding. */
     val declaredContexts: Set<TrackingContext> = emptySet(),
     /** Null means no band declared, which is a valid state. */
-    val ageBand: AgeBand? = null
+    val ageBand: AgeBand? = null,
+    val isAppLockEnabled: Boolean = false,
+    val isBiometricEnabled: Boolean = false,
+    val isBiometricHardwareAvailable: Boolean = false,
+    val autoLockTimeout: AutoLockTimeout = AutoLockTimeout.IMMEDIATE,
+    val isScreenMaskingEnabled: Boolean = false,
+    val hasPinConfigured: Boolean = false,
+    val isNotificationsEnabled: Boolean = false,
+    val isDailyCheckInEnabled: Boolean = false,
+    val dailyCheckInTime: String = "21:00",
+    val isPeriodWindowEnabled: Boolean = false,
+    val periodWindowLeadDays: Int = 2,
+    val isLateCycleEnabled: Boolean = false,
+    val lateCycleGraceDays: Int = 1,
+    val notificationVisibilityMode: NotificationVisibility = NotificationVisibility.CONCEALED,
+    val notificationCustomTitle: String = "",
+    val notificationCustomBody: String = "",
+    val temperatureUnit: String = "CELSIUS"
 )
 
 /** Text drafts held together so [combine] stays within its five-flow limit. */
+private data class FileOps(
+    val export: DataExportState,
+    val wipe: DataWipeState,
+    val importOp: DataImportState,
+    val report: DataExportState
+)
+
 private data class Drafts(
     val baseUrl: String,
     val recoveryCode: String,
     val exportState: DataExportState,
-    val wipeState: DataWipeState
+    val wipeState: DataWipeState,
+    val importState: DataImportState,
+    val reportExportState: DataExportState
 )
 
 sealed interface TestDataActionState {

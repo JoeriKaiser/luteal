@@ -354,4 +354,24 @@ class CycleEstimateCalculatorTest {
         assertEquals(LocalDate.parse("2026-06-20"), closedC1.endDate)
         assertEquals(28, closedC1.lengthInDays)
     }
+
+    @Test
+    fun `excluded cycle intervals are omitted from estimation`() {
+        val c1 = Cycle(id = "1", startDate = LocalDate.parse("2026-01-01"))
+        val c2 = Cycle(id = "2", startDate = LocalDate.parse("2026-01-29"))
+        val c3 = Cycle(
+            id = "3",
+            startDate = LocalDate.parse("2026-02-26"),
+            isExcludedFromEstimates = true,
+            exclusionReason = CycleExclusionReason.ILLNESS
+        )
+        val c4 = Cycle(id = "4", startDate = LocalDate.parse("2026-04-12"))
+
+        val result = CycleEstimateCalculator.evaluate(listOf(c1, c2, c3, c4))
+        assertTrue(result is CycleEstimateResult.Available)
+        val estimate = (result as CycleEstimateResult.Available).estimate
+
+        // Only interval C1->C2 (28 days) is valid and included; central date = C4 + 28 days
+        assertEquals(LocalDate.parse("2026-05-10"), estimate.centralDate)
+    }
 }

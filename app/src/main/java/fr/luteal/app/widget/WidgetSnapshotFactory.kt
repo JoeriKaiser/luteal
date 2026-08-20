@@ -63,13 +63,7 @@ class WidgetSnapshotFactory @Inject constructor() {
                 if (cycleDay == null && (estimateStart == null || estimateEnd == null)) {
                     DuoWidgetSnapshot.NothingShared
                 } else {
-                    val age = Duration.between(cached.refreshedAt, now)
-                        .coerceAtLeast(Duration.ZERO)
-                    val freshness = when {
-                        age < Duration.ofHours(24) -> WidgetFreshness.CURRENT
-                        age <= Duration.ofDays(7) -> WidgetFreshness.AGING
-                        else -> WidgetFreshness.STALE
-                    }
+                    val freshness = WidgetFreshness.of(cached.refreshedAt, now)
                     DuoWidgetSnapshot.Available(
                         cycleDay = cycleDay,
                         estimateStart = estimateStart,

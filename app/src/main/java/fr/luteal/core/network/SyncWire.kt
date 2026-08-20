@@ -118,6 +118,18 @@ fun JsonElement.toDailyEntryData(): DailyEntryData =
 fun SymptomLogData.toJsonElement(): JsonElement =
     ContractJson.encodeToJsonElement(SymptomLogData.serializer(), this)
 
+fun fr.luteal.core.network.mapping.BiomarkerObservationPayload.toJsonElement(): JsonElement =
+    ContractJson.encodeToJsonElement(
+        fr.luteal.core.network.mapping.BiomarkerObservationPayload.serializer(),
+        this
+    )
+
+fun JsonElement.toBiomarkerObservationPayload(): fr.luteal.core.network.mapping.BiomarkerObservationPayload =
+    ContractJson.decodeFromJsonElement(
+        fr.luteal.core.network.mapping.BiomarkerObservationPayload.serializer(),
+        this
+    )
+
 fun JsonElement.toSymptomLogData(): SymptomLogData =
     ContractJson.decodeFromJsonElement(SymptomLogData.serializer(), this)
 
@@ -178,6 +190,18 @@ fun DailyEntryData.toPushChange(sealer: RecordSealer): PushChangeWire = sealedCh
 
 fun SymptomLogData.toPushChange(sealer: RecordSealer): PushChangeWire = sealedChange(
     sealer, EntityType.SYMPTOM_LOG, id, clientRev, updatedAt, deletedAt, toJsonElement()
+)
+
+fun fr.luteal.core.network.mapping.BiomarkerObservationPayload.toPushChange(
+    sealer: RecordSealer
+): PushChangeWire = sealedChange(
+    sealer,
+    EntityType.BIOMARKER_OBSERVATION,
+    wireId,
+    wireClientRev,
+    wireUpdatedAt,
+    wireDeletedAt,
+    toJsonElement()
 )
 
 /** Opens a pulled change, or returns null for a tombstone. */

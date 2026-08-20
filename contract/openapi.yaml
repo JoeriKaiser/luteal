@@ -27,10 +27,6 @@ tags:
     description: Account and server-authoritative settings
   - name: sync
     description: Offline-first delta synchronization
-  - name: reads
-    description: Read models over validated server state
-  - name: estimates
-    description: Cycle estimates (never facts, never medical conclusions)
   - name: duo
     description: Consensual partner surface with per-field grants
   - name: ops
@@ -883,9 +879,30 @@ components:
         bbt_celsius: { type: number, format: double, nullable: true, minimum: 34.0, maximum: 43.0 }
         bbt_time: { type: string, nullable: true, pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$" }
         bbt_quality: { $ref: "#/components/schemas/BbtQuality" }
+        bbt_disturbances:
+          type: array
+          items:
+            type: string
+            enum: [fever, alcohol, poor_sleep, time_shift, late_measurement, stress, medication]
         cervical_fluid:
           allOf: [{ $ref: "#/components/schemas/CervicalFluid" }]
           nullable: true
+        cervical_sensation:
+          type: string
+          nullable: true
+          enum: [dry, damp, wet, slippery]
+        cervical_texture:
+          type: string
+          nullable: true
+          enum: [sticky, creamy, egg_white, watery]
+        lh_test_result:
+          type: string
+          nullable: true
+          enum: [negative, low, peak_positive, indeterminate]
+        hcg_test_result:
+          type: string
+          nullable: true
+          enum: [negative, positive, faint_uncertain]
         cervix_position:
           allOf: [{ $ref: "#/components/schemas/CervixPosition" }]
           nullable: true

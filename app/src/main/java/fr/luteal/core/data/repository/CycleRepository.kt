@@ -16,4 +16,5 @@ interface CycleRepository {
      */
     suspend fun upsertCycle(cycle: Cycle)
     suspend fun deleteCycle(id: String)
+    suspend fun updateCycleExclusion(id: String, isExcluded: Boolean, reason: fr.luteal.core.model.CycleExclusionReason?)
 }

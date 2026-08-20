@@ -104,12 +104,16 @@ class CycleSyncEngineTest {
         stateDao: FakeSyncStateDao,
         creds: FakeCredentialStore,
         cursor: FakeCursorStore,
-        api: FakeApiClient
+        api: FakeApiClient,
+        dailyEntryDao: FakeDailyEntryDao = FakeDailyEntryDao(),
+        symptomDao: FakeSymptomDao = FakeSymptomDao(),
+        biomarkerDao: FakeBiomarkerDao = FakeBiomarkerDao()
     ) = CycleSyncEngine(
         cycleRepository = repo,
         syncStateDao = stateDao,
-        dailyEntryDao = FakeDailyEntryDao(),
-        symptomDao = FakeSymptomDao(),
+        dailyEntryDao = dailyEntryDao,
+        symptomDao = symptomDao,
+        biomarkerDao = biomarkerDao,
         credentialStore = creds,
         apiClientFactory = FolicularApiClientFactory { api },
         cursorStore = cursor,
@@ -344,5 +348,50 @@ class CycleSyncEngineTest {
 
         assertTrue(result.isFailure)
         assertNull(creds.load())
+    }
+
+    @Test
+    fun `biomarker push marks the local date-prefixed state clean`() = runTest {
+        val date = "2026-08-15"
+        val localId = SyncStateEntity.biomarkerEntityId(date)
+        val wireId = fr.luteal.core.network.mapping.deterministicId("biomarker", date)
+        val biomarkerDao = FakeBiomarkerDao().apply {
+            upsert(
+                fr.luteal.core.data.entity.BiomarkerObservationEntity(
+                    date = date,
+                    bbtCelsius = 36.55,
+                    bbtTime = "07:00",
+                    bbtQuality = "normal",
+                    bbtDisturbancesJson = "[]",
+                    cervicalSensation = null,
+                    cervicalTexture = null,
+                    lhTestResult = null,
+                    hcgTestResult = null,
+                    notes = "",
+                    updatedAtEpochMillis = now.toInstant().toEpochMilli()
+                )
+            )
+        }
+        val stateDao = FakeSyncStateDao().apply {
+            upsert(
+                SyncStateEntity(
+                    entityId = localId,
+                    entityType = SyncStateEntity.TYPE_BIOMARKER_OBSERVATION,
+                    clientRev = UUID.randomUUID().toString(),
+                    createdAtEpochMillis = now.toInstant().toEpochMilli(),
+                    updatedAtEpochMillis = now.toInstant().toEpochMilli(),
+                    dirty = true
+                )
+            )
+        }
+        val creds = FakeCredentialStore(SyncCredentials("acct", "code", "ltok"))
+        val api = FakeApiClient().apply {
+            pushResult = PushResultWire(
+                applied = listOf(AppliedChange(EntityType.BIOMARKER_OBSERVATION, wireId, 1L)),
+                cursor = 1L
+            )
+        }
+        engine(FakeCycleRepository(), stateDao, creds, FakeCursorStore(), api, biomarkerDao = biomarkerDao).sync()
+        assertFalse(stateDao.getState(localId)!!.dirty)
     }
 }

@@ -6,6 +6,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import fr.luteal.app.widget.WidgetDataObserver
 import fr.luteal.app.widget.WidgetWorkScheduler
+import fr.luteal.app.notification.NotificationChannelManager
 import dagger.hilt.android.HiltAndroidApp
 import org.acra.config.dialog
 import org.acra.config.mailSender
@@ -25,6 +26,9 @@ class LutealApp : Application(), Configuration.Provider {
 
     @Inject
     lateinit var widgetWorkScheduler: WidgetWorkScheduler
+
+    @Inject
+    lateinit var notificationChannelManager: NotificationChannelManager
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
@@ -49,6 +53,7 @@ class LutealApp : Application(), Configuration.Provider {
         super.onCreate()
         widgetDataObserver.start(applicationScope)
         widgetWorkScheduler.reconcileSchedules()
+        notificationChannelManager.registerChannels()
     }
 
     @Inject

@@ -5,6 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import fr.luteal.core.data.entity.BiomarkerObservationEntity
 import fr.luteal.core.data.entity.CycleEntity
 import fr.luteal.core.data.entity.DailyEntryEntity
 import fr.luteal.core.data.entity.DisorderConfigEntity
@@ -21,9 +22,10 @@ import fr.luteal.core.data.entity.UserProfileEntity
         SymptomLogEntity::class,
         DisorderConfigEntity::class,
         UserProfileEntity::class,
-        DuoWidgetCacheEntity::class
+        DuoWidgetCacheEntity::class,
+        BiomarkerObservationEntity::class
     ],
-    version = 5,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -34,6 +36,7 @@ abstract class LutealDatabase : RoomDatabase() {
     abstract fun duoWidgetCacheDao(): DuoWidgetCacheDao
     abstract fun symptomDao(): SymptomDao
     abstract fun userProfileDao(): UserProfileDao
+    abstract fun biomarkerDao(): BiomarkerDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -115,6 +118,35 @@ abstract class LutealDatabase : RoomDatabase() {
                         estimateGranted INTEGER NOT NULL,
                         status TEXT NOT NULL,
                         refreshedAtEpochMillis INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE cycles ADD COLUMN isExcludedFromEstimates INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE cycles ADD COLUMN exclusionReason TEXT DEFAULT NULL")
+            }
+        }
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS biomarker_observations (
+                        date TEXT NOT NULL PRIMARY KEY,
+                        bbtCelsius REAL,
+                        bbtTime TEXT,
+                        bbtQuality TEXT NOT NULL DEFAULT 'normal',
+                        bbtDisturbancesJson TEXT NOT NULL DEFAULT '[]',
+                        cervicalSensation TEXT,
+                        cervicalTexture TEXT,
+                        lhTestResult TEXT,
+                        hcgTestResult TEXT,
+                        notes TEXT NOT NULL DEFAULT '',
+                        updatedAtEpochMillis INTEGER NOT NULL
                     )
                     """.trimIndent()
                 )

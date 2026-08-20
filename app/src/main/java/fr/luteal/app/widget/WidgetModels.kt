@@ -1,6 +1,7 @@
 package fr.luteal.app.widget
 
 import fr.luteal.core.model.CycleEstimateResult
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 
@@ -44,5 +45,16 @@ sealed interface DuoWidgetSnapshot {
 enum class WidgetFreshness {
     CURRENT,
     AGING,
-    STALE
+    STALE;
+
+    companion object {
+        fun of(refreshedAt: Instant, now: Instant = Instant.now()): WidgetFreshness {
+            val age = Duration.between(refreshedAt, now)
+            return when {
+                age < Duration.ofHours(24) -> CURRENT
+                age <= Duration.ofDays(7) -> AGING
+                else -> STALE
+            }
+        }
+    }
 }

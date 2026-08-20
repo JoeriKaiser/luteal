@@ -49,6 +49,15 @@ class CycleRepositoryImpl @Inject constructor(
         cycleDao.insertCycle(cycle.toEntity())
     }
 
+    override suspend fun updateCycleExclusion(
+        id: String,
+        isExcluded: Boolean,
+        reason: fr.luteal.core.model.CycleExclusionReason?
+    ) {
+        cycleDao.updateExclusion(id, isExcluded, reason?.name?.lowercase())
+        markDirty(id)
+    }
+
     override suspend fun deleteCycle(id: String) {
         val now = clock.millis()
         val existingState = syncStateDao.getState(id)
@@ -102,7 +111,9 @@ class CycleRepositoryImpl @Inject constructor(
             endDate = endDate?.let { LocalDate.parse(it) },
             averageLengthDays = averageLengthDays,
             lutealPhaseLengthDays = lutealPhaseLengthDays,
-            periodDays = periodDaysJson.toPeriodDays()
+            periodDays = periodDaysJson.toPeriodDays(),
+            isExcludedFromEstimates = isExcludedFromEstimates,
+            exclusionReason = fr.luteal.core.model.CycleExclusionReason.fromKey(exclusionReason)
         )
     }
 
@@ -114,7 +125,9 @@ class CycleRepositoryImpl @Inject constructor(
             periodDaysJson = periodDays.toJson(),
             averageLengthDays = averageLengthDays,
             lutealPhaseLengthDays = lutealPhaseLengthDays,
-            isSynced = false
+            isSynced = false,
+            isExcludedFromEstimates = isExcludedFromEstimates,
+            exclusionReason = exclusionReason?.name?.lowercase()
         )
     }
     private fun List<PeriodDay>.toJson(): String {

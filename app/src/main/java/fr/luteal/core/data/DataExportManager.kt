@@ -1,9 +1,11 @@
 package fr.luteal.core.data
 
 import fr.luteal.core.data.datastore.UserPreferencesDataStore
+import fr.luteal.core.data.local.BiomarkerDao
 import fr.luteal.core.data.local.CycleDao
 import fr.luteal.core.data.local.DailyEntryDao
 import fr.luteal.core.data.local.SymptomDao
+import fr.luteal.core.model.BiomarkerBackupDto
 import fr.luteal.core.model.CycleBackupDto
 import fr.luteal.core.model.DailyEntryBackupDto
 import fr.luteal.core.model.LutealBackupPayload
@@ -24,6 +26,7 @@ class DataExportManager @Inject constructor(
     private val cycleDao: CycleDao,
     private val dailyEntryDao: DailyEntryDao,
     private val symptomDao: SymptomDao,
+    private val biomarkerDao: BiomarkerDao,
     private val userPreferencesDataStore: UserPreferencesDataStore
 ) {
     private val json = Json {
@@ -64,7 +67,9 @@ class DataExportManager @Inject constructor(
                 endDate = entity.endDate,
                 averageLengthDays = entity.averageLengthDays,
                 lutealPhaseLengthDays = entity.lutealPhaseLengthDays,
-                periodDays = periodDays
+                periodDays = periodDays,
+                isExcludedFromEstimates = entity.isExcludedFromEstimates,
+                exclusionReason = entity.exclusionReason
             )
         }
 
@@ -101,6 +106,31 @@ class DataExportManager @Inject constructor(
             )
         }
 
+        val biomarkerObservations = biomarkerDao.getAllObservationsOnce().map { entity ->
+            val disturbances = mutableListOf<String>()
+            if (entity.bbtDisturbancesJson.isNotBlank()) {
+                runCatching {
+                    val arr = JSONArray(entity.bbtDisturbancesJson)
+                    for (i in 0 until arr.length()) {
+                        disturbances.add(arr.getString(i))
+                    }
+                }
+            }
+            BiomarkerBackupDto(
+                date = entity.date,
+                bbtCelsius = entity.bbtCelsius,
+                bbtTime = entity.bbtTime,
+                bbtQuality = entity.bbtQuality,
+                bbtDisturbances = disturbances,
+                cervicalSensation = entity.cervicalSensation,
+                cervicalTexture = entity.cervicalTexture,
+                lhTestResult = entity.lhTestResult,
+                hcgTestResult = entity.hcgTestResult,
+                notes = entity.notes,
+                updatedAt = Instant.ofEpochMilli(entity.updatedAtEpochMillis).toString()
+            )
+        }
+
         val prefs = userPreferencesDataStore.userPreferencesFlow.first()
         val preferencesDto = UserPreferencesBackupDto(
             userRole = prefs.userRole,
@@ -111,7 +141,8 @@ class DataExportManager @Inject constructor(
             trackPcos = prefs.trackPcos,
             trackPerimenopause = prefs.trackPerimenopause,
             trackThyroid = prefs.trackThyroid,
-            ageBand = prefs.ageBand
+            ageBand = prefs.ageBand,
+            temperatureUnit = prefs.temperatureUnit
         )
 
         return LutealBackupPayload(
@@ -121,6 +152,7 @@ class DataExportManager @Inject constructor(
             cycles = cycles,
             dailyEntries = dailyEntries,
             symptomLogs = symptomLogs,
+            biomarkerObservations = biomarkerObservations,
             preferences = preferencesDto
         )
     }

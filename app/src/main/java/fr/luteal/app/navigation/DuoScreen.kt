@@ -2,6 +2,9 @@ package fr.luteal.app.navigation
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +19,7 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Undo
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -51,6 +56,9 @@ import fr.luteal.core.designsystem.component.LutealSecondaryButton
 import fr.luteal.core.designsystem.component.StatusPill
 import fr.luteal.core.designsystem.component.StatusTone
 import fr.luteal.core.designsystem.theme.LutealSpacing
+import fr.luteal.app.widget.WidgetFreshness
+import fr.luteal.core.model.CurrentCyclePhase
+import fr.luteal.core.model.QuickSupportNudges
 import fr.luteal.core.network.contract.models.GrantField
 import fr.luteal.core.network.contract.models.SupportKind
 import fr.luteal.core.network.contract.models.SupportRequest
@@ -142,6 +150,7 @@ fun DuoScreen(
                 state = state,
                 onSendSupport = { kind, msg -> viewModel.sendSupportRequest(kind, msg) },
                 onAck = { viewModel.ackSupportRequest(it) },
+                onApplyNudge = { text, kind, send -> viewModel.applyQuickNudge(text, kind, send) },
                 supportDraft = state.supportDraft,
                 onSupportDraftChange = { viewModel.onSupportDraftChange(it) },
                 isSendingSupport = state.isSendingSupport
@@ -519,6 +528,7 @@ private fun PartnerActiveSection(
     state: DuoUiState,
     onSendSupport: (SupportKind, String) -> Unit,
     onAck: (String) -> Unit,
+    onApplyNudge: (String, SupportKind, Boolean) -> Unit,
     supportDraft: String,
     onSupportDraftChange: (String) -> Unit,
     isSendingSupport: Boolean
@@ -529,8 +539,15 @@ private fun PartnerActiveSection(
                 text = stringResource(R.string.duo_connected_partner),
                 tone = StatusTone.RECORDED
             )
+            Text(
+                text = freshnessLabel(state.freshness, state.lastRefreshedAt),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
+
+    PartnerGuidanceCard(state = state)
 
     LutealCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
@@ -547,6 +564,7 @@ private fun PartnerActiveSection(
         messages = state.supportMessages,
         onSendSupport = onSendSupport,
         onAck = onAck,
+        onApplyNudge = onApplyNudge,
         supportDraft = supportDraft,
         onSupportDraftChange = onSupportDraftChange,
         isSendingSupport = isSendingSupport
@@ -626,6 +644,7 @@ private fun SharedProjectionList(state: DuoUiState) {
 
 // --- Support thread ---------------------------------------------------------
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SupportThreadSection(
     requests: List<SupportRequest>?,
@@ -634,7 +653,8 @@ private fun SupportThreadSection(
     onAck: (String) -> Unit,
     supportDraft: String,
     onSupportDraftChange: (String) -> Unit,
-    isSendingSupport: Boolean
+    isSendingSupport: Boolean,
+    onApplyNudge: ((String, SupportKind, Boolean) -> Unit)? = null
 ) {
     val locale = LocalConfiguration.current.locales[0]
     LutealCard(modifier = Modifier.fillMaxWidth()) {
@@ -702,6 +722,28 @@ private fun SupportThreadSection(
                 }
             }
 
+            if (onApplyNudge != null) {
+                Text(
+                    text = stringResource(R.string.duo_quick_nudges_label),
+                    style = MaterialTheme.typography.labelLarge
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                ) {
+                    QuickSupportNudges.ALL.forEach { nudge ->
+                        val text = nudgeText(nudge.textResName)
+                        FilterChip(
+                            selected = false,
+                            onClick = { onApplyNudge(text, nudge.kind, true) },
+                            label = { Text(text) },
+                            shape = MaterialTheme.shapes.small,
+                            modifier = Modifier.heightIn(min = 48.dp)
+                        )
+                    }
+                }
+            }
+
             OutlinedTextField(
                 value = supportDraft,
                 onValueChange = onSupportDraftChange,
@@ -718,3 +760,97 @@ private fun SupportThreadSection(
         }
     }
 }
+
+@Composable
+private fun PartnerGuidanceCard(state: DuoUiState) {
+    val uriHandler = LocalUriHandler.current
+    val tip = state.partnerTip
+    LutealCard(modifier = Modifier.fillMaxWidth(), emphasis = LutealCardEmphasis.QUIET) {
+        Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
+            if (tip != null && state.partnerPhase is CurrentCyclePhase.Available) {
+                Text(
+                    text = partnerTipTitle(tip.id),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = partnerTipMessage(tip.id),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = stringResource(R.string.fact_source_label, tip.source),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                TextButton(onClick = { uriHandler.openUri(tip.url) }) {
+                    Text(text = stringResource(R.string.fact_view_source))
+                }
+            } else {
+                Text(
+                    text = stringResource(R.string.partner_guidance_indeterminate_title),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = stringResource(R.string.partner_guidance_indeterminate_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun freshnessLabel(freshness: WidgetFreshness, refreshedAt: java.time.Instant?): String {
+    val stamp = refreshedAt?.let {
+        LocalizedDateFormatter.formatShortDate(it.atZone(java.time.ZoneId.systemDefault()).toLocalDate(), LocalConfiguration.current.locales[0])
+    }.orEmpty()
+    return when (freshness) {
+        WidgetFreshness.CURRENT -> stringResource(R.string.duo_freshness_current, stamp)
+        WidgetFreshness.AGING -> stringResource(R.string.duo_freshness_aging, stamp)
+        WidgetFreshness.STALE -> stringResource(R.string.duo_freshness_stale, stamp)
+    }
+}
+
+@Composable
+private fun nudgeText(name: String): String = stringResource(
+    when (name) {
+        "duo_nudge_groceries" -> R.string.duo_nudge_groceries
+        "duo_nudge_cook_dinner" -> R.string.duo_nudge_cook_dinner
+        "duo_nudge_quiet_evening" -> R.string.duo_nudge_quiet_evening
+        "duo_nudge_warm_drink" -> R.string.duo_nudge_warm_drink
+        "duo_nudge_here_if_needed" -> R.string.duo_nudge_here_if_needed
+        else -> R.string.duo_nudge_take_rest
+    }
+)
+
+@Composable
+private fun partnerTipTitle(id: String): String = stringResource(
+    when (id) {
+        "partner_menstrual_comfort" -> R.string.partner_tip_partner_menstrual_comfort
+        "partner_menstrual_space" -> R.string.partner_tip_partner_menstrual_space
+        "partner_menstrual_listen" -> R.string.partner_tip_partner_menstrual_listen
+        "partner_follicular_energy_varies" -> R.string.partner_tip_partner_follicular_energy_varies
+        "partner_follicular_no_script" -> R.string.partner_tip_partner_follicular_no_script
+        "partner_ovulatory_not_certain" -> R.string.partner_tip_partner_ovulatory_not_certain
+        "partner_ovulatory_ask" -> R.string.partner_tip_partner_ovulatory_ask
+        "partner_luteal_progesterone" -> R.string.partner_tip_partner_luteal_progesterone
+        "partner_luteal_communication" -> R.string.partner_tip_partner_luteal_communication
+        else -> R.string.partner_tip_partner_luteal_practical
+    }
+)
+
+@Composable
+private fun partnerTipMessage(id: String): String = stringResource(
+    when (id) {
+        "partner_menstrual_comfort" -> R.string.partner_tip_partner_menstrual_comfort_message
+        "partner_menstrual_space" -> R.string.partner_tip_partner_menstrual_space_message
+        "partner_menstrual_listen" -> R.string.partner_tip_partner_menstrual_listen_message
+        "partner_follicular_energy_varies" -> R.string.partner_tip_partner_follicular_energy_varies_message
+        "partner_follicular_no_script" -> R.string.partner_tip_partner_follicular_no_script_message
+        "partner_ovulatory_not_certain" -> R.string.partner_tip_partner_ovulatory_not_certain_message
+        "partner_ovulatory_ask" -> R.string.partner_tip_partner_ovulatory_ask_message
+        "partner_luteal_progesterone" -> R.string.partner_tip_partner_luteal_progesterone_message
+        "partner_luteal_communication" -> R.string.partner_tip_partner_luteal_communication_message
+        else -> R.string.partner_tip_partner_luteal_practical_message
+    }
+)

@@ -10,6 +10,8 @@ import dagger.hilt.components.SingletonComponent
 import fr.luteal.core.data.seed.TestDataSeeder
 import fr.luteal.core.data.seed.TestDataSeederImpl
 import fr.luteal.core.data.datastore.UserPreferencesDataStore
+import fr.luteal.core.data.repository.BiomarkerRepository
+import fr.luteal.core.data.repository.BiomarkerRepositoryImpl
 import fr.luteal.core.data.repository.CycleRepository
 import fr.luteal.core.data.repository.CycleRepositoryImpl
 import fr.luteal.core.data.repository.DailyEntryRepository
@@ -36,6 +38,12 @@ abstract class RepositoryModule {
     abstract fun bindDailyEntryRepository(
         dailyEntryRepositoryImpl: DailyEntryRepositoryImpl
     ): DailyEntryRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindBiomarkerRepository(
+        biomarkerRepositoryImpl: BiomarkerRepositoryImpl
+    ): BiomarkerRepository
 
     @Binds
     @Singleton

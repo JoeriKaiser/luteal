@@ -26,5 +26,11 @@ data class SyncStateEntity(
         const val TYPE_DAILY_ENTRY = "daily_entry"
         const val TYPE_SYMPTOM_LOG = "symptom_log"
         const val TYPE_BLEEDING_OBSERVATION = "bleeding_observation"
+        const val TYPE_BIOMARKER_OBSERVATION = "biomarker_observation"
+
+        fun biomarkerEntityId(date: String): String = "bm:$date"
+
+        fun biomarkerDateFromEntityId(entityId: String): String? =
+            entityId.takeIf { it.startsWith("bm:") }?.removePrefix("bm:")
     }
 }

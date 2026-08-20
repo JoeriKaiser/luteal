@@ -7,6 +7,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import fr.luteal.core.data.local.BiomarkerDao
 import fr.luteal.core.data.local.CycleDao
 import fr.luteal.core.data.local.DailyEntryDao
 import fr.luteal.core.data.local.DuoWidgetCacheDao
@@ -33,7 +34,9 @@ object DatabaseModule {
                 LutealDatabase.MIGRATION_1_2,
                 LutealDatabase.MIGRATION_2_3,
                 LutealDatabase.MIGRATION_3_4,
-                LutealDatabase.MIGRATION_4_5
+                LutealDatabase.MIGRATION_4_5,
+                LutealDatabase.MIGRATION_5_6,
+                LutealDatabase.MIGRATION_6_7
             ).build()
     }
 
@@ -71,5 +74,11 @@ object DatabaseModule {
     @Singleton
     fun provideUserProfileDao(database: LutealDatabase): UserProfileDao {
         return database.userProfileDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideBiomarkerDao(database: LutealDatabase): BiomarkerDao {
+        return database.biomarkerDao()
     }
 }

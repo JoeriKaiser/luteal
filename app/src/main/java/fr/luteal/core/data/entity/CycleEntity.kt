@@ -11,5 +11,7 @@ data class CycleEntity(
     val periodDaysJson: String,
     val averageLengthDays: Int,
     val lutealPhaseLengthDays: Int,
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+    val isExcludedFromEstimates: Boolean = false,
+    val exclusionReason: String? = null
 )

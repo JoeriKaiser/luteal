@@ -13,6 +13,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import fr.luteal.core.model.CycleExclusionReason
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.time.Clock
@@ -37,6 +38,11 @@ class CycleRepositoryTest {
         override suspend fun updateCycle(cycle: CycleEntity) { cycles[cycle.id] = cycle }
         override suspend fun deleteCycle(id: String) { cycles.remove(id) }
         override suspend fun deleteAllCycles() { cycles.clear() }
+        override suspend fun updateExclusion(id: String, isExcluded: Boolean, reason: String?) {
+            cycles[id]?.let {
+                cycles[id] = it.copy(isExcludedFromEstimates = isExcluded, exclusionReason = reason)
+            }
+        }
     }
 
     private class FakeSyncStateDao : SyncStateDao {
@@ -45,6 +51,7 @@ class CycleRepositoryTest {
         override suspend fun getState(entityId: String): SyncStateEntity? = states[entityId]
         override suspend fun getDirtyStates(): List<SyncStateEntity> = states.values.filter { it.dirty }
         override suspend fun getDirtyStatesByType(entityType: String): List<SyncStateEntity> = states.values.filter { it.dirty && it.entityType == entityType }
+        override suspend fun getAllStates(): List<SyncStateEntity> = states.values.toList()
         override suspend fun upsert(state: SyncStateEntity) { states[state.entityId] = state }
         override suspend fun markClean(entityId: String) {
             states[entityId]?.let { states[entityId] = it.copy(dirty = false, lastPushError = null) }
@@ -105,5 +112,29 @@ class CycleRepositoryTest {
         assertNotNull(tombstone)
         assertTrue(tombstone!!.dirty)
         assertEquals(fixedInstant.toEpochMilli(), tombstone.deletedAtEpochMillis)
+    }
+
+    @Test
+    fun updateCycleExclusionPersistsAndMarksDirty() = runTest {
+        val cycleDao = FakeCycleDao()
+        val syncDao = FakeSyncStateDao()
+        val repo = CycleRepositoryImpl(cycleDao, syncDao, clock)
+        val cycle = Cycle(
+            id = "cycle-1",
+            startDate = LocalDate.parse("2026-06-01"),
+            endDate = LocalDate.parse("2026-06-28")
+        )
+        repo.saveCycle(cycle)
+        syncDao.markClean(cycle.id)
+
+        repo.updateCycleExclusion("cycle-1", true, CycleExclusionReason.ILLNESS)
+
+        val updated = repo.getCyclesOnce().first()
+        assertTrue(updated.isExcludedFromEstimates)
+        assertEquals(CycleExclusionReason.ILLNESS, updated.exclusionReason)
+
+        val state = syncDao.getState("cycle-1")
+        assertNotNull(state)
+        assertTrue(state!!.dirty)
     }
 }

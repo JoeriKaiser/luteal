@@ -1,11 +1,22 @@
 package fr.luteal.app
 
+import android.content.Context
+import android.net.Uri
+import fr.luteal.core.data.ClinicalReportAggregator
+import fr.luteal.core.data.report.HtmlReportBuilder
+import fr.luteal.core.data.report.PdfReportBuilder
+import fr.luteal.core.model.ClinicalReportConfig
+import fr.luteal.core.model.ReportFormat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.luteal.core.data.datastore.UserPreferences
+import fr.luteal.core.data.repository.BiomarkerRepository
 import fr.luteal.core.data.repository.CycleRepository
 import fr.luteal.core.data.repository.DailyEntryRepository
+import fr.luteal.app.notification.NotificationScheduler
 import fr.luteal.core.data.repository.UserRepository
 import fr.luteal.core.model.AgeBand
 import fr.luteal.core.model.Cycle
@@ -14,6 +25,7 @@ import fr.luteal.core.model.CycleEstimateCalculator
 import fr.luteal.core.model.CycleEstimateResult
 import fr.luteal.core.model.CurrentCyclePhase
 import fr.luteal.core.model.CurrentCyclePhaseCalculator
+import fr.luteal.core.model.BiomarkerObservation
 import fr.luteal.core.model.DailyEntry
 import fr.luteal.core.model.DuoSharingField
 import fr.luteal.core.model.UserRole
@@ -33,28 +45,37 @@ import javax.inject.Inject
 class LutealViewModel @Inject constructor(
     private val cycleRepository: CycleRepository,
     private val dailyEntryRepository: DailyEntryRepository,
-    private val userRepository: UserRepository
+    private val biomarkerRepository: BiomarkerRepository,
+    private val userRepository: UserRepository,
+    private val clinicalReportAggregator: ClinicalReportAggregator,
+    private val notificationScheduler: NotificationScheduler
 ) : ViewModel() {
     private val operationState = MutableStateFlow(OperationState())
     private val today: LocalDate = LocalDate.now(Clock.systemDefaultZone())
 
     val uiState: StateFlow<LutealUiState> = combine(
-        cycleRepository.getCycles(),
-        cycleRepository.getCurrentCycle(),
-        dailyEntryRepository.observeEntries(),
-        userRepository.getUserPreferences(),
+        combine(
+            cycleRepository.getCycles(),
+            cycleRepository.getCurrentCycle(),
+            dailyEntryRepository.observeEntries(),
+            biomarkerRepository.observeObservations(),
+            userRepository.getUserPreferences()
+        ) { cycles, currentCycle, entries, biomarkers, preferences ->
+            RecordSnapshot(cycles, currentCycle, entries, biomarkers, preferences)
+        },
         operationState
-    ) { cycles, currentCycle, entries, preferences, operation ->
+    ) { records, operation ->
         LutealUiState(
             today = today,
-            cycles = cycles,
-            currentCycle = currentCycle,
-            entries = entries,
-            preferences = preferences,
+            cycles = records.cycles,
+            currentCycle = records.currentCycle,
+            entries = records.entries,
+            biomarkers = records.biomarkers,
+            preferences = records.preferences,
             estimateResult = CycleEstimateCalculator.evaluate(
-                cycles = cycles,
-                ageBand = AgeBand.fromId(preferences.ageBand),
-                hasTimingContext = preferences.hasTimingContext
+                cycles = records.cycles,
+                ageBand = AgeBand.fromId(records.preferences.ageBand),
+                hasTimingContext = records.preferences.hasTimingContext
             ),
             entrySaveState = operation.entrySaveState,
             operationFailed = operation.failed
@@ -65,12 +86,14 @@ class LutealViewModel @Inject constructor(
         initialValue = LutealUiState(today = today)
     )
 
-    fun saveEntry(entry: DailyEntry, startsNewCycle: Boolean) {
+    fun saveEntry(entry: DailyEntry, biomarker: BiomarkerObservation, startsNewCycle: Boolean) {
         viewModelScope.launch {
             operationState.update { it.copy(entrySaveState = EntrySaveState.SAVING) }
             runCatching {
                 dailyEntryRepository.save(entry)
+                biomarkerRepository.save(biomarker)
                 updateCycleForEntry(entry, startsNewCycle)
+                notificationScheduler.reconcileAllSchedules()
             }.onSuccess {
                 operationState.update { it.copy(entrySaveState = EntrySaveState.SUCCESS) }
             }.onFailure {
@@ -81,6 +104,30 @@ class LutealViewModel @Inject constructor(
 
     fun clearEntrySaveState() {
         operationState.update { it.copy(entrySaveState = EntrySaveState.IDLE) }
+    }
+
+    fun exportClinicalReport(context: Context, uri: Uri, config: ClinicalReportConfig) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val data = clinicalReportAggregator.aggregate(config)
+                    context.contentResolver.openOutputStream(uri)?.use { stream ->
+                        if (config.format == ReportFormat.PDF) {
+                            PdfReportBuilder.writePdfToStream(data, stream)
+                        } else {
+                            HtmlReportBuilder.writeHtmlToStream(data, stream)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fun toggleCycleExclusion(cycleId: String, isExcluded: Boolean, reason: fr.luteal.core.model.CycleExclusionReason?) {
+        viewModelScope.launch {
+            cycleRepository.updateCycleExclusion(cycleId, isExcluded, reason)
+            notificationScheduler.reconcileAllSchedules()
+        }
     }
 
     fun updateDuoSharing(field: DuoSharingField, enabled: Boolean) {
@@ -124,6 +171,7 @@ class LutealViewModel @Inject constructor(
                     endDate = nextStart?.minusDays(1)
                 )
                 cycleRepository.saveCycle(cycle)
+                notificationScheduler.reconcileAllSchedules()
             }.onFailure {
                 operationState.update { it.copy(failed = true) }
             }
@@ -154,6 +202,7 @@ class LutealViewModel @Inject constructor(
                     val reconciled = current.copy(endDate = newEndDate)
                     cycleRepository.saveCycle(reconciled)
                 }
+                notificationScheduler.reconcileAllSchedules()
             }.onFailure {
                 operationState.update { it.copy(failed = true) }
             }
@@ -177,6 +226,7 @@ class LutealViewModel @Inject constructor(
                         cycleRepository.saveCycle(current.copy(endDate = newEndDate))
                     }
                 }
+                notificationScheduler.reconcileAllSchedules()
             }.onFailure {
                 operationState.update { it.copy(failed = true) }
             }
@@ -212,11 +262,20 @@ class LutealViewModel @Inject constructor(
     }
 }
 
+private data class RecordSnapshot(
+    val cycles: List<Cycle>,
+    val currentCycle: Cycle?,
+    val entries: List<DailyEntry>,
+    val biomarkers: List<BiomarkerObservation>,
+    val preferences: UserPreferences
+)
+
 data class LutealUiState(
     val today: LocalDate,
     val cycles: List<Cycle> = emptyList(),
     val currentCycle: Cycle? = null,
     val entries: List<DailyEntry> = emptyList(),
+    val biomarkers: List<BiomarkerObservation> = emptyList(),
     val preferences: UserPreferences = UserPreferences(),
     val estimateResult: CycleEstimateResult = CycleEstimateResult.NeedsMoreHistory,
     val entrySaveState: EntrySaveState = EntrySaveState.IDLE,

@@ -121,17 +121,24 @@ object CycleEstimateCalculator {
         ageBand: AgeBand? = null,
         hasTimingContext: Boolean = false
     ): CycleEstimateResult {
-        val starts = cycles
+        val sortedCycles = cycles.sortedBy { it.startDate }
+        val starts = sortedCycles
             .map(Cycle::startDate)
             .distinct()
-            .sorted()
 
         if (starts.size < MINIMUM_INTERVALS + 1) return CycleEstimateResult.NeedsMoreHistory
 
-        val lengths = starts.zipWithNext { first, second ->
-            ChronoUnit.DAYS.between(first, second).toInt()
-        }.filter { it in MINIMUM_CYCLE_DAYS..MAXIMUM_CYCLE_DAYS }
-
+        val lengths = mutableListOf<Int>()
+        for (i in 0 until sortedCycles.size - 1) {
+            val curr = sortedCycles[i]
+            val next = sortedCycles[i + 1]
+            if (!curr.isExcludedFromEstimates && !next.isExcludedFromEstimates) {
+                val days = ChronoUnit.DAYS.between(curr.startDate, next.startDate).toInt()
+                if (days in MINIMUM_CYCLE_DAYS..MAXIMUM_CYCLE_DAYS) {
+                    lengths.add(days)
+                }
+            }
+        }
         if (lengths.size < MINIMUM_INTERVALS) return CycleEstimateResult.IntervalsOutOfRange
 
         val recentLengths = lengths.takeLast(RECENT_INTERVAL_WINDOW)

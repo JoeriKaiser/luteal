@@ -11,9 +11,15 @@ import fr.luteal.core.data.repository.DuoWidgetCacheRepository
 import fr.luteal.core.data.repository.UserRepository
 import fr.luteal.core.model.AgeBand
 import fr.luteal.core.model.CycleEstimateCalculator
+import fr.luteal.app.widget.WidgetFreshness
+import fr.luteal.core.model.CurrentCyclePhase
 import fr.luteal.core.model.DuoProjection
 import fr.luteal.core.model.DuoSharingField
 import fr.luteal.core.model.DuoSharingPreferences
+import fr.luteal.core.model.PartnerPhaseResolver
+import fr.luteal.core.model.PartnerPhaseTip
+import fr.luteal.core.model.PartnerPhaseTips
+import fr.luteal.core.model.PhaseIndeterminateReason
 import fr.luteal.core.model.SharedEstimate
 import fr.luteal.core.model.SharedLevel
 import fr.luteal.core.network.ContractJson
@@ -38,6 +44,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Duration
+import java.time.Instant
 import javax.inject.Inject
 
 @HiltViewModel
@@ -91,9 +99,14 @@ class DuoViewModel @Inject constructor(
                     if (isTracker) publishProjection()
                 }
                 .onFailure { err ->
-                    // 404 = no active link; fall back to link discovery.
-                    _uiState.update { it.copy(isLoading = false) }
-                    discoverLinks()
+                    val missingLink = err is fr.luteal.core.network.FolicularApiException && err.status == 404
+                    if (missingLink) {
+                        _uiState.update { it.copy(isLoading = false) }
+                        discoverLinks()
+                    } else {
+                        applyCachedProjection()
+                        _uiState.update { it.copy(isLoading = false, error = err.message) }
+                    }
                 }
         }
     }
@@ -156,16 +169,26 @@ class DuoViewModel @Inject constructor(
         }
         val decodedProjection = projectionDecoder.decode(view)
         widgetCacheWriter.save(view)
+        val projection = (decodedProjection as? DuoProjectionDecodeResult.Available)?.projection
+        val refreshedAt = widgetCacheRepository.getLatest()?.refreshedAt ?: Instant.now()
+        val partnerPhase = PartnerPhaseResolver.resolve(projection, LocalDate.now())
+        val partnerTip = (partnerPhase as? CurrentCyclePhase.Available)?.let { available ->
+            PartnerPhaseTips.forDate(available.phase, LocalDate.now())
+        }
         _uiState.update {
             it.copy(
                 phase = if (isTracker) DuoPhase.TrackerActive else DuoPhase.PartnerActive,
                 duoView = view,
                 activeLinkId = view.linkId.toString(),
-                projection = (decodedProjection as? DuoProjectionDecodeResult.Available)?.projection,
+                projection = projection,
                 supportMessages = openSupportMessages(view),
                 grants = serverGrants?.associateWith { true } ?: it.grants,
                 keyMissing = decodedProjection == DuoProjectionDecodeResult.KeyMissing,
-                isLoading = false
+                isLoading = false,
+                partnerPhase = partnerPhase,
+                partnerTip = partnerTip,
+                lastRefreshedAt = refreshedAt,
+                freshness = WidgetFreshness.of(refreshedAt)
             )
         }
     }
@@ -340,6 +363,45 @@ class DuoViewModel @Inject constructor(
         _uiState.update { it.copy(supportDraft = value) }
     }
 
+    fun applyQuickNudge(text: String, kind: SupportKind, sendImmediately: Boolean) {
+        if (sendImmediately) {
+            sendSupportRequest(kind, text)
+        } else {
+            onSupportDraftChange(text)
+        }
+    }
+
+    private suspend fun applyCachedProjection() {
+        val cached = widgetCacheRepository.getLatest() ?: return
+        val projection = DuoProjection(
+            cycleDay = cached.cycleDay,
+            periodEstimate = if (cached.estimateStart != null && cached.estimateEnd != null) {
+                SharedEstimate(cached.estimateStart.toString(), cached.estimateEnd.toString())
+            } else {
+                null
+            }
+        )
+        val partnerPhase = PartnerPhaseResolver.resolve(projection, LocalDate.now())
+        val partnerTip = (partnerPhase as? CurrentCyclePhase.Available)?.let { available ->
+            PartnerPhaseTips.forDate(available.phase, LocalDate.now())
+        }
+        _uiState.update {
+            it.copy(
+                phase = if (cached.role.equals("PARTNER", ignoreCase = true)) {
+                    DuoPhase.PartnerActive
+                } else {
+                    it.phase
+                },
+                projection = it.projection ?: projection,
+                lastRefreshedAt = cached.refreshedAt,
+                freshness = WidgetFreshness.of(cached.refreshedAt),
+                partnerPhase = partnerPhase,
+                partnerTip = partnerTip,
+                activeLinkId = it.activeLinkId ?: cached.linkId
+            )
+        }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(error = null, errorResId = null) }
     }
@@ -467,5 +529,11 @@ data class DuoUiState(
     val shareableUrl: String? = null,
     val grants: Map<GrantField, Boolean> = emptyMap(),
     val supportDraft: String = "",
-    val isSendingSupport: Boolean = false
+    val isSendingSupport: Boolean = false,
+    val partnerPhase: CurrentCyclePhase = CurrentCyclePhase.Indeterminate(
+        PhaseIndeterminateReason.NO_CURRENT_CYCLE
+    ),
+    val partnerTip: PartnerPhaseTip? = null,
+    val lastRefreshedAt: Instant? = null,
+    val freshness: WidgetFreshness = WidgetFreshness.CURRENT
 )

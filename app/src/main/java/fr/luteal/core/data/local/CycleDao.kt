@@ -33,4 +33,7 @@ interface CycleDao {
 
     @Query("DELETE FROM cycles")
     suspend fun deleteAllCycles()
+
+    @Query("UPDATE cycles SET isExcludedFromEstimates = :isExcluded, exclusionReason = :reason, isSynced = 0 WHERE id = :id")
+    suspend fun updateExclusion(id: String, isExcluded: Boolean, reason: String?)
 }

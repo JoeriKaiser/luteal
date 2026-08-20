@@ -27,6 +27,15 @@ import fr.luteal.core.model.Cycle
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.font.FontWeight
+import fr.luteal.core.designsystem.component.LutealRadioRow
+import fr.luteal.core.designsystem.component.LutealToggleRow
+import fr.luteal.core.model.CycleExclusionReason
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -144,6 +153,82 @@ fun DeleteCycleConfirmDialog(
                 )
             ) {
                 Text(stringResource(R.string.cycle_delete_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        }
+    )
+}
+
+@Composable
+fun CycleExclusionDialog(
+    cycle: Cycle,
+    onDismiss: () -> Unit,
+    onConfirm: (isExcluded: Boolean, reason: CycleExclusionReason?) -> Unit
+) {
+    var isExcluded by remember { mutableStateOf(cycle.isExcludedFromEstimates) }
+    var selectedReason by remember { mutableStateOf(cycle.exclusionReason ?: CycleExclusionReason.ILLNESS) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(R.string.cycle_exclusion_dialog_title),
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm),
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = stringResource(R.string.cycle_exclusion_dialog_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                LutealToggleRow(
+                    title = stringResource(R.string.cycle_exclusion_switch_label),
+                    description = "",
+                    checked = isExcluded,
+                    onCheckedChange = { isExcluded = it }
+                )
+
+                if (isExcluded) {
+                    Text(
+                        text = stringResource(R.string.cycle_exclusion_reason_label),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+
+                    Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)) {
+                        CycleExclusionReason.entries.forEach { reason ->
+                            LutealRadioRow(
+                                title = when (reason) {
+                                    CycleExclusionReason.ILLNESS -> stringResource(R.string.cycle_exclusion_reason_illness)
+                                    CycleExclusionReason.MEDICAL_TREATMENT -> stringResource(R.string.cycle_exclusion_reason_medical_treatment)
+                                    CycleExclusionReason.CONTRACEPTION_CHANGE -> stringResource(R.string.cycle_exclusion_reason_contraception_change)
+                                    CycleExclusionReason.STRESS_OR_TRAVEL -> stringResource(R.string.cycle_exclusion_reason_stress_or_travel)
+                                    CycleExclusionReason.OTHER -> stringResource(R.string.cycle_exclusion_reason_other)
+                                },
+                                selected = selectedReason == reason,
+                                onClick = { selectedReason = reason }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirm(isExcluded, if (isExcluded) selectedReason else null)
+                }
+            ) {
+                Text(stringResource(R.string.cycle_exclusion_save), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {

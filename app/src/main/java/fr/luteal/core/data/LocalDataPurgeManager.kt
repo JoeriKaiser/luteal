@@ -5,6 +5,7 @@ import fr.luteal.core.data.datastore.UserPreferencesDataStore
 import fr.luteal.core.data.local.LutealDatabase
 import fr.luteal.core.network.auth.SyncCredentialStore
 import fr.luteal.core.network.crypto.DuoKeyStore
+import fr.luteal.core.data.security.PinCryptoManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -20,7 +21,8 @@ class LocalDataPurgeManager @Inject constructor(
     private val userPreferencesDataStore: UserPreferencesDataStore,
     private val syncDataStore: SyncDataStore,
     private val syncCredentialStore: SyncCredentialStore,
-    private val duoKeyStore: DuoKeyStore
+    private val duoKeyStore: DuoKeyStore,
+    private val pinCryptoManager: PinCryptoManager
 ) {
     suspend fun purgeAllLocalData() {
         withContext(Dispatchers.IO) {
@@ -30,5 +32,6 @@ class LocalDataPurgeManager @Inject constructor(
         syncDataStore.clear()
         runCatching { syncCredentialStore.clear() }
         runCatching { duoKeyStore.clear() }
+        runCatching { pinCryptoManager.clearPin() }
     }
 }

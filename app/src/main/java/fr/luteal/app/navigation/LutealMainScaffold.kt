@@ -40,6 +40,7 @@ import fr.luteal.app.EntrySaveState
 import fr.luteal.app.LutealViewModel
 import fr.luteal.app.R
 import fr.luteal.core.model.ObservationCatalog
+import fr.luteal.core.model.TemperatureUnit
 import java.time.LocalDate
 
 @Composable
@@ -179,6 +180,14 @@ fun LutealMainScaffold(
                                 },
                                 onDeleteCycle = { cycleId ->
                                     viewModel.deleteCycle(cycleId)
+                                },
+                                onToggleCycleExclusion = { cycleId, isExcluded, reason ->
+                                    viewModel.toggleCycleExclusion(cycleId, isExcluded, reason)
+                                },
+                                onExportClinicalReport = viewModel::exportClinicalReport,
+                                onStartPeriod = {
+                                    viewModel.clearEntrySaveState()
+                                    editorRequest = EditorRequest(uiState.today, startPeriodIntent = true)
                                 }
                             )
                             LutealDestination.DUO -> DuoScreen(
@@ -209,6 +218,10 @@ fun LutealMainScaffold(
         DailyEntrySheet(
             date = req.date,
             existingEntry = uiState.entries.firstOrNull { it.date == req.date },
+            existingBiomarker = uiState.biomarkers.firstOrNull { it.date == req.date },
+            temperatureUnit = TemperatureUnit.entries.firstOrNull {
+                it.name == uiState.preferences.temperatureUnit
+            } ?: TemperatureUnit.CELSIUS,
             currentCycle = uiState.currentCycle,
             offeredSymptomIds = ObservationCatalog.symptomIdsFor(
                 uiState.preferences.declaredContexts
