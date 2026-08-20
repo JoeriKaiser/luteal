@@ -1,37 +1,12 @@
-Luteal is a menstrual cycle tracker built around a simple rule: what you recorded and what the app calculated are never presented as the same thing.
+Luteal is a private, offline-first menstrual cycle tracker that clearly separates recorded facts from calculated estimates.
 
-Recorded observations are labelled as recorded. Predictions are labelled as estimates, shown as a range rather than a single confident date, and the app tells you what that range was derived from. Luteal makes no diagnosis and draws no medical conclusions.
-
-OFFLINE BY DEFAULT
-
-Everything is stored in a local database on your device. No account is needed and nothing is sent anywhere until you explicitly turn sync on. Android's cloud backup is disabled for the app's data, so your tracking history does not end up in a Google backup.
-
-WHAT YOU CAN TRACK
-
-- Cycle starts, and bleeding from spotting through to heavy
-- Pain, mood and energy on a 1-5 scale
-- Cramps, headache, fatigue, bloating, breast tenderness, mood changes, skin and pelvic pain
-- Private notes, which are never included in any sharing
-- Past cycles, so estimates become useful sooner
-
-ESTIMATES YOU CAN REASON ABOUT
-
-The estimated range for your next period widens or narrows based on your own recorded history. You can optionally declare areas of focus (PMS, PMDD, endometriosis, PCOS, perimenopause, thyroid) and an age range; these only widen the range or suggest extra observations, and they stay on your device.
-
-Alongside your data, Luteal shows sourced facts about menstrual cycles, each linked to its published reference, because a tracker that only ever shows a 28-day average teaches people something false.
-
-DUO SHARING, IF YOU WANT IT
-
-You can link with a partner and choose, category by category, what they see: cycle day, the estimated range, mood, energy, support requests. Every category is independent and revocable at any time. Private notes are never shareable.
-
-OPTIONAL SYNC
-
-Sync across your devices is off by default. When enabled, your records are end-to-end encrypted on your device before upload: the server stores only ciphertext it cannot read. Your account code is the only key, and losing it means the synced data cannot be recovered by anyone, including the developer.
-
-The app connects by default to the official Luteal sync service, and you can also connect to your own self-hosted folicular server. The app is fully usable offline without sync.
-
-NO TRACKING
-
-No advertising, no analytics, no Google Play Services, no Firebase. Crash reports are opt-in per crash: nothing is sent unless you read the dialog and choose to send it, and your tracking data is not included.
-
-Luteal is free software under the GNU General Public License v3 or later.
+Key features:
+- Offline by default: Your data stays in a local database on your device with no account required.
+- Honest tracking: Distinguishes recorded observations from statistical estimate ranges. No medical claims or automated diagnoses.
+- Complete observation log: Record flow intensity, pain, mood, energy, physical symptoms, and private notes.
+- Biomarker tracking: Log basal body temperature (Celsius and Fahrenheit) with disturbance tracking and thermal shift calculation.
+- Cycle history and reports: Interactive calendar, longitudinal variability analysis, and clinician consultation summary export (PDF/HTML).
+- Privacy and security: PIN and biometric app lock with screen masking.
+- Duo companion: Private, granular partner sharing with end-to-end encrypted support requests and contextual guidance.
+- Optional cloud sync: Optional end-to-end encrypted synchronization with self-hosted or community servers.
+- No ads, analytics, or trackers: 100% free and open-source software (GPLv3).

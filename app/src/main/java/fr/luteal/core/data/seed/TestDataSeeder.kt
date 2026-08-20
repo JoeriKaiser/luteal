@@ -1,12 +1,14 @@
 package fr.luteal.core.data.seed
 
+import fr.luteal.core.data.entity.BiomarkerObservationEntity
 import fr.luteal.core.data.entity.CycleEntity
 import fr.luteal.core.data.entity.DailyEntryEntity
 import fr.luteal.core.data.entity.SymptomLogEntity
+import fr.luteal.core.data.local.BiomarkerDao
 import fr.luteal.core.data.local.CycleDao
-import fr.luteal.core.data.local.SyncStateDao
 import fr.luteal.core.data.local.DailyEntryDao
 import fr.luteal.core.data.local.SymptomDao
+import fr.luteal.core.data.local.SyncStateDao
 import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.model.PeriodDay
 import java.time.LocalDate
@@ -27,6 +29,7 @@ class TestDataSeederImpl @Inject constructor(
     private val cycleDao: CycleDao,
     private val dailyEntryDao: DailyEntryDao,
     private val symptomDao: SymptomDao,
+    private val biomarkerDao: BiomarkerDao,
     private val syncStateDao: SyncStateDao
 ) : TestDataSeeder {
 
@@ -34,6 +37,7 @@ class TestDataSeederImpl @Inject constructor(
         cycleDao.deleteAllCycles()
         dailyEntryDao.deleteAllEntries()
         symptomDao.deleteAllSymptomLogs()
+        biomarkerDao.deleteAll()
         syncStateDao.deleteAll()
     }
 
@@ -198,6 +202,74 @@ class TestDataSeederImpl @Inject constructor(
 
         for (log in symptomLogs) {
             symptomDao.insertSymptomLog(log)
+        }
+
+        // Biomarker observations for Cycle 2 showing thermal shift (3-over-6 rule)
+        val biomarkerEntries = mutableListOf<BiomarkerObservationEntity>()
+        // Low temp baseline: 6 days (36.30 - 36.40 °C)
+        val bbtBaseDates = (0..5).map { cycle2Start.plusDays((7 + it).toLong()) }
+        val bbtLows = listOf(36.35, 36.30, 36.35, 36.40, 36.35, 36.30)
+        for (i in bbtBaseDates.indices) {
+            biomarkerEntries.add(
+                BiomarkerObservationEntity(
+                    date = bbtBaseDates[i].toString(),
+                    bbtCelsius = bbtLows[i],
+                    bbtTime = "07:00",
+                    bbtQuality = "normal",
+                    bbtDisturbancesJson = "[]",
+                    cervicalSensation = if (i >= 4) "WET" else "DAMP",
+                    cervicalTexture = if (i >= 4) "EGG_WHITE" else "CREAMY",
+                    lhTestResult = if (i == 5) "PEAK_POSITIVE" else "LOW",
+                    hcgTestResult = null,
+                    notes = "",
+                    updatedAtEpochMillis = nowEpoch
+                )
+            )
+        }
+        // High temp shift: 3 days (36.65 - 36.75 °C)
+        val bbtHighDates = (0..2).map { cycle2Start.plusDays((13 + it).toLong()) }
+        val bbtHighs = listOf(36.65, 36.70, 36.75)
+        for (i in bbtHighDates.indices) {
+            biomarkerEntries.add(
+                BiomarkerObservationEntity(
+                    date = bbtHighDates[i].toString(),
+                    bbtCelsius = bbtHighs[i],
+                    bbtTime = "07:15",
+                    bbtQuality = "normal",
+                    bbtDisturbancesJson = "[]",
+                    cervicalSensation = "DRY",
+                    cervicalTexture = "STICKY",
+                    lhTestResult = "NEGATIVE",
+                    hcgTestResult = null,
+                    notes = "",
+                    updatedAtEpochMillis = nowEpoch
+                )
+            )
+        }
+
+        // Current cycle (Cycle 3) temperatures
+        val cycle3Dates = (0..5).map { cycle3Start.plusDays(it.toLong()) }
+        val cycle3Temps = listOf(36.40, 36.35, 36.30, 36.35, 36.40, 36.35)
+        for (i in cycle3Dates.indices) {
+            biomarkerEntries.add(
+                BiomarkerObservationEntity(
+                    date = cycle3Dates[i].toString(),
+                    bbtCelsius = cycle3Temps[i],
+                    bbtTime = "07:10",
+                    bbtQuality = if (i == 2) "disturbed" else "normal",
+                    bbtDisturbancesJson = if (i == 2) "[\"POOR_SLEEP\"]" else "[]",
+                    cervicalSensation = if (i >= 4) "DAMP" else "DRY",
+                    cervicalTexture = if (i >= 4) "CREAMY" else "STICKY",
+                    lhTestResult = "LOW",
+                    hcgTestResult = null,
+                    notes = "",
+                    updatedAtEpochMillis = nowEpoch
+                )
+            )
+        }
+
+        for (bm in biomarkerEntries) {
+            biomarkerDao.upsert(bm)
         }
     }
 

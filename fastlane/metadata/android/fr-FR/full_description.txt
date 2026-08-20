@@ -1,37 +1,12 @@
-Luteal est un suivi de cycle menstruel construit autour d'une règle simple : ce que vous avez enregistré et ce que l'application a calculé ne sont jamais présentés de la même manière.
+Luteal est une application de suivi du cycle menstruel, privée et hors-ligne, qui distingue clairement les faits enregistrés des estimations calculées.
 
-Les observations enregistrées sont signalées comme telles. Les prédictions sont signalées comme des estimations, affichées sous forme de plage plutôt que comme une date présentée avec certitude, et l'application indique sur quoi cette plage repose. Luteal ne pose aucun diagnostic et ne formule aucune conclusion médicale.
-
-HORS-LIGNE PAR DÉFAUT
-
-Tout est conservé dans une base locale, sur votre appareil. Aucun compte n'est requis et rien n'est transmis tant que vous n'activez pas explicitement la synchronisation. La sauvegarde cloud d'Android est désactivée pour les données de l'application : votre historique ne se retrouve pas dans une sauvegarde Google.
-
-CE QUE VOUS POUVEZ SUIVRE
-
-- Les débuts de cycle, et les saignements, des traces aux règles abondantes
-- La douleur, l'humeur et l'énergie sur une échelle de 1 à 5
-- Crampes, mal de tête, fatigue, ballonnements, seins sensibles, changements d'humeur, peau et douleur pelvienne
-- Des notes privées, jamais incluses dans un partage
-- Vos cycles passés, pour obtenir des estimations plus tôt
-
-DES ESTIMATIONS COMPRÉHENSIBLES
-
-La plage estimée de vos prochaines règles s'élargit ou se resserre selon votre propre historique enregistré. Vous pouvez déclarer, si vous le souhaitez, des centres d'attention (SPM, TDPM, endométriose, SOPK, périménopause, thyroïde) et une tranche d'âge : ils ne font qu'élargir la plage ou proposer des observations supplémentaires, et restent sur votre appareil.
-
-À côté de vos données, Luteal affiche des faits sourcés sur le cycle menstruel, chacun renvoyant à sa référence publiée, parce qu'une application qui ne montre qu'une moyenne de 28 jours enseigne quelque chose de faux.
-
-LE PARTAGE DUO, SI VOUS LE SOUHAITEZ
-
-Vous pouvez créer un lien avec un partenaire et choisir, catégorie par catégorie, ce qu'il voit : jour du cycle, plage estimée, humeur, énergie, demandes de soutien. Chaque catégorie est indépendante et révocable à tout moment. Les notes privées ne sont jamais partageables.
-
-SYNCHRONISATION OPTIONNELLE
-
-La synchronisation entre vos appareils est désactivée par défaut. Une fois activée, vos enregistrements sont chiffrés de bout en bout sur votre appareil avant tout envoi : le serveur ne conserve que des données illisibles pour lui. Votre code de compte est la seule clé ; le perdre signifie que personne, pas même le développeur, ne peut récupérer les données synchronisées.
-
-L’application se connecte par défaut au service de synchronisation Luteal, et vous pouvez également configurer votre propre serveur folicular auto-hébergé. L’application reste entièrement utilisable hors-ligne sans synchronisation.
-
-AUCUN PISTAGE
-
-Pas de publicité, pas de statistiques d'usage, pas de services Google Play, pas de Firebase. Les rapports de plantage sont soumis à votre accord à chaque fois : rien n'est envoyé sans que vous lisiez le message et choisissiez de l'envoyer, et vos données de suivi n'y figurent pas.
-
-Luteal est un logiciel libre sous licence GNU General Public License v3 ou ultérieure.
+Fonctionnalités principales :
+- Hors-ligne par défaut : Vos données restent stockées localement sur votre appareil, sans compte obligatoire.
+- Suivi transparent : Sépare les observations réelles des plages d'estimation statistiques. Aucun diagnostic médical ni affirmation clinique.
+- Journal d'observations : Enregistrez l'intensité du flux, la douleur, l'humeur, l'énergie, les symptômes physiques et des notes privées.
+- Suivi des biomarqueurs : Température basale (°C et °F) avec facteurs perturbateurs et détection du décalage thermique.
+- Historique et rapports : Calendrier interactif, analyse de la variabilité des cycles et export de récapitulatifs de consultation (PDF/HTML).
+- Confidentialité et sécurité : Verrouillage par code PIN et biométrie avec masquage d'écran.
+- Mode Duo : Partage consenti et granulaire avec votre partenaire, requêtes d'entraide chiffrées de bout en bout et conseils contextuels.
+- Synchronisation chiffrée optionnelle : Chiffrement de bout en bout avec serveurs communautaires ou auto-hébergés.
+- Aucun pistage ni publicité : Logiciel 100 % libre et open source (GPLv3).

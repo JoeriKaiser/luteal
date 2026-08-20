@@ -1,1 +1,1 @@
-Private, offline-first cycle tracking that separates facts from estimates
+Private, offline-first cycle tracker separating facts from estimates.
