@@ -3,12 +3,22 @@ package fr.luteal.core.data.seed
 import fr.luteal.core.data.entity.BiomarkerObservationEntity
 import fr.luteal.core.data.entity.CycleEntity
 import fr.luteal.core.data.entity.DailyEntryEntity
+import fr.luteal.core.data.entity.DuoWidgetCacheEntity
 import fr.luteal.core.data.entity.SymptomLogEntity
+import fr.luteal.core.data.entity.UserProfileEntity
 import fr.luteal.core.data.local.BiomarkerDao
 import fr.luteal.core.data.local.CycleDao
 import fr.luteal.core.data.local.DailyEntryDao
+import fr.luteal.core.data.local.DuoWidgetCacheDao
 import fr.luteal.core.data.local.SymptomDao
 import fr.luteal.core.data.local.SyncStateDao
+import fr.luteal.core.data.local.UserProfileDao
+import fr.luteal.core.data.datastore.UserPreferencesDataStore
+import fr.luteal.core.model.SyncMode
+import fr.luteal.core.model.UserRole
+import fr.luteal.core.network.auth.SyncCredentialStore
+import fr.luteal.core.network.auth.SyncCredentials
+import fr.luteal.core.network.crypto.DuoKeyStore
 import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.model.PeriodDay
 import java.time.LocalDate
@@ -30,7 +40,12 @@ class TestDataSeederImpl @Inject constructor(
     private val dailyEntryDao: DailyEntryDao,
     private val symptomDao: SymptomDao,
     private val biomarkerDao: BiomarkerDao,
-    private val syncStateDao: SyncStateDao
+    private val syncStateDao: SyncStateDao,
+    private val duoWidgetCacheDao: DuoWidgetCacheDao,
+    private val userProfileDao: UserProfileDao,
+    private val userPreferencesDataStore: UserPreferencesDataStore,
+    private val syncCredentialStore: SyncCredentialStore,
+    private val duoKeyStore: DuoKeyStore
 ) : TestDataSeeder {
 
     override suspend fun clearAllData() {
@@ -39,12 +54,25 @@ class TestDataSeederImpl @Inject constructor(
         symptomDao.deleteAllSymptomLogs()
         biomarkerDao.deleteAll()
         syncStateDao.deleteAll()
+        duoWidgetCacheDao.clear()
+        runCatching { syncCredentialStore.clear() }
+        runCatching { duoKeyStore.clear() }
     }
 
     override suspend fun seedMockData(anchorDate: LocalDate) {
         clearAllData()
 
         val nowEpoch = anchorDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+
+        userPreferencesDataStore.setSyncMode(SyncMode.ONLINE_CLOUD.name)
+        userProfileDao.insertOrUpdateUserProfile(
+            UserProfileEntity(
+                userId = "primary",
+                role = UserRole.PRIMARY_TRACKER.name,
+                syncMode = SyncMode.ONLINE_CLOUD.name,
+                isPaired = true
+            )
+        )
 
         // Cycle 1: 58 days ago to 31 days ago (28 days)
         val cycle1Start = anchorDate.minusDays(58)
@@ -271,6 +299,30 @@ class TestDataSeederImpl @Inject constructor(
         for (bm in biomarkerEntries) {
             biomarkerDao.upsert(bm)
         }
+
+        // Duo partner cached projection
+        val linkId = UUID.randomUUID().toString()
+        duoWidgetCacheDao.upsert(
+            DuoWidgetCacheEntity(
+                linkId = linkId,
+                role = "PARTNER",
+                cycleDay = 6,
+                estimateStart = anchorDate.plusDays(15).toString(),
+                estimateEnd = anchorDate.plusDays(17).toString(),
+                cycleDayGranted = true,
+                estimateGranted = true,
+                status = "ACTIVE",
+                refreshedAtEpochMillis = nowEpoch
+            )
+        )
+        syncCredentialStore.save(
+            SyncCredentials(
+                accountId = "demo-account-id",
+                accountCode = "LTL-DEMO-XXXXX-XXXXX",
+                deviceToken = "demo-device-token"
+            )
+        )
+        duoKeyStore.save(linkId, ByteArray(32) { 0x42 })
     }
 
     private fun List<PeriodDay>.toJson(): String {

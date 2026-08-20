@@ -77,15 +77,21 @@ class DuoViewModel @Inject constructor(
     // instead; see the LaunchedEffect there.
 
     fun refresh() {
-        if (!duoRepository.hasAccount()) {
-            _uiState.update { it.copy(phase = DuoPhase.NoAccount, isLoading = false) }
-            return
-        }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            // Show the last confirmed grants while the network round trip runs;
-            // a cold start must not fall back to "everything off".
+            val cached = widgetCacheRepository.getLatest()
+            if (!duoRepository.hasAccount() && cached == null) {
+                _uiState.update { it.copy(phase = DuoPhase.NoAccount, isLoading = false) }
+                return@launch
+            }
+
+            // Show cached projection immediately so offline and demo data render instantly
+            applyCachedProjection()
             seedGrantsFromCache()
+
+            if (!duoRepository.hasAccount()) {
+                return@launch
+            }
+            _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching { duoRepository.duoView() }
                 .onSuccess { view ->
                     val isTracker =
@@ -100,12 +106,13 @@ class DuoViewModel @Inject constructor(
                 }
                 .onFailure { err ->
                     val missingLink = err is fr.luteal.core.network.FolicularApiException && err.status == 404
-                    if (missingLink) {
+                    val cached = widgetCacheRepository.getLatest()
+                    if (missingLink && cached == null) {
                         _uiState.update { it.copy(isLoading = false) }
                         discoverLinks()
                     } else {
                         applyCachedProjection()
-                        _uiState.update { it.copy(isLoading = false, error = err.message) }
+                        _uiState.update { it.copy(isLoading = false, error = if (cached != null) null else err.message) }
                     }
                 }
         }
@@ -148,7 +155,12 @@ class DuoViewModel @Inject constructor(
                     }
                 }
                 .onFailure {
-                    _uiState.update { it.copy(phase = DuoPhase.NoLink) }
+                    val cached = widgetCacheRepository.getLatest()
+                    if (cached != null) {
+                        applyCachedProjection()
+                    } else {
+                        _uiState.update { it.copy(phase = DuoPhase.NoLink) }
+                    }
                 }
         }
     }
@@ -387,10 +399,10 @@ class DuoViewModel @Inject constructor(
         }
         _uiState.update {
             it.copy(
-                phase = if (cached.role.equals("PARTNER", ignoreCase = true)) {
-                    DuoPhase.PartnerActive
-                } else {
-                    it.phase
+                phase = when {
+                    cached.role.equals("PARTNER", ignoreCase = true) -> DuoPhase.PartnerActive
+                    cached.role.equals("TRACKER", ignoreCase = true) -> DuoPhase.TrackerActive
+                    else -> it.phase
                 },
                 projection = it.projection ?: projection,
                 lastRefreshedAt = cached.refreshedAt,
