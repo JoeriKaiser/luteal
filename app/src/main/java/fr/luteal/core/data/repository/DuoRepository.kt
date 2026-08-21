@@ -11,6 +11,8 @@ import fr.luteal.core.network.contract.models.SupportKind
 import fr.luteal.core.network.contract.models.SupportRequest
 import fr.luteal.core.network.sync.FolicularApiClientFactory
 import fr.luteal.core.network.sync.SyncCursorStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -86,5 +88,11 @@ class DuoRepository @Inject constructor(
         client.ackSupportRequest(token, requestId)
     }
 
-    fun hasAccount(): Boolean = credentialStore.load() != null
+    /**
+     * Keystore-backed credential load (AES-GCM decrypts) must not run on the
+     * caller's dispatcher; UI callers sit on Main.
+     */
+    suspend fun hasAccount(): Boolean = withContext(Dispatchers.IO) {
+        credentialStore.load() != null
+    }
 }

@@ -24,8 +24,21 @@ interface SyncStateDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(state: SyncStateEntity)
 
-    @Query("UPDATE sync_state SET dirty = 0, lastPushError = NULL WHERE entityId = :entityId")
-    suspend fun markClean(entityId: String)
+    /**
+     * Clears the dirty flag only when the envelope still carries the
+     * [clientRev] that was pushed. A concurrent local edit writes a fresh
+     * clientRev, so it stays dirty and is pushed on a later pass.
+     */
+    @Query("UPDATE sync_state SET dirty = 0, lastPushError = NULL WHERE entityId = :entityId AND clientRev = :clientRev")
+    suspend fun markCleanIfRev(entityId: String, clientRev: String): Int
+
+    /**
+     * Acknowledges a pushed tombstone by dropping the envelope row, but only
+     * when the envelope still matches the pushed [clientRev]. If the record
+     * was re-created mid-push, the newer dirty envelope survives.
+     */
+    @Query("DELETE FROM sync_state WHERE entityId = :entityId AND clientRev = :clientRev")
+    suspend fun deleteIfRev(entityId: String, clientRev: String): Int
 
     @Query("UPDATE sync_state SET lastPushError = :detail WHERE entityId = :entityId")
     suspend fun markPushError(entityId: String, detail: String)

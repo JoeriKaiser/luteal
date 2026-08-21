@@ -91,6 +91,16 @@ data class SyncReport(
 }
 
 /**
+ * The server rejected the device token (HTTP 401). Deliberately terminal:
+ * credentials stay stored — the account code they carry is the only recovery
+ * credential — and reconnecting is an explicit user action via Settings
+ * (recover account with the code). Auto-wiping here would silently orphan the
+ * existing account and its history on the next register-if-needed pass.
+ */
+class SyncAuthException :
+    RuntimeException("Device token rejected by server; manual reconnection required")
+
+/**
  * Full-entity sync engine.
  *
  * Flow of one [sync] pass:
@@ -119,23 +129,27 @@ class CycleSyncEngine(
 
     suspend fun sync(): SyncReport {
         val client = apiClientFactory.create(cursorStore.getBaseUrl())
-        val (credentials, registered) = ensureRegistered(client)
-        val token = credentials.deviceToken
+        try {
+            val (credentials, registered) = ensureRegistered(client)
+            val token = credentials.deviceToken
 
-        val push = pushDirty(client, token)
-        val pull = pullAndApply(client, token)
-
-        return SyncReport(
-            registered = registered,
-            pushedRecords = push.pushedRecords,
-            appliedByServer = push.appliedByServer,
-            rejectedDetails = push.rejectedDetails,
-            conflictsAdopted = push.conflictsAdopted,
-            pulledChanges = pull.pulledChanges,
-            recordsApplied = pull.recordsApplied,
-            tombstonesApplied = pull.tombstonesApplied,
-            cursor = pull.cursor
-        )
+            val push = pushDirty(client, token)
+            val pull = pullAndApply(client, token)
+            return SyncReport(
+                registered = registered,
+                pushedRecords = push.pushedRecords,
+                appliedByServer = push.appliedByServer,
+                rejectedDetails = push.rejectedDetails,
+                conflictsAdopted = push.conflictsAdopted,
+                pulledChanges = pull.pulledChanges,
+                recordsApplied = pull.recordsApplied,
+                tombstonesApplied = pull.tombstonesApplied,
+                cursor = pull.cursor
+            )
+        } catch (e: FolicularApiException) {
+            if (e.status == 401) throw SyncAuthException()
+            throw e
+        }
     }
 
     // --- 1. Register if needed ---------------------------------------------
@@ -168,6 +182,7 @@ class CycleSyncEngine(
         val changes = mutableListOf<PushChangeWire>()
         val pushedIds = mutableSetOf<String>()
         val localIdByWireId = mutableMapOf<UUID, String>()
+        val pushedRevByWireId = mutableMapOf<UUID, String>()
 
         // Group dirty states by type for efficient lookup.
         val cyclesById = cycleRepository.getCyclesOnce().associateBy { it.id }
@@ -202,21 +217,32 @@ class CycleSyncEngine(
 
         if (changes.isEmpty()) return PushOutcome(0, 0, emptyList(), 0)
         for (state in dirtyStates) {
-            wireIdFor(state)?.let { localIdByWireId[it] = state.entityId }
+            wireIdFor(state)?.let {
+                localIdByWireId[it] = state.entityId
+                pushedRevByWireId[it] = state.clientRev
+            }
         }
 
-        val result = runCatching { client.syncPush(token, changes) }
-            .onFailure { if (it.isAuthFailure()) { credentialStore.clear(); recordSealer.invalidate() } }
-            .getOrThrow()
+        // No runCatching here: a 401 propagates to [sync], which converts it
+        // into a terminal SyncAuthException without touching stored
+        // credentials.
+        val result = client.syncPush(token, changes)
 
         var appliedCount = 0
         for (applied in result.applied) {
             val localId = localIdByWireId[applied.entityId] ?: applied.entityId.toString()
+            val pushedRev = pushedRevByWireId[applied.entityId]
             val state = syncStateDao.getState(localId)
-            if (state?.deletedAtEpochMillis != null) {
-                syncStateDao.delete(localId)
-            } else {
-                syncStateDao.markClean(localId)
+            if (state != null && pushedRev != null && state.clientRev == pushedRev) {
+                // Envelope unchanged since the push snapshot: safe to ack.
+                // A concurrent local edit writes a fresh clientRev and keeps
+                // the envelope dirty, so the newer change is pushed on a
+                // later pass instead of being stranded by markClean.
+                if (state.deletedAtEpochMillis != null) {
+                    syncStateDao.deleteIfRev(localId, pushedRev)
+                } else {
+                    syncStateDao.markCleanIfRev(localId, pushedRev)
+                }
             }
             appliedCount++
         }
@@ -460,9 +486,9 @@ class CycleSyncEngine(
         var tombstones = 0
 
         while (true) {
-            val result = runCatching { client.syncPull(token, since) }
-                .onFailure { if (it.isAuthFailure()) { credentialStore.clear(); recordSealer.invalidate() } }
-                .getOrThrow()
+            // A 401 propagates to [sync] as a terminal auth failure;
+            // credentials are never cleared here.
+            val result = client.syncPull(token, since)
 
             val applied = applyPage(result.changes)
             recordsApplied += applied.recordsApplied
@@ -733,6 +759,4 @@ class CycleSyncEngine(
     private fun Long.toCoarseUtc(): OffsetDateTime =
         toUtcOffsetDateTime().truncatedTo(ChronoUnit.MINUTES)
 
-    private fun Throwable.isAuthFailure(): Boolean =
-        this is FolicularApiException && status == 401
 }

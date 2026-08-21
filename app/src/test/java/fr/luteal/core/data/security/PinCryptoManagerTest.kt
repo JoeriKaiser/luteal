@@ -1,5 +1,6 @@
 package fr.luteal.core.data.security
 
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -19,7 +20,7 @@ class PinCryptoManagerTest {
     }
 
     @Test
-    fun setAndVerifyPinSuccessfully() {
+    fun setAndVerifyPinSuccessfully() = runTest {
         assertFalse(pinCryptoManager.hasPinConfigured())
 
         pinCryptoManager.setPin("1234")
@@ -32,7 +33,7 @@ class PinCryptoManagerTest {
     }
 
     @Test
-    fun clearPinRemovesStoredSecrets() {
+    fun clearPinRemovesStoredSecrets() = runTest {
         pinCryptoManager.setPin("5678")
         assertTrue(pinCryptoManager.hasPinConfigured())
 
@@ -42,7 +43,7 @@ class PinCryptoManagerTest {
     }
 
     @Test
-    fun changingPinUpdatesValidVerification() {
+    fun changingPinUpdatesValidVerification() = runTest {
         pinCryptoManager.setPin("1111")
         assertTrue(pinCryptoManager.verifyPin("1111"))
 
@@ -52,7 +53,7 @@ class PinCryptoManagerTest {
     }
 
     @Test
-    fun sixDigitPinStoresLengthWithoutAcceptingPrefix() {
+    fun sixDigitPinStoresLengthWithoutAcceptingPrefix() = runTest {
         pinCryptoManager.setPin("654321")
         assertEquals(6, pinCryptoManager.pinLength())
         assertFalse(pinCryptoManager.verifyPin("6543"))
@@ -60,7 +61,7 @@ class PinCryptoManagerTest {
     }
 
     @Test
-    fun pinLengthIsAbsentUntilConfigured() {
+    fun pinLengthIsAbsentUntilConfigured() = runTest {
         assertNull(pinCryptoManager.pinLength())
     }
 }

@@ -43,6 +43,8 @@ data class UserPreferences(
     val isScreenMaskingEnabled: Boolean = false,
     val consecutivePinFailures: Int = 0,
     val lockoutUntilEpochMillis: Long = 0L,
+    /** Monotonic-clock twin of [lockoutUntilEpochMillis]; see AppLockManager. */
+    val lockoutUntilElapsedRealtimeMillis: Long = 0L,
     val isNotificationsEnabled: Boolean = false,
     val isDailyCheckInEnabled: Boolean = false,
     val dailyCheckInTime: String = "21:00",
@@ -105,6 +107,7 @@ class UserPreferencesDataStore @Inject constructor(
         val IS_SCREEN_MASKING_ENABLED = booleanPreferencesKey("is_screen_masking_enabled")
         val CONSECUTIVE_PIN_FAILURES = androidx.datastore.preferences.core.intPreferencesKey("consecutive_pin_failures")
         val LOCKOUT_UNTIL_EPOCH_MILLIS = androidx.datastore.preferences.core.longPreferencesKey("lockout_until_epoch_millis")
+        val LOCKOUT_UNTIL_ELAPSED_REALTIME_MILLIS = androidx.datastore.preferences.core.longPreferencesKey("lockout_until_elapsed_realtime_millis")
         val NOTIF_ENABLED = booleanPreferencesKey("notif_enabled")
         val NOTIF_DAILY_ENABLED = booleanPreferencesKey("notif_daily_enabled")
         val NOTIF_DAILY_TIME = stringPreferencesKey("notif_daily_time")
@@ -153,6 +156,7 @@ class UserPreferencesDataStore @Inject constructor(
                 isScreenMaskingEnabled = preferences[IS_SCREEN_MASKING_ENABLED] ?: false,
                 consecutivePinFailures = preferences[CONSECUTIVE_PIN_FAILURES] ?: 0,
                 lockoutUntilEpochMillis = preferences[LOCKOUT_UNTIL_EPOCH_MILLIS] ?: 0L,
+                lockoutUntilElapsedRealtimeMillis = preferences[LOCKOUT_UNTIL_ELAPSED_REALTIME_MILLIS] ?: 0L,
                 isNotificationsEnabled = preferences[NOTIF_ENABLED] ?: false,
                 isDailyCheckInEnabled = preferences[NOTIF_DAILY_ENABLED] ?: false,
                 dailyCheckInTime = preferences[NOTIF_DAILY_TIME] ?: "21:00",
@@ -208,9 +212,12 @@ class UserPreferencesDataStore @Inject constructor(
     suspend fun setConsecutivePinFailures(count: Int) = edit { it[CONSECUTIVE_PIN_FAILURES] = count }
     suspend fun setLockoutUntilEpochMillis(timestampMillis: Long) = edit { it[LOCKOUT_UNTIL_EPOCH_MILLIS] = timestampMillis }
 
+    suspend fun setLockoutUntilElapsedRealtimeMillis(elapsedMillis: Long) =
+        edit { it[LOCKOUT_UNTIL_ELAPSED_REALTIME_MILLIS] = elapsedMillis }
     suspend fun resetPinFailures() = edit {
         it[CONSECUTIVE_PIN_FAILURES] = 0
         it[LOCKOUT_UNTIL_EPOCH_MILLIS] = 0L
+        it[LOCKOUT_UNTIL_ELAPSED_REALTIME_MILLIS] = 0L
     }
 
     suspend fun setNotificationsEnabled(enabled: Boolean) = edit { it[NOTIF_ENABLED] = enabled }

@@ -279,6 +279,7 @@
     <string name="settings_recovery_error_already_linked">Cet appareil est déjà relié à un compte. Effacez les données locales avant de restaurer un autre compte.</string>
     <string name="settings_recovery_error_failed">La restauration a échoué. Vérifiez le code de compte et votre connexion.</string>
     <string name="settings_sync_last_success">Dernière synchronisation : %1$s</string>
+    <string name="sync_error_auth_rejected">Le serveur ne reconnaît plus cet appareil. Reconnectez le compte depuis Réglages > Synchronisation avec votre code de compte.</string>
     <string name="settings_sync_last_error">Échec de la synchronisation : %1$s</string>
     <string name="settings_appearance_title">Apparence</string>
     <string name="settings_appearance_body">Le thème clair ou sombre suit le réglage de votre appareil.</string>

@@ -1,11 +1,13 @@
 package fr.luteal.core.data.repository
 
+import androidx.room.withTransaction
 import fr.luteal.core.data.entity.BiomarkerObservationEntity
 import fr.luteal.core.data.entity.SyncStateEntity
 import fr.luteal.core.data.local.BiomarkerDao
+import fr.luteal.core.data.local.LutealDatabase
 import fr.luteal.core.data.local.SyncStateDao
-import fr.luteal.core.model.BasalBodyTemperature
 import fr.luteal.core.model.BbtDisturbance
+import fr.luteal.core.model.BasalBodyTemperature
 import fr.luteal.core.model.BiomarkerObservation
 import fr.luteal.core.model.CervicalFluidObservation
 import fr.luteal.core.model.CervicalMucusSensation
@@ -26,6 +28,7 @@ import javax.inject.Singleton
 
 @Singleton
 class BiomarkerRepositoryImpl @Inject constructor(
+    private val database: LutealDatabase,
     private val biomarkerDao: BiomarkerDao,
     private val syncStateDao: SyncStateDao,
     private val clock: Clock
@@ -40,15 +43,24 @@ class BiomarkerRepositoryImpl @Inject constructor(
         biomarkerDao.getObservationOnce(date.toString())?.toDomain()
 
     override suspend fun save(observation: BiomarkerObservation) {
-        if (observation.isEmpty) {
-            delete(observation.date)
-            return
+        database.withTransaction {
+            if (observation.isEmpty) {
+                deleteInternal(observation.date)
+                return@withTransaction
+            }
+            biomarkerDao.upsert(observation.toEntity())
+            markDirty(observation.date.toString(), deleted = false)
         }
-        biomarkerDao.upsert(observation.toEntity())
-        markDirty(observation.date.toString(), deleted = false)
     }
 
     override suspend fun delete(date: LocalDate) {
+        database.withTransaction {
+            deleteInternal(date)
+        }
+    }
+
+    /** Caller must own a transaction. */
+    private suspend fun deleteInternal(date: LocalDate) {
         val existing = biomarkerDao.getObservationOnce(date.toString())
         biomarkerDao.deleteForDate(date.toString())
         if (existing != null) {

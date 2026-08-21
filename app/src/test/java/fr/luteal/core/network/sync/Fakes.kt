@@ -73,8 +73,18 @@ class FakeSyncStateDao : SyncStateDao {
         states[state.entityId] = state
     }
 
-    override suspend fun markClean(entityId: String) {
-        states[entityId]?.let { states[entityId] = it.copy(dirty = false, lastPushError = null) }
+    override suspend fun markCleanIfRev(entityId: String, clientRev: String): Int {
+        val current = states[entityId] ?: return 0
+        if (current.clientRev != clientRev) return 0
+        states[entityId] = current.copy(dirty = false, lastPushError = null)
+        return 1
+    }
+
+    override suspend fun deleteIfRev(entityId: String, clientRev: String): Int {
+        val current = states[entityId] ?: return 0
+        if (current.clientRev != clientRev) return 0
+        states.remove(entityId)
+        return 1
     }
 
     override suspend fun markPushError(entityId: String, detail: String) {
@@ -180,6 +190,10 @@ class FakeApiClient : FolicularApiClient {
     var pushError: Throwable? = null
     var pullError: Throwable? = null
 
+    /** Runs inside [syncPush] before the result is returned: simulates a
+     * local edit landing during the network round trip. */
+    var onPush: (suspend () -> Unit)? = null
+
     var registerCalls = 0
         private set
     val registerInviteCodes = mutableListOf<String>()
@@ -194,6 +208,7 @@ class FakeApiClient : FolicularApiClient {
 
     override suspend fun syncPush(deviceToken: String, changes: List<PushChangeWire>): PushResultWire {
         pushError?.let { throw it }
+        onPush?.invoke()
         pushCalls += changes
         return pushResult
     }
