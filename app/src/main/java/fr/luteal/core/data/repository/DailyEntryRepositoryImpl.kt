@@ -1,8 +1,10 @@
 package fr.luteal.core.data.repository
 
+import androidx.room.withTransaction
 import fr.luteal.core.data.entity.DailyEntryEntity
 import fr.luteal.core.data.entity.SyncStateEntity
 import fr.luteal.core.data.local.DailyEntryDao
+import fr.luteal.core.data.local.LutealDatabase
 import fr.luteal.core.data.local.SyncStateDao
 import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.model.DailyEntry
@@ -18,6 +20,7 @@ import javax.inject.Singleton
 
 @Singleton
 class DailyEntryRepositoryImpl @Inject constructor(
+    private val database: LutealDatabase,
     private val dailyEntryDao: DailyEntryDao,
     private val syncStateDao: SyncStateDao,
     private val clock: Clock
@@ -32,12 +35,35 @@ class DailyEntryRepositoryImpl @Inject constructor(
         dailyEntryDao.getEntryOnce(date.toString())?.toDomain()
 
     override suspend fun save(entry: DailyEntry) {
-        dailyEntryDao.upsert(entry.toEntity())
-        markDirty(entry.date.toString())
+        // Entity and envelope must land atomically: a crash between them
+        // would leave an unpushed edit.
+        database.withTransaction {
+            dailyEntryDao.upsert(entry.toEntity())
+            markDirty(entry.date.toString())
+        }
     }
 
     override suspend fun delete(date: LocalDate) {
-        dailyEntryDao.delete(date.toString())
+        // Local deletions must tombstone the sync envelope, or the next pull
+        // resurrects the deleted entry from the server copy.
+        val id = date.toString()
+        database.withTransaction {
+            val now = clock.millis()
+            val existing = syncStateDao.getState(id)
+            dailyEntryDao.delete(id)
+            syncStateDao.upsert(
+                SyncStateEntity(
+                    entityId = id,
+                    entityType = SyncStateEntity.TYPE_DAILY_ENTRY,
+                    clientRev = UUID.randomUUID().toString(),
+                    createdAtEpochMillis = existing?.createdAtEpochMillis ?: now,
+                    updatedAtEpochMillis = now,
+                    deletedAtEpochMillis = now,
+                    dirty = true,
+                    lastPushError = null
+                )
+            )
+        }
     }
 
     private fun DailyEntryEntity.toDomain() = DailyEntry(

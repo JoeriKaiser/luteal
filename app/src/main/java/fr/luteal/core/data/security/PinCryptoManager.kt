@@ -1,5 +1,7 @@
 package fr.luteal.core.data.security
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
@@ -23,16 +25,23 @@ class PinCryptoManager @Inject constructor(
         private const val SALT_LENGTH_BYTES = 16
     }
 
-    fun hasPinConfigured(): Boolean {
+    /**
+     * Every operation below runs on [Dispatchers.Default]: PBKDF2 (100k
+     * iterations) is a deliberate ~100ms CPU burn and each KeystoreSecretStore
+     * get/put is an AndroidKeystore round trip. None of it may run on the
+     * caller's (usually main) dispatcher.
+     */
+    suspend fun hasPinConfigured(): Boolean = withContext(Dispatchers.Default) {
         val salt = secretStore.get(KEY_PIN_SALT)
         val hash = secretStore.get(KEY_PIN_HASH)
-        return !salt.isNullOrBlank() && !hash.isNullOrBlank()
+        !salt.isNullOrBlank() && !hash.isNullOrBlank()
     }
 
-    fun pinLength(): Int? =
+    suspend fun pinLength(): Int? = withContext(Dispatchers.Default) {
         secretStore.get(KEY_PIN_LENGTH)?.toIntOrNull()?.takeIf { it in 4..8 }
+    }
 
-    fun setPin(pin: String) {
+    suspend fun setPin(pin: String) = withContext(Dispatchers.Default) {
         val saltBytes = ByteArray(SALT_LENGTH_BYTES)
         secureRandom.nextBytes(saltBytes)
 
@@ -46,21 +55,24 @@ class PinCryptoManager @Inject constructor(
         secretStore.put(KEY_PIN_LENGTH, pin.length.toString())
     }
 
-    fun verifyPin(pin: String): Boolean {
-        val saltB64 = secretStore.get(KEY_PIN_SALT) ?: return false
-        val storedHashB64 = secretStore.get(KEY_PIN_HASH) ?: return false
+    suspend fun verifyPin(pin: String): Boolean = withContext(Dispatchers.Default) {
+        val saltB64 = secretStore.get(KEY_PIN_SALT) ?: return@withContext false
+        val storedHashB64 = secretStore.get(KEY_PIN_HASH) ?: return@withContext false
 
-        val saltBytes = runCatching { Base64.getDecoder().decode(saltB64) }.getOrNull() ?: return false
-        val storedHashBytes = runCatching { Base64.getDecoder().decode(storedHashB64) }.getOrNull() ?: return false
+        val saltBytes = runCatching { Base64.getDecoder().decode(saltB64) }.getOrNull()
+            ?: return@withContext false
+        val storedHashBytes = runCatching { Base64.getDecoder().decode(storedHashB64) }.getOrNull()
+            ?: return@withContext false
 
         val derivedHashBytes = derivePbkdf2Hash(pin.toCharArray(), saltBytes)
 
-        return MessageDigest.isEqual(derivedHashBytes, storedHashBytes)
+        MessageDigest.isEqual(derivedHashBytes, storedHashBytes)
     }
 
-    fun clearPin() {
+    suspend fun clearPin() = withContext(Dispatchers.Default) {
         secretStore.clear()
     }
+
 
     private fun derivePbkdf2Hash(chars: CharArray, salt: ByteArray): ByteArray {
         val spec = PBEKeySpec(chars, salt, PBKDF2_ITERATIONS, KEY_LENGTH_BITS)

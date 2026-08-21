@@ -26,7 +26,9 @@ import fr.luteal.core.data.entity.UserProfileEntity
         BiomarkerObservationEntity::class
     ],
     version = 7,
-    exportSchema = false
+    // Exported to app/schemas (room.schemaLocation) so MigrationTestHelper
+    // can validate future migrations against the real schema history.
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class LutealDatabase : RoomDatabase() {

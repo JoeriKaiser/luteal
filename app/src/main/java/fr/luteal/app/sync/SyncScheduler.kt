@@ -1,9 +1,14 @@
 package fr.luteal.app.sync
 
 import android.content.Context
+import androidx.work.BackoffPolicy
+import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.WorkRequest
+import java.util.concurrent.TimeUnit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,7 +27,17 @@ class SyncScheduler @Inject constructor(
     }
 
     fun syncNow() {
-        val request = OneTimeWorkRequestBuilder<SyncWorker>().build()
+        // CONNECTED constraint keeps offline edits from failing outright;
+        // transient transport failures retry inside the worker with this
+        // backoff until MAX_TRANSIENT_ATTEMPTS is exhausted.
+        val request = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(Constraints(requiredNetworkType = NetworkType.CONNECTED))
+            .setBackoffCriteria(
+                BackoffPolicy.EXPONENTIAL,
+                WorkRequest.MIN_BACKOFF_MILLIS,
+                TimeUnit.MILLISECONDS
+            )
+            .build()
         WorkManager.getInstance(context)
             .enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request)
     }

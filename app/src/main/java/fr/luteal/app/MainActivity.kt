@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -68,6 +69,11 @@ class MainActivity : FragmentActivity() {
             LutealTheme {
                 val lockState by appLockManager.lockState.collectAsStateWithLifecycle()
                 val barrierUp = lockState is AppLockState.Resolving || lockState is AppLockState.Locked
+                // PIN length comes from a Keystore read: produceState keeps
+                // that suspend call out of composition.
+                val expectedPinLength by produceState<Int?>(initialValue = null, lockState) {
+                    value = appLockManager.pinLength()
+                }
                 Box(modifier = Modifier.fillMaxSize()) {
                     Box(
                         modifier = if (barrierUp) {
@@ -89,7 +95,7 @@ class MainActivity : FragmentActivity() {
                         AppLockScreen(
                             isBiometricAvailable = locked.isBiometricAvailable,
                             remainingLockoutSeconds = locked.remainingLockoutSeconds,
-                            expectedPinLength = appLockManager.pinLength(),
+                            expectedPinLength = expectedPinLength,
                             onVerifyPin = { pin -> appLockManager.verifyAndUnlockPin(pin) },
                             onRequestBiometricPrompt = ::showBiometricPrompt
                         )

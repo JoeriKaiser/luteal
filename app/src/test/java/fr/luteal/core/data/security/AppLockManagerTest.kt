@@ -13,7 +13,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-
+import android.os.SystemClock
 @RunWith(RobolectricTestRunner::class)
 class AppLockManagerTest {
 
@@ -103,5 +103,50 @@ class AppLockManagerTest {
 
         appLockManager.onStop(changingConfigsActivity)
         assertEquals(AppLockState.Unlocked, appLockManager.lockState.value)
+    }
+
+    @Test
+    fun lockoutSurvivesWallClockRollbackViaMonotonicDeadline() = runTest {
+        pinCryptoManager.setPin("1234")
+        userPreferencesDataStore.setAppLockEnabled(true)
+        // Aftermath of a roll-the-clock-forward attack: the wall-clock
+        // deadline is in the past, but the monotonic deadline still holds.
+        userPreferencesDataStore.setLockoutUntilEpochMillis(System.currentTimeMillis() - 60_000)
+        userPreferencesDataStore.setLockoutUntilElapsedRealtimeMillis(
+            SystemClock.elapsedRealtime() + 30_000
+        )
+
+        val result = appLockManager.verifyAndUnlockPin("1234")
+
+        assertTrue(result is PinVerificationResult.LockedOut)
+    }
+
+    @Test
+    fun lockoutSurvivesRebootViaWallClockDeadline() = runTest {
+        pinCryptoManager.setPin("1234")
+        userPreferencesDataStore.setAppLockEnabled(true)
+        // Aftermath of a reboot: the monotonic deadline is gone (elapsed
+        // real time restarted near zero), but the wall-clock deadline holds.
+        userPreferencesDataStore.setLockoutUntilEpochMillis(System.currentTimeMillis() + 30_000)
+        userPreferencesDataStore.setLockoutUntilElapsedRealtimeMillis(0L)
+
+        val result = appLockManager.verifyAndUnlockPin("1234")
+
+        assertTrue(result is PinVerificationResult.LockedOut)
+    }
+
+    @Test
+    fun resetPinFailuresClearsBothLockoutDeadlines() = runTest {
+        pinCryptoManager.setPin("1234")
+        userPreferencesDataStore.setAppLockEnabled(true)
+        userPreferencesDataStore.setLockoutUntilEpochMillis(System.currentTimeMillis() + 30_000)
+        userPreferencesDataStore.setLockoutUntilElapsedRealtimeMillis(
+            SystemClock.elapsedRealtime() + 30_000
+        )
+
+        userPreferencesDataStore.resetPinFailures()
+
+        val result = appLockManager.verifyAndUnlockPin("1234")
+        assertTrue(result is PinVerificationResult.Success)
     }
 }
