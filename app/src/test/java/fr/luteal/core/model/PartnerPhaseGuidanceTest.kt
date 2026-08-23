@@ -61,4 +61,23 @@ class PartnerPhaseGuidanceTest {
         val empty = PartnerPhaseResolver.resolve(null, today)
         assertTrue(empty is CurrentCyclePhase.Indeterminate)
     }
+
+    @Test
+    fun `partner tip adapts to declared tracker context`() {
+        val date = LocalDate.parse("2026-08-19")
+
+        val endoPartnerTip = PartnerPhaseTips.forDate(
+            phase = CyclePhase.MENSTRUAL,
+            date = date,
+            declaredContexts = setOf(TrackingContext.ENDOMETRIOSIS)
+        )
+        assertEquals("partner_menstrual_endo_support", endoPartnerTip.id)
+
+        val pmddPartnerTip = PartnerPhaseTips.forDate(
+            phase = CyclePhase.LUTEAL,
+            date = date,
+            declaredContexts = setOf(TrackingContext.PMDD)
+        )
+        assertEquals("partner_luteal_pmdd_space", pmddPartnerTip.id)
+    }
 }

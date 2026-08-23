@@ -130,6 +130,19 @@
     <string name="phase_tip_luteal_hydration">Drinking water regularly can help ease feelings of bloating and support digestion before your period.</string>
     <string name="phase_tip_luteal_sodium_bloating">Moderating high-sodium foods in the luteal phase can help reduce fluid retention and swelling sensations.</string>
     <string name="phase_tip_luteal_complex_carbs">Focusing on complex carbohydrates and regular meals can help stabilize energy levels and mood changes.</string>
+    <string name="phase_tip_menstrual_endo_pelvic_rest">When experiencing severe pain from endometriosis, alternating rest with pelvic floor relaxation postures can help reduce involuntary muscle tension.</string>
+    <string name="phase_tip_menstrual_endo_fatigue_pacing">Fatigue linked to endometriosis inflammation is real and biological. Allow yourself guilt-free recovery time on heavy pain days.</string>
+    <string name="phase_tip_menstrual_endo_radiating_pain">Pain radiating into the lower back, hips, or legs is a documented symptom worth noting in your journal for medical consultations.</string>
+    <string name="phase_tip_follicular_pcos_elongation">With PCOS, a longer follicular phase before ovulation is common. This length is an expected part of your cycle rather than an error.</string>
+    <string name="phase_tip_follicular_pcos_movement">Strength-building exercises and regular walking support insulin sensitivity and steady energy throughout the cycle.</string>
+    <string name="phase_tip_follicular_thyroid_fatigue">With thyroid conditions, morning fatigue and cold sensitivity can fluctuate across cycle phases. Pace your morning routine accordingly.</string>
+    <string name="phase_tip_follicular_perimeno_fluctuation">Variations in follicular length are typical during perimenopause as estrogen levels fluctuate from cycle to cycle.</string>
+    <string name="phase_tip_ovulatory_hydration_mucus">Drinking enough water supports the natural hydration of cervical fluid during the mid-cycle transition.</string>
+    <string name="phase_tip_luteal_pmdd_neuro_validation">Premenstrual mood drops and sensory sensitivity are genuine neurochemical responses to progesterone shifts, not a personal weakness.</string>
+    <string name="phase_tip_luteal_pmdd_pacing">Lightening your schedule and setting boundaries around peak premenstrual days can help protect your energy and emotional reserves.</string>
+    <string name="phase_tip_luteal_sleep_routine">Rising progesterone can disrupt sleep quality in the late cycle. A cooler bedroom and a quiet evening routine help support deeper rest.</string>
+    <string name="phase_tip_luteal_endo_pelvic_tension">Non-menstrual pelvic discomfort can flare in the late luteal phase. Warm baths and slow diaphragmatic breathing can help ease pelvic tension.</string>
+    <string name="phase_tip_luteal_perimeno_sleep">If night sweats or restless sleep occur before your period, breathable layered bedding and an airy room can reduce awakenings.</string>
 
     <string name="journal_title">Journal</string>
     <string name="journal_subtitle">Look back at what you recorded, day by day.</string>
@@ -751,4 +764,12 @@
     <string name="partner_tip_partner_luteal_communication_message">Short check-ins and flexibility with plans are often more useful than advice.</string>
     <string name="partner_tip_partner_luteal_practical">Practical help, if wanted</string>
     <string name="partner_tip_partner_luteal_practical_message">Meals, errands, or a quieter evening can help. Offer them as options, not as a prescription.</string>
+    <string name="partner_tip_partner_menstrual_endo_support">Support during intense pain</string>
+    <string name="partner_tip_partner_menstrual_endo_support_message">Endometriosis flare-ups cause deep physical exhaustion. Taking over meals and household chores without being asked offers immediate relief.</string>
+    <string name="partner_tip_partner_follicular_pcos_support">Patience with longer cycles</string>
+    <string name="partner_tip_partner_follicular_pcos_support_message">With PCOS, cycles often take longer to develop. Encouragement and planning balanced routines together help more than tracking dates.</string>
+    <string name="partner_tip_partner_luteal_pmdd_space">Validating premenstrual distress</string>
+    <string name="partner_tip_partner_luteal_pmdd_space_message">Premenstrual dysphoria is a neurochemical reaction. Listening calmly without debating or trying to fix emotions creates a safe and reassuring space.</string>
+    <string name="partner_tip_partner_perimeno_support">Flexibility with changing energy</string>
+    <string name="partner_tip_partner_perimeno_support_message">Perimenopausal shifts can cause unpredictable fatigue or temperature changes. Staying flexible with evening plans makes a real difference.</string>
 </resources>

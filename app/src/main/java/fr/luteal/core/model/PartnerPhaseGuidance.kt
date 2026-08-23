@@ -6,6 +6,7 @@ import java.time.temporal.ChronoUnit
 data class PartnerPhaseTip(
     val id: String,
     val phase: CyclePhase,
+    val targetContext: TrackingContext? = null,
     val source: String,
     val url: String
 )
@@ -25,26 +26,77 @@ object PartnerPhaseTips {
     private const val WHO_URL = "https://www.who.int/news/item/22-06-2022-who-statement-on-menstrual-health-and-rights"
     private const val ACOG_PMS = "ACOG, Premenstrual syndrome"
     private const val ACOG_PMS_URL = "https://www.acog.org/womens-health/faqs/premenstrual-syndrome-pms"
+    private const val CNGOF_PAIN = "CNGOF / Convergences PP, Douleurs pelviennes, 2025"
+    private const val CNGOF_PAIN_URL = "https://www.cngof.fr"
+    private const val INSERM_PMDD = "Inserm, Syndrome prémenstruel et TDPM, 2023"
+    private const val INSERM_PMDD_URL = "https://www.inserm.fr/c-est-quoi/payetoncycle-cest-quoi-le-syndrome-premenstruel/"
+    private const val MONASH_PCOS = "Monash University / ESHRE, Guideline for PCOS, 2023"
+    private const val MONASH_PCOS_URL = "https://www.monash.edu/medicine/mchri/pcos/guideline"
+    private const val BMS_PERIMENO = "British Menopause Society, Consensus Statement, 2023"
+    private const val BMS_PERIMENO_URL = "https://thebms.org.uk/publications/consensus-statements/"
 
     val ALL: List<PartnerPhaseTip> = listOf(
-        PartnerPhaseTip("partner_menstrual_comfort", CyclePhase.MENSTRUAL, NHS_PERIOD_PAIN, NHS_PERIOD_PAIN_URL),
-        PartnerPhaseTip("partner_menstrual_space", CyclePhase.MENSTRUAL, NHS_PERIODS, NHS_PERIODS_URL),
-        PartnerPhaseTip("partner_menstrual_listen", CyclePhase.MENSTRUAL, WHO, WHO_URL),
-        PartnerPhaseTip("partner_follicular_energy_varies", CyclePhase.FOLLICULAR, MIHM, MIHM_URL),
-        PartnerPhaseTip("partner_follicular_no_script", CyclePhase.FOLLICULAR, WHO, WHO_URL),
-        PartnerPhaseTip("partner_ovulatory_not_certain", CyclePhase.OVULATORY, FEHRING, FEHRING_URL),
-        PartnerPhaseTip("partner_ovulatory_ask", CyclePhase.OVULATORY, WHO, WHO_URL),
-        PartnerPhaseTip("partner_luteal_progesterone", CyclePhase.LUTEAL, NHS_PMS, NHS_PMS_URL),
-        PartnerPhaseTip("partner_luteal_communication", CyclePhase.LUTEAL, NHS_PMS, NHS_PMS_URL),
-        PartnerPhaseTip("partner_luteal_practical", CyclePhase.LUTEAL, ACOG_PMS, ACOG_PMS_URL)
+        PartnerPhaseTip("partner_menstrual_comfort", CyclePhase.MENSTRUAL, source = NHS_PERIOD_PAIN, url = NHS_PERIOD_PAIN_URL),
+        PartnerPhaseTip("partner_menstrual_space", CyclePhase.MENSTRUAL, source = NHS_PERIODS, url = NHS_PERIODS_URL),
+        PartnerPhaseTip("partner_menstrual_listen", CyclePhase.MENSTRUAL, source = WHO, url = WHO_URL),
+        PartnerPhaseTip(
+            "partner_menstrual_endo_support",
+            CyclePhase.MENSTRUAL,
+            targetContext = TrackingContext.ENDOMETRIOSIS,
+            source = CNGOF_PAIN,
+            url = CNGOF_PAIN_URL
+        ),
+        PartnerPhaseTip("partner_follicular_energy_varies", CyclePhase.FOLLICULAR, source = MIHM, url = MIHM_URL),
+        PartnerPhaseTip("partner_follicular_no_script", CyclePhase.FOLLICULAR, source = WHO, url = WHO_URL),
+        PartnerPhaseTip(
+            "partner_follicular_pcos_support",
+            CyclePhase.FOLLICULAR,
+            targetContext = TrackingContext.PCOS,
+            source = MONASH_PCOS,
+            url = MONASH_PCOS_URL
+        ),
+        PartnerPhaseTip("partner_ovulatory_not_certain", CyclePhase.OVULATORY, source = FEHRING, url = FEHRING_URL),
+        PartnerPhaseTip("partner_ovulatory_ask", CyclePhase.OVULATORY, source = WHO, url = WHO_URL),
+        PartnerPhaseTip("partner_luteal_progesterone", CyclePhase.LUTEAL, source = NHS_PMS, url = NHS_PMS_URL),
+        PartnerPhaseTip("partner_luteal_communication", CyclePhase.LUTEAL, source = NHS_PMS, url = NHS_PMS_URL),
+        PartnerPhaseTip("partner_luteal_practical", CyclePhase.LUTEAL, source = ACOG_PMS, url = ACOG_PMS_URL),
+        PartnerPhaseTip(
+            "partner_luteal_pmdd_space",
+            CyclePhase.LUTEAL,
+            targetContext = TrackingContext.PMDD,
+            source = INSERM_PMDD,
+            url = INSERM_PMDD_URL
+        ),
+        PartnerPhaseTip(
+            "partner_perimeno_support",
+            CyclePhase.LUTEAL,
+            targetContext = TrackingContext.PERIMENOPAUSE,
+            source = BMS_PERIMENO,
+            url = BMS_PERIMENO_URL
+        )
     )
 
-    fun forDate(phase: CyclePhase, date: LocalDate): PartnerPhaseTip {
-        val candidates = ALL.filter { it.phase == phase }
-        check(candidates.isNotEmpty()) { "No partner tips registered for $phase" }
+    fun forDate(
+        phase: CyclePhase,
+        date: LocalDate,
+        declaredContexts: Set<TrackingContext> = emptySet()
+    ): PartnerPhaseTip {
+        val phaseCandidates = ALL.filter { it.phase == phase }
+        check(phaseCandidates.isNotEmpty()) { "No partner tips registered for $phase" }
+
+        val eligible = phaseCandidates.filter { tip ->
+            tip.targetContext == null || tip.targetContext in declaredContexts
+        }
+        val scored = eligible.map { tip ->
+            val score = if (tip.targetContext != null && tip.targetContext in declaredContexts) 3 else 0
+            tip to score
+        }
+        val maxScore = scored.maxOf { it.second }
+        val bestCandidates = scored.filter { it.second == maxScore }.map { it.first }
+
         val scattered = date.toEpochDay() * 2_654_435_761L
-        val index = Math.floorMod(scattered, candidates.size.toLong()).toInt()
-        return candidates[index]
+        val index = Math.floorMod(scattered, bestCandidates.size.toLong()).toInt()
+        return bestCandidates[index]
     }
 }
 
