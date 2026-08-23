@@ -335,10 +335,11 @@ class CycleSyncEngineTest {
     }
 
     @Test
-    fun `auth failure clears stored credentials for re-registration`() = runTest {
+    fun `auth failure surfaces terminal error and never re-registers`() = runTest {
+        val existing = SyncCredentials("acct", "code", "ltok_revoked")
         val repo = FakeCycleRepository()
         val stateDao = FakeSyncStateDao()
-        val creds = FakeCredentialStore(SyncCredentials("acct", "code", "ltok_revoked"))
+        val creds = FakeCredentialStore(existing)
         val cursor = FakeCursorStore(cursor = 0L)
         val api = FakeApiClient().apply {
             pullError = FolicularApiException(401, "about:blank", "invalid token")
@@ -346,8 +347,11 @@ class CycleSyncEngineTest {
 
         val result = runCatching { engine(repo, stateDao, creds, cursor, api).sync() }
 
-        assertTrue(result.isFailure)
-        assertNull(creds.load())
+        assertTrue(result.exceptionOrNull() is SyncAuthException)
+        // The account code is the only recovery credential: it must survive a
+        // revoked device token, and the engine must not silently register a
+        // fresh account on the next pass.
+        assertEquals(existing, creds.load())
     }
 
     @Test
@@ -393,5 +397,114 @@ class CycleSyncEngineTest {
         }
         engine(FakeCycleRepository(), stateDao, creds, FakeCursorStore(), api, biomarkerDao = biomarkerDao).sync()
         assertFalse(stateDao.getState(localId)!!.dirty)
+    }
+
+    @Test
+    fun `push 401 surfaces terminal auth error and keeps credentials`() = runTest {
+        val existing = SyncCredentials(
+            accountId = registerResponse.account.id.toString(),
+            accountCode = registerResponse.account.code,
+            deviceToken = "ltok_stale"
+        )
+        val stateDao = FakeSyncStateDao().apply { upsert(dirtyState()) }
+        val creds = FakeCredentialStore(existing)
+        val api = FakeApiClient().apply {
+            pushError = FolicularApiException(401, "unauthorized", "token rejected")
+        }
+
+        val thrown = runCatching {
+            engine(FakeCycleRepository(listOf(localCycle())), stateDao, creds, FakeCursorStore(), api).sync()
+        }.exceptionOrNull()
+
+        assertTrue(thrown is SyncAuthException)
+        // The account code — the only recovery credential — must survive.
+        assertEquals(existing, creds.credentials)
+        assertEquals(0, api.registerCalls)
+    }
+
+    @Test
+    fun `pull 401 surfaces terminal auth error and keeps credentials`() = runTest {
+        val existing = SyncCredentials(
+            accountId = registerResponse.account.id.toString(),
+            accountCode = registerResponse.account.code,
+            deviceToken = "ltok_stale"
+        )
+        val creds = FakeCredentialStore(existing)
+        val api = FakeApiClient().apply {
+            pullError = FolicularApiException(401, "unauthorized", "token rejected")
+        }
+
+        val thrown = runCatching {
+            engine(FakeCycleRepository(), FakeSyncStateDao(), creds, FakeCursorStore(), api).sync()
+        }.exceptionOrNull()
+
+        assertTrue(thrown is SyncAuthException)
+        assertEquals(existing, creds.credentials)
+    }
+
+    @Test
+    fun `edit landing mid-push keeps its new revision dirty instead of being cleaned`() = runTest {
+        val repo = FakeCycleRepository(listOf(localCycle()))
+        val stateDao = FakeSyncStateDao()
+        val snapshot = dirtyState()
+        stateDao.upsert(snapshot)
+        val editedRev = UUID.randomUUID().toString()
+        val creds = FakeCredentialStore(
+            SyncCredentials(
+                accountId = registerResponse.account.id.toString(),
+                accountCode = registerResponse.account.code,
+                deviceToken = registerResponse.device.token
+            )
+        )
+        val api = FakeApiClient().apply {
+            pushResult = PushResultWire(
+                applied = listOf(AppliedChange(EntityType.CYCLE, cycleId, 1L)),
+                cursor = 2L
+            )
+            // The user's edit lands while the request is in flight: fresh
+            // clientRev, still dirty.
+            onPush = { stateDao.upsert(snapshot.copy(clientRev = editedRev)) }
+        }
+
+        engine(repo, stateDao, creds, FakeCursorStore(), api).sync()
+
+        val state = stateDao.states[cycleId.toString()]!!
+        assertTrue(state.dirty)
+        assertEquals(editedRev, state.clientRev)
+    }
+
+    @Test
+    fun `re-created cycle during tombstone push keeps its newer dirty envelope`() = runTest {
+        val stateDao = FakeSyncStateDao()
+        val tombstone = dirtyState().copy(deletedAtEpochMillis = now.toInstant().toEpochMilli())
+        stateDao.upsert(tombstone)
+        val recreatedRev = UUID.randomUUID().toString()
+        val repo = FakeCycleRepository(emptyList())
+        val creds = FakeCredentialStore(
+            SyncCredentials(
+                accountId = registerResponse.account.id.toString(),
+                accountCode = registerResponse.account.code,
+                deviceToken = registerResponse.device.token
+            )
+        )
+        val api = FakeApiClient().apply {
+            pushResult = PushResultWire(
+                applied = listOf(AppliedChange(EntityType.CYCLE, cycleId, 1L)),
+                cursor = 2L
+            )
+            // The cycle is re-created mid-flight: live row + dirty envelope
+            // with a fresh revision.
+            onPush = {
+                repo.cycles[cycleId.toString()] = localCycle()
+                stateDao.upsert(tombstone.copy(clientRev = recreatedRev, deletedAtEpochMillis = null))
+            }
+        }
+
+        engine(repo, stateDao, creds, FakeCursorStore(), api).sync()
+
+        val state = stateDao.states[cycleId.toString()]!!
+        assertTrue(state.dirty)
+        assertNull(state.deletedAtEpochMillis)
+        assertEquals(recreatedRev, state.clientRev)
     }
 }

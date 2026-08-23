@@ -7,6 +7,7 @@ import androidx.biometric.BiometricManager
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import dagger.hilt.android.qualifiers.ApplicationContext
+import fr.luteal.core.data.datastore.UserPreferences
 import fr.luteal.core.data.datastore.UserPreferencesDataStore
 import fr.luteal.core.model.AppLockState
 import fr.luteal.core.model.AutoLockTimeout
@@ -41,13 +42,9 @@ class AppLockManager @Inject constructor(
         scope.launch {
             val prefs = userPreferencesDataStore.userPreferencesFlow.first()
             if (prefs.isAppLockEnabled && pinCryptoManager.hasPinConfigured()) {
-                val now = System.currentTimeMillis()
-                val remainingSeconds = if (now < prefs.lockoutUntilEpochMillis) {
-                    ceil((prefs.lockoutUntilEpochMillis - now) / 1000.0).toInt()
-                } else 0
                 _lockState.value = AppLockState.Locked(
                     isBiometricAvailable = isBiometricAvailable() && prefs.isBiometricEnabled,
-                    remainingLockoutSeconds = remainingSeconds
+                    remainingLockoutSeconds = remainingLockoutSeconds(prefs)
                 )
             } else {
                 _lockState.value = AppLockState.NotConfigured
@@ -68,23 +65,15 @@ class AppLockManager @Inject constructor(
                 val elapsedMillis = SystemClock.elapsedRealtime() - lastBg
                 val timeout = AutoLockTimeout.fromName(prefs.autoLockTimeout)
                 if (elapsedMillis >= timeout.durationSeconds * 1000L) {
-                    val now = System.currentTimeMillis()
-                    val remainingSeconds = if (now < prefs.lockoutUntilEpochMillis) {
-                        ceil((prefs.lockoutUntilEpochMillis - now) / 1000.0).toInt()
-                    } else 0
                     _lockState.value = AppLockState.Locked(
                         isBiometricAvailable = isBiometricAvailable() && prefs.isBiometricEnabled,
-                        remainingLockoutSeconds = remainingSeconds
+                        remainingLockoutSeconds = remainingLockoutSeconds(prefs)
                     )
                 }
             } else if (_lockState.value !is AppLockState.Unlocked) {
-                val now = System.currentTimeMillis()
-                val remainingSeconds = if (now < prefs.lockoutUntilEpochMillis) {
-                    ceil((prefs.lockoutUntilEpochMillis - now) / 1000.0).toInt()
-                } else 0
                 _lockState.value = AppLockState.Locked(
                     isBiometricAvailable = isBiometricAvailable() && prefs.isBiometricEnabled,
-                    remainingLockoutSeconds = remainingSeconds
+                    remainingLockoutSeconds = remainingLockoutSeconds(prefs)
                 )
             }
         }
@@ -100,13 +89,9 @@ class AppLockManager @Inject constructor(
             if (prefs.isAppLockEnabled && pinCryptoManager.hasPinConfigured()) {
                 val timeout = AutoLockTimeout.fromName(prefs.autoLockTimeout)
                 if (timeout == AutoLockTimeout.IMMEDIATE) {
-                    val now = System.currentTimeMillis()
-                    val remainingSeconds = if (now < prefs.lockoutUntilEpochMillis) {
-                        ceil((prefs.lockoutUntilEpochMillis - now) / 1000.0).toInt()
-                    } else 0
                     _lockState.value = AppLockState.Locked(
                         isBiometricAvailable = isBiometricAvailable() && prefs.isBiometricEnabled,
-                        remainingLockoutSeconds = remainingSeconds
+                        remainingLockoutSeconds = remainingLockoutSeconds(prefs)
                     )
                 }
             }
@@ -115,15 +100,14 @@ class AppLockManager @Inject constructor(
 
     suspend fun verifyAndUnlockPin(pin: String): PinVerificationResult {
         val prefs = userPreferencesDataStore.userPreferencesFlow.first()
-        val now = System.currentTimeMillis()
 
-        if (now < prefs.lockoutUntilEpochMillis) {
-            val remainingSeconds = ceil((prefs.lockoutUntilEpochMillis - now) / 1000.0).toInt()
+        val activeLockoutSeconds = remainingLockoutSeconds(prefs)
+        if (activeLockoutSeconds > 0) {
             _lockState.value = AppLockState.Locked(
                 isBiometricAvailable = isBiometricAvailable() && prefs.isBiometricEnabled,
-                remainingLockoutSeconds = remainingSeconds
+                remainingLockoutSeconds = activeLockoutSeconds
             )
-            return PinVerificationResult.LockedOut(remainingSeconds)
+            return PinVerificationResult.LockedOut(activeLockoutSeconds)
         }
 
         val isValid = pinCryptoManager.verifyPin(pin)
@@ -136,8 +120,7 @@ class AppLockManager @Inject constructor(
             userPreferencesDataStore.setConsecutivePinFailures(newFailures)
             if (newFailures >= 5) {
                 val lockoutSeconds = calculateLockoutSeconds(newFailures)
-                val lockoutUntil = now + (lockoutSeconds * 1000L)
-                userPreferencesDataStore.setLockoutUntilEpochMillis(lockoutUntil)
+                persistLockout(lockoutSeconds)
                 _lockState.value = AppLockState.Locked(
                     isBiometricAvailable = isBiometricAvailable() && prefs.isBiometricEnabled,
                     remainingLockoutSeconds = lockoutSeconds
@@ -159,19 +142,15 @@ class AppLockManager @Inject constructor(
         scope.launch {
             val prefs = userPreferencesDataStore.userPreferencesFlow.first()
             if (prefs.isAppLockEnabled && pinCryptoManager.hasPinConfigured()) {
-                val now = System.currentTimeMillis()
-                val remainingSeconds = if (now < prefs.lockoutUntilEpochMillis) {
-                    ceil((prefs.lockoutUntilEpochMillis - now) / 1000.0).toInt()
-                } else 0
                 _lockState.value = AppLockState.Locked(
                     isBiometricAvailable = isBiometricAvailable() && prefs.isBiometricEnabled,
-                    remainingLockoutSeconds = remainingSeconds
+                    remainingLockoutSeconds = remainingLockoutSeconds(prefs)
                 )
             }
         }
     }
 
-    fun pinLength(): Int? = pinCryptoManager.pinLength()
+    suspend fun pinLength(): Int? = pinCryptoManager.pinLength()
 
     fun isBiometricHardwareAvailable(): Boolean {
         val biometricManager = BiometricManager.from(context)
@@ -181,6 +160,30 @@ class AppLockManager @Inject constructor(
     }
 
     private fun isBiometricAvailable(): Boolean = isBiometricHardwareAvailable()
+
+    /**
+     * Remaining lockout under EITHER clock. The persisted wall-clock deadline
+     * ([UserPreferences.lockoutUntilEpochMillis]) survives reboot but can be
+     * defeated by rolling the device clock back; the monotonic deadline
+     * ([UserPreferences.lockoutUntilElapsedRealtimeMillis], from
+     * [SystemClock.elapsedRealtime]) cannot be rolled back but resets on
+     * reboot. A lockout is active while either clock says so.
+     */
+    private fun remainingLockoutSeconds(prefs: UserPreferences): Int {
+        val byWallClock = prefs.lockoutUntilEpochMillis - System.currentTimeMillis()
+        val byMonotonic = prefs.lockoutUntilElapsedRealtimeMillis - SystemClock.elapsedRealtime()
+        val remainingMillis = maxOf(byWallClock, byMonotonic)
+        return if (remainingMillis > 0) ceil(remainingMillis / 1000.0).toInt() else 0
+    }
+
+    private suspend fun persistLockout(lockoutSeconds: Int) {
+        userPreferencesDataStore.setLockoutUntilEpochMillis(
+            System.currentTimeMillis() + lockoutSeconds * 1000L
+        )
+        userPreferencesDataStore.setLockoutUntilElapsedRealtimeMillis(
+            SystemClock.elapsedRealtime() + lockoutSeconds * 1000L
+        )
+    }
 
     private fun calculateLockoutSeconds(consecutiveFailures: Int): Int {
         return when {

@@ -1,7 +1,9 @@
 package fr.luteal.core.data.repository
 
+import androidx.room.withTransaction
 import fr.luteal.core.data.entity.SyncStateEntity
 import fr.luteal.core.data.entity.SymptomLogEntity
+import fr.luteal.core.data.local.LutealDatabase
 import fr.luteal.core.data.local.SyncStateDao
 import fr.luteal.core.data.local.SymptomDao
 import fr.luteal.core.model.SymptomLog
@@ -16,6 +18,7 @@ import javax.inject.Singleton
 
 @Singleton
 class SymptomRepositoryImpl @Inject constructor(
+    private val database: LutealDatabase,
     private val symptomDao: SymptomDao,
     private val syncStateDao: SyncStateDao,
     private val clock: Clock
@@ -34,26 +37,30 @@ class SymptomRepositoryImpl @Inject constructor(
     }
 
     override suspend fun logSymptom(log: SymptomLog) {
-        symptomDao.insertSymptomLog(log.toEntity())
-        markDirty(log.id)
+        database.withTransaction {
+            symptomDao.insertSymptomLog(log.toEntity())
+            markDirty(log.id)
+        }
     }
 
     override suspend fun deleteSymptomLog(id: String) {
-        val now = clock.millis()
-        val existing = syncStateDao.getState(id)
-        symptomDao.deleteSymptomLog(id)
-        syncStateDao.upsert(
-            SyncStateEntity(
-                entityId = id,
-                entityType = SyncStateEntity.TYPE_SYMPTOM_LOG,
-                clientRev = UUID.randomUUID().toString(),
-                createdAtEpochMillis = existing?.createdAtEpochMillis ?: now,
-                updatedAtEpochMillis = now,
-                deletedAtEpochMillis = now,
-                dirty = true,
-                lastPushError = null
+        database.withTransaction {
+            val now = clock.millis()
+            val existing = syncStateDao.getState(id)
+            symptomDao.deleteSymptomLog(id)
+            syncStateDao.upsert(
+                SyncStateEntity(
+                    entityId = id,
+                    entityType = SyncStateEntity.TYPE_SYMPTOM_LOG,
+                    clientRev = UUID.randomUUID().toString(),
+                    createdAtEpochMillis = existing?.createdAtEpochMillis ?: now,
+                    updatedAtEpochMillis = now,
+                    deletedAtEpochMillis = now,
+                    dirty = true,
+                    lastPushError = null
+                )
             )
-        )
+        }
     }
 
     private suspend fun markDirty(entityId: String) {

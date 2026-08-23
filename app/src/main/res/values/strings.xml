@@ -283,6 +283,7 @@
     <string name="settings_recovery_error_already_linked">This device is already linked to an account. Erase local data before restoring another account.</string>
     <string name="settings_recovery_error_failed">Account restoration failed. Check your account code and connection.</string>
     <string name="settings_sync_last_success">Last sync: %1$s</string>
+    <string name="sync_error_auth_rejected">The server no longer accepts this device. Reconnect your account from Settings > Synchronisation using your account code.</string>
     <string name="settings_sync_last_error">Sync failed: %1$s</string>
     <string name="settings_appearance_title">Appearance</string>
     <string name="settings_appearance_body">The light or dark theme follows your device setting.</string>

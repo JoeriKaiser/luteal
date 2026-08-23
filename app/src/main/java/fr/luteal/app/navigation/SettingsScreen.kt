@@ -45,7 +45,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -738,7 +740,7 @@ private fun TimeSelectionDialog(
 
 @Composable
 private fun ChangePinDialog(
-    onVerifyCurrent: (String) -> Boolean,
+    onVerifyCurrent: suspend (String) -> Boolean,
     onConfirmNew: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -746,8 +748,9 @@ private fun ChangePinDialog(
     var newPin by remember { mutableStateOf("") }
     var confirmNewPin by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    var verifying by remember { mutableStateOf(false) }
     val context = LocalContext.current
-
+    val scope = rememberCoroutineScope()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.dialog_change_pin_title)) },
@@ -793,21 +796,32 @@ private fun ChangePinDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    if (!onVerifyCurrent(currentPin)) {
-                        error = context.getString(R.string.dialog_change_pin_error_current)
-                    } else if (newPin.length < 4) {
-                        error = context.getString(R.string.dialog_set_pin_error_length)
-                    } else if (newPin != confirmNewPin) {
-                        error = context.getString(R.string.dialog_set_pin_error_match)
-                    } else {
-                        onConfirmNew(newPin)
+        TextButton(
+            enabled = !verifying,
+            onClick = {
+                if (verifying) return@TextButton
+                verifying = true
+                scope.launch {
+                    val currentOk = onVerifyCurrent(currentPin)
+                    when {
+                        !currentOk ->
+                            error = context.getString(R.string.dialog_change_pin_error_current)
+                        newPin.length < 4 ->
+                            error = context.getString(R.string.dialog_set_pin_error_length)
+                        newPin != confirmNewPin ->
+                            error = context.getString(R.string.dialog_set_pin_error_match)
+                        else -> {
+                            verifying = false
+                            onConfirmNew(newPin)
+                            return@launch
+                        }
                     }
+                    verifying = false
                 }
-            ) {
-                Text(stringResource(R.string.dialog_change_pin_action), fontWeight = FontWeight.Bold)
             }
+        ) {
+            Text(stringResource(R.string.dialog_change_pin_action), fontWeight = FontWeight.Bold)
+        }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
@@ -819,12 +833,14 @@ private fun ChangePinDialog(
 
 @Composable
 private fun DisableLockDialog(
-    onConfirm: (String) -> Boolean,
+    onConfirm: suspend (String) -> Boolean,
     onDismiss: () -> Unit
 ) {
     var pin by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    var verifying by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -857,19 +873,25 @@ private fun DisableLockDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = {
+        TextButton(
+            enabled = !verifying,
+            onClick = {
+                if (verifying) return@TextButton
+                verifying = true
+                scope.launch {
                     val success = onConfirm(pin)
+                    verifying = false
                     if (!success) {
                         error = context.getString(R.string.dialog_disable_lock_error)
                     }
-                },
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error
-                )
-            ) {
-                Text(stringResource(R.string.dialog_disable_lock_action), fontWeight = FontWeight.Bold)
-            }
+                }
+            },
+            colors = ButtonDefaults.textButtonColors(
+                contentColor = MaterialTheme.colorScheme.error
+            )
+        ) {
+            Text(stringResource(R.string.dialog_disable_lock_action), fontWeight = FontWeight.Bold)
+        }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {

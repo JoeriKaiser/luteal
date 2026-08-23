@@ -1,8 +1,10 @@
 package fr.luteal.core.data.repository
 
+import androidx.room.withTransaction
 import fr.luteal.core.data.entity.CycleEntity
 import fr.luteal.core.data.entity.SyncStateEntity
 import fr.luteal.core.data.local.CycleDao
+import fr.luteal.core.data.local.LutealDatabase
 import fr.luteal.core.data.local.SyncStateDao
 import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.model.Cycle
@@ -19,6 +21,7 @@ import javax.inject.Singleton
 
 @Singleton
 class CycleRepositoryImpl @Inject constructor(
+    private val database: LutealDatabase,
     private val cycleDao: CycleDao,
     private val syncStateDao: SyncStateDao,
     private val clock: Clock
@@ -41,8 +44,12 @@ class CycleRepositoryImpl @Inject constructor(
     }
 
     override suspend fun saveCycle(cycle: Cycle) {
-        upsertCycle(cycle)
-        markDirty(cycle.id)
+        // Entity and envelope must land atomically: a crash between them
+        // would leave an unpushed edit (or a resurrected deletion).
+        database.withTransaction {
+            upsertCycle(cycle)
+            markDirty(cycle.id)
+        }
     }
 
     override suspend fun upsertCycle(cycle: Cycle) {
@@ -54,31 +61,35 @@ class CycleRepositoryImpl @Inject constructor(
         isExcluded: Boolean,
         reason: fr.luteal.core.model.CycleExclusionReason?
     ) {
-        cycleDao.updateExclusion(id, isExcluded, reason?.name?.lowercase())
-        markDirty(id)
+        database.withTransaction {
+            cycleDao.updateExclusion(id, isExcluded, reason?.name?.lowercase())
+            markDirty(id)
+        }
     }
 
     override suspend fun deleteCycle(id: String) {
-        val now = clock.millis()
-        val existingState = syncStateDao.getState(id)
-        cycleDao.deleteCycle(id)
-        val stateToSave = existingState?.copy(
-            clientRev = UUID.randomUUID().toString(),
-            updatedAtEpochMillis = now,
-            deletedAtEpochMillis = now,
-            dirty = true,
-            lastPushError = null
-        ) ?: SyncStateEntity(
-            entityId = id,
-            entityType = SyncStateEntity.TYPE_CYCLE,
-            clientRev = UUID.randomUUID().toString(),
-            createdAtEpochMillis = now,
-            updatedAtEpochMillis = now,
-            deletedAtEpochMillis = now,
-            dirty = true,
-            lastPushError = null
-        )
-        syncStateDao.upsert(stateToSave)
+        database.withTransaction {
+            val now = clock.millis()
+            val existingState = syncStateDao.getState(id)
+            cycleDao.deleteCycle(id)
+            val stateToSave = existingState?.copy(
+                clientRev = UUID.randomUUID().toString(),
+                updatedAtEpochMillis = now,
+                deletedAtEpochMillis = now,
+                dirty = true,
+                lastPushError = null
+            ) ?: SyncStateEntity(
+                entityId = id,
+                entityType = SyncStateEntity.TYPE_CYCLE,
+                clientRev = UUID.randomUUID().toString(),
+                createdAtEpochMillis = now,
+                updatedAtEpochMillis = now,
+                deletedAtEpochMillis = now,
+                dirty = true,
+                lastPushError = null
+            )
+            syncStateDao.upsert(stateToSave)
+        }
     }
 
     /**

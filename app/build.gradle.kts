@@ -90,6 +90,15 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
     }
+    sourceSets {
+        // Room schema JSONs must reach Robolectric through the merged app
+        // assets (android_merged_assets), so they ride on the debug source
+        // set: MigrationTestHelper finds them in local unit tests, and
+        // release builds ship no schemas.
+        getByName("debug") {
+            assets.srcDir("$projectDir/schemas")
+        }
+    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -216,6 +225,12 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+}
+
+// Export Room schemas to app/schemas so migrations are testable and
+// reviewable (see test assets wiring in android.sourceSets above).
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 // Pass the shared folicular conformance fixtures directory to unit tests

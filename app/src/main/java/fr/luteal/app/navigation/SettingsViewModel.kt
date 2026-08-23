@@ -389,13 +389,11 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun disableAppLock(currentPin: String): Boolean {
+    suspend fun disableAppLock(currentPin: String): Boolean {
         if (!pinCryptoManager.verifyPin(currentPin)) return false
-        viewModelScope.launch {
-            userPreferencesDataStore.setAppLockEnabled(false)
-            userPreferencesDataStore.setBiometricEnabled(false)
-            pinCryptoManager.clearPin()
-        }
+        userPreferencesDataStore.setAppLockEnabled(false)
+        userPreferencesDataStore.setBiometricEnabled(false)
+        pinCryptoManager.clearPin()
         return true
     }
 
@@ -417,7 +415,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun changePin(oldPin: String, newPin: String): Boolean {
+    suspend fun changePin(oldPin: String, newPin: String): Boolean {
         if (!pinCryptoManager.verifyPin(oldPin)) return false
         pinCryptoManager.setPin(newPin)
         return true
@@ -519,7 +517,7 @@ class SettingsViewModel @Inject constructor(
             notificationScheduler.reconcileAllSchedules()
         }
     }
-    fun verifyPin(pin: String): Boolean = pinCryptoManager.verifyPin(pin)
+    suspend fun verifyPin(pin: String): Boolean = pinCryptoManager.verifyPin(pin)
 }
 
 sealed interface RecoveryState {

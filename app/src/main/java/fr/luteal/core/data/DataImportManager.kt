@@ -26,6 +26,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.InputStream
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -64,6 +65,7 @@ class DataImportManager @Inject constructor(
                 if (payload.schemaVersion != 1) {
                     throw DataImportError.UnsupportedSchemaVersion(payload.schemaVersion)
                 }
+                validateDates(payload)
 
                 val cycleDates = payload.cycles.mapNotNull { it.startDate.takeIf { d -> d.isNotBlank() } }.sorted()
                 val entryDates = payload.dailyEntries.mapNotNull { it.date.takeIf { d -> d.isNotBlank() } }.sorted()
@@ -94,6 +96,7 @@ class DataImportManager @Inject constructor(
                 if (payload.schemaVersion != 1) {
                     throw DataImportError.UnsupportedSchemaVersion(payload.schemaVersion)
                 }
+                validateDates(payload)
 
                 var cyclesCount = 0
                 var entriesCount = 0
@@ -379,5 +382,28 @@ class DataImportManager @Inject constructor(
                 )
             }
         }
+    }
+
+    /**
+     * Every persisted date string is parsed back with [LocalDate.parse] when
+     * read (entities store dates as text), so an unparseable date in a backup
+     * would crash all cycle reads forever after being restored. Reject such
+     * payloads up front instead.
+     */
+    private fun validateDates(payload: LutealBackupPayload) {
+        fun requireDate(raw: String?, field: String) {
+            if (raw.isNullOrBlank()) return
+            runCatching { LocalDate.parse(raw) }.getOrElse {
+                throw DataImportError.CorruptedPayload("unparseable date '$raw' in $field")
+            }
+        }
+        payload.cycles.forEach { cycle ->
+            requireDate(cycle.startDate, "cycle ${cycle.id} startDate")
+            requireDate(cycle.endDate, "cycle ${cycle.id} endDate")
+            cycle.periodDays.forEach { requireDate(it.date, "cycle ${cycle.id} periodDay") }
+        }
+        payload.dailyEntries.forEach { requireDate(it.date, "daily entry ${it.date}") }
+        payload.symptomLogs.forEach { requireDate(it.date, "symptom log ${it.id}") }
+        payload.biomarkerObservations.forEach { requireDate(it.date, "biomarker ${it.date}") }
     }
 }

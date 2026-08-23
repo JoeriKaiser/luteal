@@ -403,4 +403,37 @@ class DataImportManagerTest {
         assertTrue(prefs.trackPmdd)
         assertEquals("AGE_30_34", prefs.ageBand)
     }
+
+    @Test
+    fun restoreRejectsUnparseableCycleDatesInsteadOfPersistingThem() = runTest {
+        // "2026-13-45" passes the old blank-only check but explodes
+        // LocalDate.parse on every later read. Import must reject it up front.
+        val payload = LutealBackupPayload(
+            schemaVersion = 1,
+            exportedAt = "2026-08-15T12:00:00Z",
+            appVersion = "1.2.0",
+            cycles = listOf(
+                CycleBackupDto(
+                    id = "cycle_bad",
+                    startDate = "2026-13-45",
+                    endDate = null,
+                    periodDays = emptyList()
+                )
+            ),
+            dailyEntries = emptyList(),
+            symptomLogs = emptyList(),
+            biomarkerObservations = emptyList(),
+            preferences = UserPreferencesBackupDto(
+                userRole = "PRIMARY_TRACKER",
+                locale = "fr"
+            )
+        )
+
+        val restoreResult = importManager.restoreBackup(payload, ImportStrategy.REPLACE_ALL)
+
+        assertTrue(restoreResult.isFailure)
+        assertTrue(restoreResult.exceptionOrNull() is DataImportError.CorruptedPayload)
+        // Nothing was persisted: the database stays untouched.
+        assertTrue(database.cycleDao().getAllCyclesOnce().isEmpty())
+    }
 }

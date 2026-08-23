@@ -8,6 +8,10 @@ import fr.luteal.core.data.report.PdfReportBuilder
 import fr.luteal.core.model.ClinicalReportConfig
 import fr.luteal.core.model.ReportFormat
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -37,7 +41,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
+import java.time.Duration
 import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
 
@@ -48,10 +54,20 @@ class LutealViewModel @Inject constructor(
     private val biomarkerRepository: BiomarkerRepository,
     private val userRepository: UserRepository,
     private val clinicalReportAggregator: ClinicalReportAggregator,
-    private val notificationScheduler: NotificationScheduler
+    private val notificationScheduler: NotificationScheduler,
+    private val clock: Clock
 ) : ViewModel() {
     private val operationState = MutableStateFlow(OperationState())
-    private val today: LocalDate = LocalDate.now(Clock.systemDefaultZone())
+
+    /** Local calendar date at construction; seeds the StateFlow before the first emission. */
+    private val initialToday: LocalDate = LocalDate.ofInstant(clock.instant(), ZoneId.systemDefault())
+
+    /**
+     * Emits the local "today" now and after every date rollover, so a process
+     * kept alive overnight never serves yesterday as today (entries would be
+     * silently recorded under the wrong date).
+     */
+    private val todayFlow: Flow<LocalDate> = fr.luteal.app.todayFlow(clock)
 
     val uiState: StateFlow<LutealUiState> = combine(
         combine(
@@ -63,8 +79,9 @@ class LutealViewModel @Inject constructor(
         ) { cycles, currentCycle, entries, biomarkers, preferences ->
             RecordSnapshot(cycles, currentCycle, entries, biomarkers, preferences)
         },
-        operationState
-    ) { records, operation ->
+        operationState,
+        todayFlow
+    ) { records, operation, today ->
         LutealUiState(
             today = today,
             cycles = records.cycles,
@@ -83,7 +100,7 @@ class LutealViewModel @Inject constructor(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = LutealUiState(today = today)
+        initialValue = LutealUiState(today = initialToday)
     )
 
     fun saveEntry(entry: DailyEntry, biomarker: BiomarkerObservation, startsNewCycle: Boolean) {
@@ -312,3 +329,20 @@ private data class OperationState(
     val entrySaveState: EntrySaveState = EntrySaveState.IDLE,
     val failed: Boolean = false
 )
+
+/**
+ * Local-date ticker: emits today immediately, then once per local midnight.
+ * The date is derived from [clock] on every emission so tests can advance a
+ * fake clock; the delay is recomputed from the same instant, keeping the
+ * loop exact across DST transitions.
+ */
+internal fun todayFlow(clock: Clock): Flow<LocalDate> = flow {
+    val zone = ZoneId.systemDefault()
+    while (true) {
+        val now = clock.instant()
+        val today = LocalDate.ofInstant(now, zone)
+        emit(today)
+        val nextMidnight = today.plusDays(1).atStartOfDay(zone).toInstant()
+        delay(Duration.between(now, nextMidnight).toMillis().coerceAtLeast(1_000L))
+    }
+}.distinctUntilChanged()
