@@ -1,0 +1,5 @@
+- Condition-aware daily tips per tracking context and phase with deterministic selection.
+- Symptom-boosted guidance using the last 72 hours of observations.
+- Anxiety now offered when PMS or PMDD is declared.
+- Shared clinical sources deduped and partner tip mapping made exhaustive.
+- Em dashes removed and notification titles use consistent punctuation.
