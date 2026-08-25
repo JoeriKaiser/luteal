@@ -42,6 +42,7 @@ object ObservationCatalog {
     private val PREMENSTRUAL = listOf(
         "breast_tenderness",
         "mood_changes",
+        "anxiety",
         "acne"
     )
 
