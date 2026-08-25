@@ -1,0 +1,5 @@
+- Conseils quotidiens adaptés au contexte de suivi et à la phase, sélection déterministe.
+- Conseils renforcés par les symptômes des dernières 72 heures.
+- Anxiété proposée lorsque SPM ou TDPM est déclaré.
+- Sources cliniques partagées factorisées et mapping des conseils partenaire rendu exhaustif.
+- Tirets cadratins supprimés et titres de notifications harmonisés.
