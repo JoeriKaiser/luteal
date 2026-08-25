@@ -12,67 +12,47 @@ data class PartnerPhaseTip(
 )
 
 object PartnerPhaseTips {
-    private const val NHS_PERIOD_PAIN = "NHS, Period pain"
-    private const val NHS_PERIOD_PAIN_URL = "https://www.nhs.uk/symptoms/period-pain/"
-    private const val NHS_PMS = "NHS, Premenstrual syndrome"
-    private const val NHS_PMS_URL = "https://www.nhs.uk/conditions/pre-menstrual-syndrome/"
-    private const val NHS_PERIODS = "NHS, Periods"
-    private const val NHS_PERIODS_URL = "https://www.nhs.uk/conditions/periods/"
-    private const val MIHM = "Mihm et al., Animal Reproduction Science, 2011"
-    private const val MIHM_URL = "https://doi.org/10.1016/j.anireprosci.2010.08.030"
-    private const val FEHRING = "Fehring et al., JOGNN, 2006"
-    private const val FEHRING_URL = "https://doi.org/10.1111/j.1552-6909.2006.00051.x"
     private const val WHO = "WHO, Menstrual health and rights"
     private const val WHO_URL = "https://www.who.int/news/item/22-06-2022-who-statement-on-menstrual-health-and-rights"
-    private const val ACOG_PMS = "ACOG, Premenstrual syndrome"
-    private const val ACOG_PMS_URL = "https://www.acog.org/womens-health/faqs/premenstrual-syndrome-pms"
-    private const val CNGOF_PAIN = "CNGOF / Convergences PP, Douleurs pelviennes, 2025"
-    private const val CNGOF_PAIN_URL = "https://www.cngof.fr"
-    private const val INSERM_PMDD = "Inserm, Syndrome prémenstruel et TDPM, 2023"
-    private const val INSERM_PMDD_URL = "https://www.inserm.fr/c-est-quoi/payetoncycle-cest-quoi-le-syndrome-premenstruel/"
-    private const val MONASH_PCOS = "Monash University / ESHRE, Guideline for PCOS, 2023"
-    private const val MONASH_PCOS_URL = "https://www.monash.edu/medicine/mchri/pcos/guideline"
-    private const val BMS_PERIMENO = "British Menopause Society, Consensus Statement, 2023"
-    private const val BMS_PERIMENO_URL = "https://thebms.org.uk/publications/consensus-statements/"
 
     val ALL: List<PartnerPhaseTip> = listOf(
-        PartnerPhaseTip("partner_menstrual_comfort", CyclePhase.MENSTRUAL, source = NHS_PERIOD_PAIN, url = NHS_PERIOD_PAIN_URL),
-        PartnerPhaseTip("partner_menstrual_space", CyclePhase.MENSTRUAL, source = NHS_PERIODS, url = NHS_PERIODS_URL),
+        PartnerPhaseTip("partner_menstrual_comfort", CyclePhase.MENSTRUAL, source = ClinicalSources.NHS_PERIOD_PAIN, url = ClinicalSources.NHS_PERIOD_PAIN_URL),
+        PartnerPhaseTip("partner_menstrual_space", CyclePhase.MENSTRUAL, source = ClinicalSources.NHS_PERIODS, url = ClinicalSources.NHS_PERIODS_URL),
         PartnerPhaseTip("partner_menstrual_listen", CyclePhase.MENSTRUAL, source = WHO, url = WHO_URL),
         PartnerPhaseTip(
             "partner_menstrual_endo_support",
             CyclePhase.MENSTRUAL,
             targetContext = TrackingContext.ENDOMETRIOSIS,
-            source = CNGOF_PAIN,
-            url = CNGOF_PAIN_URL
+            source = ClinicalSources.CNGOF_PAIN,
+            url = ClinicalSources.CNGOF_PAIN_URL
         ),
-        PartnerPhaseTip("partner_follicular_energy_varies", CyclePhase.FOLLICULAR, source = MIHM, url = MIHM_URL),
+        PartnerPhaseTip("partner_follicular_energy_varies", CyclePhase.FOLLICULAR, source = ClinicalSources.MIHM, url = ClinicalSources.MIHM_URL),
         PartnerPhaseTip("partner_follicular_no_script", CyclePhase.FOLLICULAR, source = WHO, url = WHO_URL),
         PartnerPhaseTip(
             "partner_follicular_pcos_support",
             CyclePhase.FOLLICULAR,
             targetContext = TrackingContext.PCOS,
-            source = MONASH_PCOS,
-            url = MONASH_PCOS_URL
+            source = ClinicalSources.MONASH_PCOS,
+            url = ClinicalSources.MONASH_PCOS_URL
         ),
-        PartnerPhaseTip("partner_ovulatory_not_certain", CyclePhase.OVULATORY, source = FEHRING, url = FEHRING_URL),
+        PartnerPhaseTip("partner_ovulatory_not_certain", CyclePhase.OVULATORY, source = ClinicalSources.FEHRING, url = ClinicalSources.FEHRING_URL),
         PartnerPhaseTip("partner_ovulatory_ask", CyclePhase.OVULATORY, source = WHO, url = WHO_URL),
-        PartnerPhaseTip("partner_luteal_progesterone", CyclePhase.LUTEAL, source = NHS_PMS, url = NHS_PMS_URL),
-        PartnerPhaseTip("partner_luteal_communication", CyclePhase.LUTEAL, source = NHS_PMS, url = NHS_PMS_URL),
-        PartnerPhaseTip("partner_luteal_practical", CyclePhase.LUTEAL, source = ACOG_PMS, url = ACOG_PMS_URL),
+        PartnerPhaseTip("partner_luteal_progesterone", CyclePhase.LUTEAL, source = ClinicalSources.NHS_PMS, url = ClinicalSources.NHS_PMS_URL),
+        PartnerPhaseTip("partner_luteal_communication", CyclePhase.LUTEAL, source = ClinicalSources.NHS_PMS, url = ClinicalSources.NHS_PMS_URL),
+        PartnerPhaseTip("partner_luteal_practical", CyclePhase.LUTEAL, source = ClinicalSources.ACOG_PMS, url = ClinicalSources.ACOG_PMS_URL),
         PartnerPhaseTip(
             "partner_luteal_pmdd_space",
             CyclePhase.LUTEAL,
             targetContext = TrackingContext.PMDD,
-            source = INSERM_PMDD,
-            url = INSERM_PMDD_URL
+            source = ClinicalSources.INSERM_PMDD,
+            url = ClinicalSources.INSERM_PMDD_URL
         ),
         PartnerPhaseTip(
             "partner_perimeno_support",
             CyclePhase.LUTEAL,
             targetContext = TrackingContext.PERIMENOPAUSE,
-            source = BMS_PERIMENO,
-            url = BMS_PERIMENO_URL
+            source = ClinicalSources.BMS_PERIMENO,
+            url = ClinicalSources.BMS_PERIMENO_URL
         )
     )
 
