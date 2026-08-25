@@ -188,9 +188,8 @@ class DuoViewModel @Inject constructor(
         val projection = (decodedProjection as? DuoProjectionDecodeResult.Available)?.projection
         val refreshedAt = widgetCacheRepository.getLatest()?.refreshedAt ?: Instant.now()
         val partnerPhase = PartnerPhaseResolver.resolve(projection, LocalDate.now())
-        val declaredContexts = userRepository.getUserPreferences().first().declaredContexts
         val partnerTip = (partnerPhase as? CurrentCyclePhase.Available)?.let { available ->
-            PartnerPhaseTips.forDate(available.phase, LocalDate.now(), declaredContexts)
+            PartnerPhaseTips.forDate(available.phase, LocalDate.now())
         }
         _uiState.update {
             it.copy(
@@ -399,9 +398,8 @@ class DuoViewModel @Inject constructor(
             }
         )
         val partnerPhase = PartnerPhaseResolver.resolve(projection, LocalDate.now())
-        val declaredContexts = userRepository.getUserPreferences().first().declaredContexts
         val partnerTip = (partnerPhase as? CurrentCyclePhase.Available)?.let { available ->
-            PartnerPhaseTips.forDate(available.phase, LocalDate.now(), declaredContexts)
+            PartnerPhaseTips.forDate(available.phase, LocalDate.now())
         }
         _uiState.update {
             it.copy(
