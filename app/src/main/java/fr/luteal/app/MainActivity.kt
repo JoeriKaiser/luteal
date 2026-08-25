@@ -41,10 +41,13 @@ class MainActivity : FragmentActivity() {
     lateinit var userPreferencesDataStore: UserPreferencesDataStore
 
     private var widgetDestination by mutableStateOf<String?>(null)
+    private var pendingImportJson by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         widgetDestination = intent.widgetDestination()
+        pendingImportJson = intent.importBackupJson()
+        intent.removeExtra(EXTRA_IMPORT_JSON)
         enableEdgeToEdge()
 
         lifecycle.addObserver(appLockManager)
@@ -84,7 +87,9 @@ class MainActivity : FragmentActivity() {
                     ) {
                         LutealMainScaffold(
                             widgetDestination = widgetDestination,
-                            onWidgetDestinationConsumed = { widgetDestination = null }
+                            onWidgetDestinationConsumed = { widgetDestination = null },
+                            pendingImportJson = pendingImportJson,
+                            onPendingImportConsumed = { pendingImportJson = null }
                         )
                     }
                     if (lockState is AppLockState.Resolving) {
@@ -109,6 +114,8 @@ class MainActivity : FragmentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         widgetDestination = intent.widgetDestination()
+        pendingImportJson = intent.importBackupJson()
+        intent.removeExtra(EXTRA_IMPORT_JSON)
     }
 
     private fun showBiometricPrompt() {
@@ -134,8 +141,15 @@ class MainActivity : FragmentActivity() {
         takeIf { action == ACTION_OPEN_WIDGET_DESTINATION }
             ?.getStringExtra(EXTRA_WIDGET_DESTINATION)
 
+    private fun Intent.importBackupJson(): String? =
+        takeIf { action == ACTION_IMPORT_BACKUP }
+            ?.getStringExtra(EXTRA_IMPORT_JSON)
+
     companion object {
         const val ACTION_OPEN_WIDGET_DESTINATION = "fr.luteal.app.action.OPEN_WIDGET_DESTINATION"
+        const val ACTION_IMPORT_BACKUP = "fr.luteal.app.action.IMPORT_BACKUP"
+        const val EXTRA_IMPORT_JSON = "fr.luteal.app.extra.IMPORT_JSON"
+        const val EXTRA_IMPORT_JSON_BASE64 = "fr.luteal.app.extra.IMPORT_JSON_BASE64"
         const val EXTRA_WIDGET_DESTINATION = "fr.luteal.app.extra.WIDGET_DESTINATION"
         const val WIDGET_DESTINATION_TODAY = "today"
         const val WIDGET_DESTINATION_TODAY_EDITOR = "today_editor"

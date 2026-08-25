@@ -13,13 +13,17 @@ APKSIGNER    := $(shell which apksigner 2>/dev/null || find $(ANDROID_HOME) $(AN
 
 DIST_DIR     := dist
 RELEASE_APK  := $(DIST_DIR)/luteal-v$(VERSION).apk
+ADB          ?= adb
+DEVICE       ?=
+ANCHOR_DATE  ?= $(shell date -u +%F)
 
-.PHONY: help dev dev-install release-build release-check bump test clean
+.PHONY: help dev dev-install release-seed release-build release-check bump test clean
 
 help:
 	@echo "Luteal Build & Release Targets:"
 	@echo "  make dev             - Build debug APK (fr.luteal.app.dev, Luteal Dev)"
 	@echo "  make dev-install     - Build and install debug APK onto connected device"
+	@echo "  make release-seed    - Generate demo backup and open release import preview"
 	@echo "  make release-build   - Build signed release APK -> $(RELEASE_APK) and print F-Droid metadata"
 	@echo "  make release-check   - Verify signature and Git metadata of $(RELEASE_APK)"
 	@echo "  make bump VERSION=1.x.y CODE=n - Update versionName and versionCode in build.gradle.kts"
@@ -36,6 +40,9 @@ dev-install:
 	@echo "==> Installing debug APK (Luteal Dev) on connected device..."
 	./gradlew installDebug
 	@echo "==> Installed package: fr.luteal.app.dev"
+
+release-seed:
+	@bash ./scripts/seed-release.sh "$(ADB)" "$(DEVICE)" "fr.luteal.app" "$(ANCHOR_DATE)"
 
 # --- Testing ---
 

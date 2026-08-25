@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -47,6 +48,8 @@ import java.time.LocalDate
 fun LutealMainScaffold(
     widgetDestination: String? = null,
     onWidgetDestinationConsumed: () -> Unit = {},
+    pendingImportJson: String? = null,
+    onPendingImportConsumed: () -> Unit = {},
     viewModel: LutealViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -54,9 +57,20 @@ fun LutealMainScaffold(
     var editorRequest by remember { mutableStateOf<EditorRequest?>(null) }
     var showBackfillDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val settingsViewModel: SettingsViewModel = hiltViewModel()
+    val context = LocalContext.current
     val saveError = stringResource(R.string.save_error)
     val saveSuccess = stringResource(R.string.save_success_local)
     val useCompactNavigationLabels = LocalDensity.current.fontScale >= 1.5f
+
+    LaunchedEffect(pendingImportJson, uiState.preferences.hasCompletedOnboarding) {
+        val json = pendingImportJson ?: return@LaunchedEffect
+        if (!uiState.preferences.hasCompletedOnboarding) return@LaunchedEffect
+
+        selectedDestination = LutealDestination.SETTINGS
+        settingsViewModel.inspectBackupJson(json)
+        onPendingImportConsumed()
+    }
 
     // Widget requests survive a cold start and wait until onboarding is
     // complete. They navigate only; health data is still edited and confirmed
@@ -195,7 +209,7 @@ fun LutealMainScaffold(
                                     selectedDestination = LutealDestination.SETTINGS
                                 }
                             )
-                            LutealDestination.SETTINGS -> SettingsScreen()
+                            LutealDestination.SETTINGS -> SettingsScreen(viewModel = settingsViewModel)
                         }
                     }
                 }

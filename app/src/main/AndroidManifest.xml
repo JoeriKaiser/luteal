@@ -34,6 +34,19 @@
             </intent-filter>
         </activity>
 
+        <!--
+          Host-side test data uses the normal backup import path. DUMP is held
+          by adb shell, but not by ordinary applications, so this bridge does
+          not add a public data injection entry point to the release build.
+        -->
+        <activity
+            android:name=".AdbBackupImportActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:permission="android.permission.DUMP"
+            android:theme="@style/Theme.Luteal" />
+
         <receiver
             android:name=".widget.personal.PersonalCycleWidgetReceiver"
             android:exported="true"

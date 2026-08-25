@@ -50,6 +50,7 @@ import fr.luteal.core.model.ImportStrategy
 import fr.luteal.core.model.ImportSummary
 import fr.luteal.core.model.LutealBackupPayload
 import fr.luteal.core.model.LutealBackupPreview
+import java.io.ByteArrayInputStream
 
 /**
  * Settings tab view model.
@@ -333,6 +334,39 @@ class SettingsViewModel @Inject constructor(
                 }
             }.onSuccess { result ->
                 result.fold(
+                    onSuccess = { (preview, payload) ->
+                        importState.value = DataImportState.PreviewReady(preview, payload)
+                    },
+                    onFailure = { err ->
+                        val resId = when (err) {
+                            is DataImportError.InvalidJsonSyntax -> R.string.settings_import_error_syntax
+                            is DataImportError.UnsupportedSchemaVersion -> R.string.settings_import_error_schema
+                            else -> R.string.settings_import_error_generic
+                        }
+                        importState.value = DataImportState.Error(message = err.message, messageResId = resId)
+                    }
+                )
+            }.onFailure { err ->
+                importState.value = DataImportState.Error(
+                    message = err.message,
+                    messageResId = R.string.settings_import_error_generic
+                )
+            }
+        }
+    }
+
+    fun inspectBackupJson(json: String) {
+        viewModelScope.launch {
+            importState.value = DataImportState.Inspecting
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    dataImportManager.inspectBackup(
+                        ByteArrayInputStream(json.toByteArray(Charsets.UTF_8))
+                    )
+                }
+            }
+            result.onSuccess { inspection ->
+                inspection.fold(
                     onSuccess = { (preview, payload) ->
                         importState.value = DataImportState.PreviewReady(preview, payload)
                     },
