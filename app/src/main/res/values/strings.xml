@@ -638,7 +638,7 @@
     <string name="notif_channel_late_desc">Discreet reminders for extended cycles</string>
     <string name="notif_default_public_title">Luteal</string>
     <string name="notif_default_public_body">Reminder available</string>
-    <string name="notif_default_concealed_title">Luteal — Reminder</string>
+    <string name="notif_default_concealed_title">Luteal: Reminder</string>
     <string name="notif_default_concealed_body">Take a moment for your personal check-in.</string>
     <string name="notif_daily_descriptive_title">Daily check-in</string>
     <string name="notif_daily_descriptive_body">Remember to record your observations for today.</string>

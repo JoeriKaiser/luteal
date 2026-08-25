@@ -9,7 +9,7 @@ Verified against a live server on 2026-07-25 (`E2eRoundTripTest`, opt-in via
 `-Pfolicular.e2e.url`): register, seal, push, pull and decrypt round-trips; a
 second device recovers the account from the code alone and reads the first
 device's record. Inspecting the resulting SQLite file directly found **no
-plaintext at all** — no notes, dates, or enum values, only the `0x01` version
+plaintext at all**, no notes, dates, or enum values, only the `0x01` version
 byte and ciphertext. The Compose app itself has since run against a real
 server on a device (see `BACKEND_INTEGRATION.md`, current state), and
 `sync_transport_notice` now states end-to-end encryption truthfully.
@@ -88,7 +88,7 @@ Say so plainly rather than overclaiming.
   server-brokered X25519 exchange would have carried does not apply: the link
   key travels in the pairing URL fragment and folicular never sees it (see
   section 5). The residual exposure is that anyone who can read the shared link
-  can join the Duo — the same property the bare pairing code always had.
+  can join the Duo, the same property the bare pairing code always had.
 - **Losing a Duo link key means re-pairing.** It is held only on the two paired
   devices. A reinstall loses it, and the UI says so (`duo_key_missing`) rather
   than failing silently.
@@ -162,14 +162,14 @@ revisit with a deterministic nonce derived from `client_rev`.
 ## 5. Duo key agreement (implemented)
 
 The 50-bit pairing code **cannot** be the encryption key. It is short-lived,
-single-use, and low entropy — adequate as a bearer secret on a rate-limited
+single-use, and low entropy, adequate as a bearer secret on a rate-limited
 endpoint, brute-forceable by a server holding the ciphertext.
 
 **This section changed during implementation.** The original design was
 server-mediated X25519. On building it, that turned out to have a worse property
 than it first appears: the server introduces the two devices' public keys, so a
 malicious operator can substitute its own and read everything. Closing that
-requires an out-of-band safety-number comparison — which is *exactly* the
+requires an out-of-band safety-number comparison, which is *exactly* the
 out-of-band channel the pairing link already is. The extra machinery bought
 nothing the link did not already provide.
 
@@ -191,7 +191,7 @@ The pairing code authenticates the *link*; the fragment carries the *key*.
 `DuoCryptoTest` asserts the key never appears before the fragment, and that a
 bare pairing code is rejected rather than silently downgrading to no encryption.
 
-**Trust model:** unchanged from the pairing link itself — whoever can read the
+**Trust model:** unchanged from the pairing link itself, whoever can read the
 link can join the Duo. That was already true of the bare pairing code. No
 BouncyCastle dependency was needed.
 
@@ -270,14 +270,14 @@ at each step. Kept as a record of what changed and why.
 3. **Server handlers.** The seven-case `dispatchChange` switch collapsed to
    one opaque path. Envelope and routing validation stayed; content validation
    went. `internal/cyclecalc`, `internal/api/predictions.go`, and the typed
-   read endpoints `/v1/cycles` and `/v1/days` were removed — which also
+   read endpoints `/v1/cycles` and `/v1/days` were removed, which also
    retired the Go estimator's `minRangeRadiusDays = 2` overconfidence and its
    calendar-derived fertile window (see §7).
 4. **Client sync.** `SyncWire` carries the sealed envelope; `CycleSyncEngine`
    seals before push and opens after pull. The account code (the key root) is
    stored alongside the device token in the Keystore-backed
    `EncryptedSyncCredentialStore`.
-5. **Duo.** Implemented as §5 describes — the link key travels in the pairing
+5. **Duo.** Implemented as §5 describes, the link key travels in the pairing
    URL fragment rather than via X25519 identity keys, which the server could
    have substituted. Client-composed sealed `DuoView`, device-enforced grants,
    sealed support thread.
@@ -302,7 +302,7 @@ Independent of the migration, and live now:
 - **Timestamp coarsening** (`CycleSyncEngine.toCoarseUtc`). Envelope timestamps
   are UTC-normalised and truncated to the minute. Millisecond precision let the
   server reconstruct a minute-by-minute timeline of when each observation was
-  entered — meaningful precisely because an offline-first client pushes batches
+  entered, meaningful precisely because an offline-first client pushes batches
   long after the fact.
 - **Rate-limit key hashing** (`internal/server/ratelimit.go`). Client addresses
   are HMAC'd under a per-process random pepper before use as bucket keys, so raw

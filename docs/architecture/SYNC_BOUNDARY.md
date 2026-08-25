@@ -58,8 +58,8 @@ contract models. Per change:
 - `ciphertext`: the sealed record, `0x01 || nonce(12) || ciphertext || tag(16)`
   under the account-code-derived record key (see `E2EE_DESIGN.md` §4)
 
-Routing metadata is plaintext by necessity — the server must route upserts it
-cannot read — and is bound into the AEAD associated data
+Routing metadata is plaintext by necessity, the server must route upserts it
+cannot read, and is bound into the AEAD associated data
 (`"<entity_type> <entity_id> <client_rev>"`), so the server cannot move a
 payload onto another record or relabel its type without an authentication
 failure. Records derived from a parent (bleeding fanned out of a cycle or a

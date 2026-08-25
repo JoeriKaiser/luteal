@@ -636,7 +636,7 @@
     <string name="notif_channel_late_desc">Rappels discrets en cas de cycle prolongé</string>
     <string name="notif_default_public_title">Luteal</string>
     <string name="notif_default_public_body">Rappel disponible</string>
-    <string name="notif_default_concealed_title">Luteal — Rappel</string>
+    <string name="notif_default_concealed_title">Luteal: Rappel</string>
     <string name="notif_default_concealed_body">Prenez un instant pour votre suivi personnel.</string>
     <string name="notif_daily_descriptive_title">Suivi du jour</string>
     <string name="notif_daily_descriptive_body">Pensez à noter vos observations de la journée.</string>
