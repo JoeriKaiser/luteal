@@ -837,9 +837,10 @@ private fun partnerTipTitle(id: String): String = stringResource(
         "partner_ovulatory_ask" -> R.string.partner_tip_partner_ovulatory_ask
         "partner_luteal_progesterone" -> R.string.partner_tip_partner_luteal_progesterone
         "partner_luteal_communication" -> R.string.partner_tip_partner_luteal_communication
+        "partner_luteal_practical" -> R.string.partner_tip_partner_luteal_practical
         "partner_luteal_pmdd_space" -> R.string.partner_tip_partner_luteal_pmdd_space
         "partner_perimeno_support" -> R.string.partner_tip_partner_perimeno_support
-        else -> R.string.partner_tip_partner_luteal_practical
+        else -> error("Unknown partner tip id: $id")
     }
 )
 
@@ -857,8 +858,9 @@ private fun partnerTipMessage(id: String): String = stringResource(
         "partner_ovulatory_ask" -> R.string.partner_tip_partner_ovulatory_ask_message
         "partner_luteal_progesterone" -> R.string.partner_tip_partner_luteal_progesterone_message
         "partner_luteal_communication" -> R.string.partner_tip_partner_luteal_communication_message
+        "partner_luteal_practical" -> R.string.partner_tip_partner_luteal_practical_message
         "partner_luteal_pmdd_space" -> R.string.partner_tip_partner_luteal_pmdd_space_message
         "partner_perimeno_support" -> R.string.partner_tip_partner_perimeno_support_message
-        else -> R.string.partner_tip_partner_luteal_practical_message
+        else -> error("Unknown partner tip id: $id")
     }
 )
