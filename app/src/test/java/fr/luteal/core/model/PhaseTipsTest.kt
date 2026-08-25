@@ -52,4 +52,61 @@ class PhaseTipsTest {
         val ids = PhaseTips.ALL.map(PhaseTip::id)
         assertEquals(ids.size, ids.distinct().size)
     }
+
+    @Test
+    fun `declared context selects targeted tips during relevant phase`() {
+        val date = LocalDate.parse("2026-07-26")
+
+        // Endometriosis in menstrual phase
+        val endoTip = PhaseTips.forDate(
+            phase = CyclePhase.MENSTRUAL,
+            date = date,
+            declaredContexts = setOf(TrackingContext.ENDOMETRIOSIS)
+        )
+        assertEquals(TrackingContext.ENDOMETRIOSIS, endoTip.targetContext)
+
+        // PMDD in luteal phase
+        val pmddTip = PhaseTips.forDate(
+            phase = CyclePhase.LUTEAL,
+            date = date,
+            declaredContexts = setOf(TrackingContext.PMDD)
+        )
+        assertEquals(TrackingContext.PMDD, pmddTip.targetContext)
+
+        // PCOS in follicular phase
+        val pcosTip = PhaseTips.forDate(
+            phase = CyclePhase.FOLLICULAR,
+            date = date,
+            declaredContexts = setOf(TrackingContext.PCOS)
+        )
+        assertEquals(TrackingContext.PCOS, pcosTip.targetContext)
+    }
+
+    @Test
+    fun `recent symptoms boost specific tip matching`() {
+        val date = LocalDate.parse("2026-07-26")
+
+        val tip = PhaseTips.forDate(
+            phase = CyclePhase.MENSTRUAL,
+            date = date,
+            declaredContexts = setOf(TrackingContext.ENDOMETRIOSIS),
+            recentSymptomIds = setOf("fatigue")
+        )
+        assertEquals("menstrual_endo_fatigue_pacing", tip.id)
+    }
+
+    @Test
+    fun `empty contexts never select condition-specific tips`() {
+        val baseDate = LocalDate.parse("2026-07-01")
+        (0..60).forEach { dayOffset ->
+            val date = baseDate.plusDays(dayOffset.toLong())
+            CyclePhase.entries.forEach { phase ->
+                val tip = PhaseTips.forDate(phase, date, declaredContexts = emptySet())
+                assertTrue(
+                    "Tip ${tip.id} has context ${tip.targetContext} but was selected with empty contexts",
+                    tip.targetContext == null
+                )
+            }
+        }
+    }
 }

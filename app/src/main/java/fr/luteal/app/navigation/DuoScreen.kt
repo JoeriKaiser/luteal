@@ -829,13 +829,18 @@ private fun partnerTipTitle(id: String): String = stringResource(
         "partner_menstrual_comfort" -> R.string.partner_tip_partner_menstrual_comfort
         "partner_menstrual_space" -> R.string.partner_tip_partner_menstrual_space
         "partner_menstrual_listen" -> R.string.partner_tip_partner_menstrual_listen
+        "partner_menstrual_endo_support" -> R.string.partner_tip_partner_menstrual_endo_support
         "partner_follicular_energy_varies" -> R.string.partner_tip_partner_follicular_energy_varies
         "partner_follicular_no_script" -> R.string.partner_tip_partner_follicular_no_script
+        "partner_follicular_pcos_support" -> R.string.partner_tip_partner_follicular_pcos_support
         "partner_ovulatory_not_certain" -> R.string.partner_tip_partner_ovulatory_not_certain
         "partner_ovulatory_ask" -> R.string.partner_tip_partner_ovulatory_ask
         "partner_luteal_progesterone" -> R.string.partner_tip_partner_luteal_progesterone
         "partner_luteal_communication" -> R.string.partner_tip_partner_luteal_communication
-        else -> R.string.partner_tip_partner_luteal_practical
+        "partner_luteal_practical" -> R.string.partner_tip_partner_luteal_practical
+        "partner_luteal_pmdd_space" -> R.string.partner_tip_partner_luteal_pmdd_space
+        "partner_perimeno_support" -> R.string.partner_tip_partner_perimeno_support
+        else -> error("Unknown partner tip id: $id")
     }
 )
 
@@ -845,12 +850,17 @@ private fun partnerTipMessage(id: String): String = stringResource(
         "partner_menstrual_comfort" -> R.string.partner_tip_partner_menstrual_comfort_message
         "partner_menstrual_space" -> R.string.partner_tip_partner_menstrual_space_message
         "partner_menstrual_listen" -> R.string.partner_tip_partner_menstrual_listen_message
+        "partner_menstrual_endo_support" -> R.string.partner_tip_partner_menstrual_endo_support_message
         "partner_follicular_energy_varies" -> R.string.partner_tip_partner_follicular_energy_varies_message
         "partner_follicular_no_script" -> R.string.partner_tip_partner_follicular_no_script_message
+        "partner_follicular_pcos_support" -> R.string.partner_tip_partner_follicular_pcos_support_message
         "partner_ovulatory_not_certain" -> R.string.partner_tip_partner_ovulatory_not_certain_message
         "partner_ovulatory_ask" -> R.string.partner_tip_partner_ovulatory_ask_message
         "partner_luteal_progesterone" -> R.string.partner_tip_partner_luteal_progesterone_message
         "partner_luteal_communication" -> R.string.partner_tip_partner_luteal_communication_message
-        else -> R.string.partner_tip_partner_luteal_practical_message
+        "partner_luteal_practical" -> R.string.partner_tip_partner_luteal_practical_message
+        "partner_luteal_pmdd_space" -> R.string.partner_tip_partner_luteal_pmdd_space_message
+        "partner_perimeno_support" -> R.string.partner_tip_partner_perimeno_support_message
+        else -> error("Unknown partner tip id: $id")
     }
 )

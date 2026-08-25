@@ -30,7 +30,7 @@ object HtmlReportBuilder {
             appendLine("<head>")
             appendLine("<meta charset=\"UTF-8\">")
             appendLine("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">")
-            appendLine("<title>Luteal — $title</title>")
+            appendLine("<title>Luteal: $title</title>")
             appendLine("<style>")
             appendLine(cssStyles())
             appendLine("</style>")

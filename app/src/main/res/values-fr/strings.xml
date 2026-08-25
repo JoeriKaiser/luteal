@@ -124,6 +124,19 @@
     <string name="phase_tip_luteal_hydration">Boire régulièrement de l’eau peut aider à atténuer les sensations de gonflement et soutenir la digestion avant les règles.</string>
     <string name="phase_tip_luteal_sodium_bloating">Modérer les apports très salés en phase lutéale peut contribuer à limiter la rétention d’eau et la sensation de gonflement.</string>
     <string name="phase_tip_luteal_complex_carbs">Privilégier les glucides complexes et des repas réguliers peut aider à stabiliser l’énergie et les variations d’humeur.</string>
+    <string name="phase_tip_menstrual_endo_pelvic_rest">En cas de douleurs intenses liées à l\'endométriose, alterner les phases de repos et des postures de relâchement pelvien aide à réduire les tensions musculaires réflexes.</string>
+    <string name="phase_tip_menstrual_endo_fatigue_pacing">La fatigue liée à l\'inflammation de l\'endométriose est réelle et biologique. Accordez-vous un temps de récupération sans culpabiliser.</string>
+    <string name="phase_tip_menstrual_endo_radiating_pain">Des douleurs irradiant dans le bas du dos ou les jambes sont des observations utiles à consigner dans votre journal pour vos consultations.</string>
+    <string name="phase_tip_follicular_pcos_elongation">Avec un SOPK, une phase folliculaire longue avant l\'ovulation est habituelle. Cet allongement fait partie du rythme naturel de votre cycle.</string>
+    <string name="phase_tip_follicular_pcos_movement">Le renforcement musculaire et une marche régulière soutiennent la sensibilité à l\'insuline et stabilisent votre énergie tout au long du cycle.</string>
+    <string name="phase_tip_follicular_thyroid_fatigue">En cas de troubles thyroïdiens, la fatigue matinale et la frilosité peuvent varier selon les phases. Adaptez votre rythme en conséquence.</string>
+    <string name="phase_tip_follicular_perimeno_fluctuation">Les variations de la phase folliculaire sont fréquentes en périménopause, au gré des fluctuations hormonales d\'un cycle à l\'autre.</string>
+    <string name="phase_tip_ovulatory_hydration_mucus">Une bonne hydratation soutient naturellement la texture de la glaire cervicale lors de la transition de milieu de cycle.</string>
+    <string name="phase_tip_luteal_pmdd_neuro_validation">Les baisses de moral et la sensibilité accrue en phase lutéale sont des réponses neurochimiques bien réelles, et non un manque de volonté.</string>
+    <string name="phase_tip_luteal_pmdd_pacing">Alléger votre emploi du temps et poser des limites claires sur ces quelques jours permet de préserver vos ressources physiques et émotionnelles.</string>
+    <string name="phase_tip_luteal_sleep_routine">La hausse de progestérone peut fragmenter le sommeil. Une chambre fraîche et un rituel de coucher calme aident à préserver la qualité de vos nuits.</string>
+    <string name="phase_tip_luteal_endo_pelvic_tension">Des tiraillements pelviens peuvent survenir en fin de phase lutéale. Des bains tièdes et une respiration abdominale lente aident à détendre le bas-ventre.</string>
+    <string name="phase_tip_luteal_perimeno_sleep">En cas de sueurs nocturnes ou de sommeil agité avant les règles, privilégiez des vêtements respirants en plusieurs couches et aérez la chambre.</string>
 
     <string name="journal_title">Journal</string>
     <string name="journal_subtitle">Retrouvez les faits que vous avez enregistrés, jour après jour.</string>
@@ -624,7 +637,7 @@
     <string name="notif_channel_late_desc">Rappels discrets en cas de cycle prolongé</string>
     <string name="notif_default_public_title">Luteal</string>
     <string name="notif_default_public_body">Rappel disponible</string>
-    <string name="notif_default_concealed_title">Luteal — Rappel</string>
+    <string name="notif_default_concealed_title">Luteal: Rappel</string>
     <string name="notif_default_concealed_body">Prenez un instant pour votre suivi personnel.</string>
     <string name="notif_daily_descriptive_title">Suivi du jour</string>
     <string name="notif_daily_descriptive_body">Pensez à noter vos observations de la journée.</string>
@@ -750,4 +763,12 @@
     <string name="partner_tip_partner_luteal_communication_message">De brefs messages et de la souplesse dans les plans sont souvent plus utiles que des conseils.</string>
     <string name="partner_tip_partner_luteal_practical">Aide pratique, si elle est souhaitée</string>
     <string name="partner_tip_partner_luteal_practical_message">Repas, courses ou soirée plus calme peuvent aider. Proposez-les comme options, pas comme une prescription.</string>
+    <string name="partner_tip_partner_menstrual_endo_support">Soutien lors des douleurs intenses</string>
+    <string name="partner_tip_partner_menstrual_endo_support_message">Les crises d\'endométriose entraînent une fatigue physique profonde. Prendre en charge les repas et les tâches ménagères sans demander soulage directement votre partenaire.</string>
+    <string name="partner_tip_partner_follicular_pcos_support">Patience face aux cycles plus longs</string>
+    <string name="partner_tip_partner_follicular_pcos_support_message">Avec un SOPK, les cycles prennent souvent plus de temps. Des encouragements et une routine équilibrée partagée aident bien plus que de surveiller les dates.</string>
+    <string name="partner_tip_partner_luteal_pmdd_space">Valider le vécu prémenstruel</string>
+    <string name="partner_tip_partner_luteal_pmdd_space_message">La dysphorie prémenstruelle est une réaction neurochimique. Écouter calmement sans chercher à débattre ou corriger les émotions offre un espace sécurisant et apaisant.</string>
+    <string name="partner_tip_partner_perimeno_support">Souplesse face aux variations d\'énergie</string>
+    <string name="partner_tip_partner_perimeno_support_message">La périménopause peut causer des baisses d\'énergie et des sensations thermiques imprévisibles. Rester souple sur les projets du soir fait une vraie différence.</string>
 </resources>

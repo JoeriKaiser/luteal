@@ -6,45 +6,77 @@ import java.time.temporal.ChronoUnit
 data class PartnerPhaseTip(
     val id: String,
     val phase: CyclePhase,
+    val targetContext: TrackingContext? = null,
     val source: String,
     val url: String
 )
 
 object PartnerPhaseTips {
-    private const val NHS_PERIOD_PAIN = "NHS, Period pain"
-    private const val NHS_PERIOD_PAIN_URL = "https://www.nhs.uk/symptoms/period-pain/"
-    private const val NHS_PMS = "NHS, Premenstrual syndrome"
-    private const val NHS_PMS_URL = "https://www.nhs.uk/conditions/pre-menstrual-syndrome/"
-    private const val NHS_PERIODS = "NHS, Periods"
-    private const val NHS_PERIODS_URL = "https://www.nhs.uk/conditions/periods/"
-    private const val MIHM = "Mihm et al., Animal Reproduction Science, 2011"
-    private const val MIHM_URL = "https://doi.org/10.1016/j.anireprosci.2010.08.030"
-    private const val FEHRING = "Fehring et al., JOGNN, 2006"
-    private const val FEHRING_URL = "https://doi.org/10.1111/j.1552-6909.2006.00051.x"
     private const val WHO = "WHO, Menstrual health and rights"
     private const val WHO_URL = "https://www.who.int/news/item/22-06-2022-who-statement-on-menstrual-health-and-rights"
-    private const val ACOG_PMS = "ACOG, Premenstrual syndrome"
-    private const val ACOG_PMS_URL = "https://www.acog.org/womens-health/faqs/premenstrual-syndrome-pms"
 
     val ALL: List<PartnerPhaseTip> = listOf(
-        PartnerPhaseTip("partner_menstrual_comfort", CyclePhase.MENSTRUAL, NHS_PERIOD_PAIN, NHS_PERIOD_PAIN_URL),
-        PartnerPhaseTip("partner_menstrual_space", CyclePhase.MENSTRUAL, NHS_PERIODS, NHS_PERIODS_URL),
-        PartnerPhaseTip("partner_menstrual_listen", CyclePhase.MENSTRUAL, WHO, WHO_URL),
-        PartnerPhaseTip("partner_follicular_energy_varies", CyclePhase.FOLLICULAR, MIHM, MIHM_URL),
-        PartnerPhaseTip("partner_follicular_no_script", CyclePhase.FOLLICULAR, WHO, WHO_URL),
-        PartnerPhaseTip("partner_ovulatory_not_certain", CyclePhase.OVULATORY, FEHRING, FEHRING_URL),
-        PartnerPhaseTip("partner_ovulatory_ask", CyclePhase.OVULATORY, WHO, WHO_URL),
-        PartnerPhaseTip("partner_luteal_progesterone", CyclePhase.LUTEAL, NHS_PMS, NHS_PMS_URL),
-        PartnerPhaseTip("partner_luteal_communication", CyclePhase.LUTEAL, NHS_PMS, NHS_PMS_URL),
-        PartnerPhaseTip("partner_luteal_practical", CyclePhase.LUTEAL, ACOG_PMS, ACOG_PMS_URL)
+        PartnerPhaseTip("partner_menstrual_comfort", CyclePhase.MENSTRUAL, source = ClinicalSources.NHS_PERIOD_PAIN, url = ClinicalSources.NHS_PERIOD_PAIN_URL),
+        PartnerPhaseTip("partner_menstrual_space", CyclePhase.MENSTRUAL, source = ClinicalSources.NHS_PERIODS, url = ClinicalSources.NHS_PERIODS_URL),
+        PartnerPhaseTip("partner_menstrual_listen", CyclePhase.MENSTRUAL, source = WHO, url = WHO_URL),
+        PartnerPhaseTip(
+            "partner_menstrual_endo_support",
+            CyclePhase.MENSTRUAL,
+            targetContext = TrackingContext.ENDOMETRIOSIS,
+            source = ClinicalSources.CNGOF_PAIN,
+            url = ClinicalSources.CNGOF_PAIN_URL
+        ),
+        PartnerPhaseTip("partner_follicular_energy_varies", CyclePhase.FOLLICULAR, source = ClinicalSources.MIHM, url = ClinicalSources.MIHM_URL),
+        PartnerPhaseTip("partner_follicular_no_script", CyclePhase.FOLLICULAR, source = WHO, url = WHO_URL),
+        PartnerPhaseTip(
+            "partner_follicular_pcos_support",
+            CyclePhase.FOLLICULAR,
+            targetContext = TrackingContext.PCOS,
+            source = ClinicalSources.MONASH_PCOS,
+            url = ClinicalSources.MONASH_PCOS_URL
+        ),
+        PartnerPhaseTip("partner_ovulatory_not_certain", CyclePhase.OVULATORY, source = ClinicalSources.FEHRING, url = ClinicalSources.FEHRING_URL),
+        PartnerPhaseTip("partner_ovulatory_ask", CyclePhase.OVULATORY, source = WHO, url = WHO_URL),
+        PartnerPhaseTip("partner_luteal_progesterone", CyclePhase.LUTEAL, source = ClinicalSources.NHS_PMS, url = ClinicalSources.NHS_PMS_URL),
+        PartnerPhaseTip("partner_luteal_communication", CyclePhase.LUTEAL, source = ClinicalSources.NHS_PMS, url = ClinicalSources.NHS_PMS_URL),
+        PartnerPhaseTip("partner_luteal_practical", CyclePhase.LUTEAL, source = ClinicalSources.ACOG_PMS, url = ClinicalSources.ACOG_PMS_URL),
+        PartnerPhaseTip(
+            "partner_luteal_pmdd_space",
+            CyclePhase.LUTEAL,
+            targetContext = TrackingContext.PMDD,
+            source = ClinicalSources.INSERM_PMDD,
+            url = ClinicalSources.INSERM_PMDD_URL
+        ),
+        PartnerPhaseTip(
+            "partner_perimeno_support",
+            CyclePhase.LUTEAL,
+            targetContext = TrackingContext.PERIMENOPAUSE,
+            source = ClinicalSources.BMS_PERIMENO,
+            url = ClinicalSources.BMS_PERIMENO_URL
+        )
     )
 
-    fun forDate(phase: CyclePhase, date: LocalDate): PartnerPhaseTip {
-        val candidates = ALL.filter { it.phase == phase }
-        check(candidates.isNotEmpty()) { "No partner tips registered for $phase" }
+    fun forDate(
+        phase: CyclePhase,
+        date: LocalDate,
+        declaredContexts: Set<TrackingContext> = emptySet()
+    ): PartnerPhaseTip {
+        val phaseCandidates = ALL.filter { it.phase == phase }
+        check(phaseCandidates.isNotEmpty()) { "No partner tips registered for $phase" }
+
+        val eligible = phaseCandidates.filter { tip ->
+            tip.targetContext == null || tip.targetContext in declaredContexts
+        }
+        val scored = eligible.map { tip ->
+            val score = if (tip.targetContext != null && tip.targetContext in declaredContexts) 3 else 0
+            tip to score
+        }
+        val maxScore = scored.maxOf { it.second }
+        val bestCandidates = scored.filter { it.second == maxScore }.map { it.first }
+
         val scattered = date.toEpochDay() * 2_654_435_761L
-        val index = Math.floorMod(scattered, candidates.size.toLong()).toInt()
-        return candidates[index]
+        val index = Math.floorMod(scattered, bestCandidates.size.toLong()).toInt()
+        return bestCandidates[index]
     }
 }
 

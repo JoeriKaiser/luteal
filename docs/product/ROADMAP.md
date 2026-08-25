@@ -94,7 +94,7 @@ Status: done.
 - [x] Permission change and revocation states
 - [x] No-data, stale-data, offline, and removed-relationship states (no-data,
   key-missing, and cached projection with freshness badge)
-- [x] Transport: the planned fake transport was overtaken — the real
+- [x] Transport: the planned fake transport was overtaken, the real
   end-to-end encrypted transport shipped (`BACKEND_INTEGRATION.md`)
 - [ ] UI tests for the Duo flows (the local test was removed with the
   `hiltViewModel()` migration; `E2eRoundTripTest` covers the protocol, not

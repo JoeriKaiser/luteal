@@ -50,7 +50,7 @@ folicular/openapi/openapi.yaml   <- single source of truth
   impossible for generated types.
 - The vendored spec is already the E2EE shape: `SyncChangeInput` /
   `SyncPullChange` carry a base64 `ciphertext` field, and the plaintext record
-  schemas remain in the contract only as documentation of the sealed payload —
+  schemas remain in the contract only as documentation of the sealed payload, 
   no path references them, and the client generates its record types from
   them.
 
@@ -102,7 +102,7 @@ fanned out of a cycle or a daily entry) get deterministic ids via
 record payload is sealed before push (`RecordCrypto`, see `E2EE_DESIGN.md` §4)
 with the routing fields bound as AEAD associated data.
 
-## Milestone 1 — Full multi-entity sync engine
+## Milestone 1, Full multi-entity sync engine
 
 Goal: a tracker on one device and the same account on another converge, with
 no silent loss. Status per item:
@@ -112,7 +112,7 @@ no silent loss. Status per item:
   adopt-server-state).
 - [x] **Bleeding↔cycle association:** the canonical rule is implemented
   (`associatePeriodDays`, client-side date-range derivation) and both bleeding
-  sources sync — cycle-embedded period days and daily-entry bleeding both fan
+  sources sync, cycle-embedded period days and daily-entry bleeding both fan
   out to `bleeding_observation` rows.
 - [x] **Deletions:** local deletes push tombstones in both directions and
   incoming tombstones delete local rows (cycles, daily entries, symptom logs).
@@ -128,20 +128,20 @@ no silent loss. Status per item:
   adoption into the live catalog flow (`SymptomCatalogAdopter` exists but is
   not yet driven by sync).
 - [ ] **Deterministic convergence tests at entity depth:** extend
-  `CycleSyncEngineTest` beyond cycles to daily entries and symptom logs —
+  `CycleSyncEngineTest` beyond cycles to daily entries and symptom logs, 
   independent-field edits on two devices, delete-then-stale-mutation, and
   revocation-while-offline. Field-level merging is future work.
 
 Exit: two devices on one account converge, including deletions, with no
 silent loss; offline edits sync when connectivity returns.
 
-## Milestone 2 — Account recovery and honest connectivity UX
+## Milestone 2, Account recovery and honest connectivity UX
 
 - [x] **Account-code surface:** the code is viewable in Settings with copy
   support and honest copy (`settings_sync_account_code_body`: it is the only
   key, there is no reset). Registration still happens silently on first sync;
   the code becomes visible afterwards rather than at registration with an
-  explicit "write this down" step — that first-run moment remains to build.
+  explicit "write this down" step, that first-run moment remains to build.
 - [x] **Device recovery:** a new device restores the account from the code
   alone (`addDevice`), resets the pull cursor to zero, and syncs the full
   history. Verified end to end (`E2eRoundTripTest`).
@@ -156,7 +156,7 @@ silent loss; offline edits sync when connectivity returns.
 - [ ] **First-run account-code moment:** show the code with a confirmation
   step when an account is created, not only retroactively in Settings.
 
-## Milestone 3 — Duo client
+## Milestone 3, Duo client
 
 - [x] **Pairing:** invite creation, link-key generation on device, shareable
   URL with the key in the fragment, and accept-by-paste of the full link (a

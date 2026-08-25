@@ -67,6 +67,7 @@ import fr.luteal.core.model.PhaseCertainty
 import fr.luteal.core.model.PhaseIndeterminateReason
 import fr.luteal.core.model.PhaseTips
 import java.time.temporal.ChronoUnit
+import fr.luteal.core.model.TrackingContext
 
 @Composable
 fun TodayScreen(
@@ -99,7 +100,21 @@ fun TodayScreen(
 
         TodayObservationCard(state = state, onEditToday = onEditToday)
         when (val phase = state.currentPhase) {
-            is CurrentCyclePhase.Available -> PhaseTipCard(phase, state.today)
+            is CurrentCyclePhase.Available -> {
+                val declaredContexts = state.preferences.declaredContexts
+                val recentSymptomIds = remember(state.entries, state.today) {
+                    state.entries
+                        .filter { it.date >= state.today.minusDays(3) }
+                        .flatMap { it.symptomIds }
+                        .toSet()
+                }
+                PhaseTipCard(
+                    phase = phase,
+                    today = state.today,
+                    declaredContexts = declaredContexts,
+                    recentSymptomIds = recentSymptomIds
+                )
+            }
             is CurrentCyclePhase.Indeterminate -> CycleFactCard(today = state.today)
         }
         EstimateSection(state = state, onBackfillCycle = onBackfillCycle)
@@ -587,8 +602,15 @@ private fun bleedingLabel(intensity: BleedingIntensity): String = stringResource
 )
 
 @Composable
-private fun PhaseTipCard(phase: CurrentCyclePhase.Available, today: java.time.LocalDate) {
-    val tip = remember(phase.phase, today) { PhaseTips.forDate(phase.phase, today) }
+private fun PhaseTipCard(
+    phase: CurrentCyclePhase.Available,
+    today: java.time.LocalDate,
+    declaredContexts: Set<TrackingContext> = emptySet(),
+    recentSymptomIds: Set<String> = emptySet()
+) {
+    val tip = remember(phase.phase, today, declaredContexts, recentSymptomIds) {
+        PhaseTips.forDate(phase.phase, today, declaredContexts, recentSymptomIds)
+    }
     SourcedDailyCard(
         title = stringResource(R.string.phase_tip_title),
         context = stringResource(
@@ -667,15 +689,32 @@ private fun phaseTipText(id: String): String? = when (id) {
     "menstrual_warmth" -> stringResource(R.string.phase_tip_menstrual_warmth)
     "menstrual_movement" -> stringResource(R.string.phase_tip_menstrual_movement)
     "menstrual_pain_support" -> stringResource(R.string.phase_tip_menstrual_pain_support)
+    "menstrual_hydration" -> stringResource(R.string.phase_tip_menstrual_hydration)
+    "menstrual_endo_pelvic_rest" -> stringResource(R.string.phase_tip_menstrual_endo_pelvic_rest)
+    "menstrual_endo_fatigue_pacing" -> stringResource(R.string.phase_tip_menstrual_endo_fatigue_pacing)
+    "menstrual_endo_radiating_pain" -> stringResource(R.string.phase_tip_menstrual_endo_radiating_pain)
     "follicular_varies" -> stringResource(R.string.phase_tip_follicular_varies)
     "follicular_own_history" -> stringResource(R.string.phase_tip_follicular_own_history)
     "follicular_no_fixed_day" -> stringResource(R.string.phase_tip_follicular_no_fixed_day)
+    "follicular_pcos_elongation" -> stringResource(R.string.phase_tip_follicular_pcos_elongation)
+    "follicular_pcos_movement" -> stringResource(R.string.phase_tip_follicular_pcos_movement)
+    "follicular_thyroid_fatigue" -> stringResource(R.string.phase_tip_follicular_thyroid_fatigue)
+    "follicular_perimeno_fluctuation" -> stringResource(R.string.phase_tip_follicular_perimeno_fluctuation)
     "ovulatory_not_confirmed" -> stringResource(R.string.phase_tip_ovulatory_not_confirmed)
     "ovulatory_counts_back" -> stringResource(R.string.phase_tip_ovulatory_counts_back)
     "ovulatory_not_day_14" -> stringResource(R.string.phase_tip_ovulatory_not_day_14)
+    "ovulatory_hydration_mucus" -> stringResource(R.string.phase_tip_ovulatory_hydration_mucus)
     "luteal_diary" -> stringResource(R.string.phase_tip_luteal_diary)
     "luteal_daily_support" -> stringResource(R.string.phase_tip_luteal_daily_support)
     "luteal_seek_support" -> stringResource(R.string.phase_tip_luteal_seek_support)
+    "luteal_hydration" -> stringResource(R.string.phase_tip_luteal_hydration)
+    "luteal_sodium_bloating" -> stringResource(R.string.phase_tip_luteal_sodium_bloating)
+    "luteal_complex_carbs" -> stringResource(R.string.phase_tip_luteal_complex_carbs)
+    "luteal_pmdd_neuro_validation" -> stringResource(R.string.phase_tip_luteal_pmdd_neuro_validation)
+    "luteal_pmdd_pacing" -> stringResource(R.string.phase_tip_luteal_pmdd_pacing)
+    "luteal_sleep_routine" -> stringResource(R.string.phase_tip_luteal_sleep_routine)
+    "luteal_endo_pelvic_tension" -> stringResource(R.string.phase_tip_luteal_endo_pelvic_tension)
+    "luteal_perimeno_sleep" -> stringResource(R.string.phase_tip_luteal_perimeno_sleep)
     else -> null
 }
 
