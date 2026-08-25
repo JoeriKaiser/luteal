@@ -114,13 +114,7 @@ object PhaseTips {
         PhaseTip("ovulatory_hydration_mucus", CyclePhase.OVULATORY, source = ACOG_PMS, url = ACOG_PMS_URL),
 
         // Luteal phase
-        PhaseTip(
-            "luteal_diary",
-            CyclePhase.LUTEAL,
-            targetContext = TrackingContext.PMS,
-            source = ACOG_PREMENSTRUAL_GUIDELINE,
-            url = ACOG_PREMENSTRUAL_GUIDELINE_URL
-        ),
+        PhaseTip("luteal_diary", CyclePhase.LUTEAL, source = ACOG_PREMENSTRUAL_GUIDELINE, url = ACOG_PREMENSTRUAL_GUIDELINE_URL),
         PhaseTip("luteal_daily_support", CyclePhase.LUTEAL, source = NHS_PMS, url = NHS_PMS_URL),
         PhaseTip("luteal_seek_support", CyclePhase.LUTEAL, source = NHS_PMS, url = NHS_PMS_URL),
         PhaseTip("luteal_hydration", CyclePhase.LUTEAL, source = NHS_PMS, url = NHS_PMS_URL),
