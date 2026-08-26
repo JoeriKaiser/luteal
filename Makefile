@@ -58,13 +58,14 @@ release-build:
 		echo "ERROR: keystore.properties not found in project root. Cannot produce signed release."; \
 		exit 1; \
 	fi
-	@if [ -n "$$(git status --porcelain)" ]; then \
-		echo "WARNING: Working tree has uncommitted changes! Release might not match repository state."; \
+	@if ! git diff-index --quiet HEAD --; then \
+		echo "ERROR: Working tree has uncommitted tracked changes. Clean working tree required for reproducible release."; \
+		exit 1; \
 	fi
-	@echo "==> Building Release APK for version $(VERSION) (code $(VERSION_CODE))..."
-	./gradlew assembleRelease
+	@echo "==> Performing clean reproducible build for version $(VERSION) (code $(VERSION_CODE))..."
+	./gradlew clean assembleRelease --no-build-cache
 	@mkdir -p $(DIST_DIR)
-	@cp app/build/outputs/apk/release/*.apk $(RELEASE_APK)
+	@cp app/build/outputs/apk/release/app-release.apk $(RELEASE_APK)
 	@echo ""
 	@echo "==> Release APK generated: $(RELEASE_APK)"
 	@echo ""
