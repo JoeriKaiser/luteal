@@ -85,7 +85,7 @@ jobs:
           $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose --print-certs "$RELEASE_APK"
 
       - name: Publish GitHub Release asset
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/luteal-*.apk
           generate_release_notes: true
