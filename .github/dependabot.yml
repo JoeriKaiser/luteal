@@ -7,11 +7,6 @@ updates:
     labels:
       - "dependencies"
       - "kotlin"
-    ignore:
-      - dependency-name: "gradle-wrapper"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "com.squareup.okhttp3:*"
-        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"

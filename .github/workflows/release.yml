@@ -33,7 +33,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
-          packages: "platforms;android-35 build-tools;35.0.0"
+          packages: "platforms;android-37 build-tools;37.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -82,7 +82,7 @@ jobs:
           sha256sum "$RELEASE_APK"
 
           echo "Verifying APK signing certificate:"
-          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose --print-certs "$RELEASE_APK"
+          $ANDROID_HOME/build-tools/37.0.0/apksigner verify --verbose --print-certs "$RELEASE_APK"
 
       - name: Publish GitHub Release asset
         uses: softprops/action-gh-release@v3
