@@ -38,7 +38,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
-          cache-provider: "none"
+          cache-disabled: true
 
       - name: Set up release signing credentials
         env:
