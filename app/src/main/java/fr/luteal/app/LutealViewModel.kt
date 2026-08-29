@@ -60,7 +60,7 @@ class LutealViewModel @Inject constructor(
     private val operationState = MutableStateFlow(OperationState())
 
     /** Local calendar date at construction; seeds the StateFlow before the first emission. */
-    private val initialToday: LocalDate = LocalDate.ofInstant(clock.instant(), ZoneId.systemDefault())
+    private val initialToday: LocalDate = clock.instant().atZone(ZoneId.systemDefault()).toLocalDate()
 
     /**
      * Emits the local "today" now and after every date rollover, so a process
@@ -340,7 +340,7 @@ internal fun todayFlow(clock: Clock): Flow<LocalDate> = flow {
     val zone = ZoneId.systemDefault()
     while (true) {
         val now = clock.instant()
-        val today = LocalDate.ofInstant(now, zone)
+        val today = now.atZone(zone).toLocalDate()
         emit(today)
         val nextMidnight = today.plusDays(1).atStartOfDay(zone).toInstant()
         delay(Duration.between(now, nextMidnight).toMillis().coerceAtLeast(1_000L))

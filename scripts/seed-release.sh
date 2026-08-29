@@ -91,7 +91,7 @@ cat >"${backup_file}" <<EOF
 {
   "schema_version": 1,
   "exported_at": "${timestamp}",
-  "app_version": "1.4.0-demo",
+  "app_version": "1.4.1-demo",
   "cycles": [
     {
       "id": "demo-cycle-1",
