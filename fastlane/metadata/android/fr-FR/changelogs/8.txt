@@ -1,0 +1,1 @@
+- Correction du plantage au démarrage sur Android 8 à 13.
