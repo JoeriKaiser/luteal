@@ -17,7 +17,7 @@ ADB          ?= adb
 DEVICE       ?=
 ANCHOR_DATE  ?= $(shell date -u +%F)
 
-.PHONY: help dev dev-install release-seed release-build release-check bump test clean
+.PHONY: help dev dev-install release-seed release-build release-check bump test lint clean
 
 help:
 	@echo "Luteal Build & Release Targets:"
@@ -28,6 +28,7 @@ help:
 	@echo "  make release-check   - Verify signature and Git metadata of $(RELEASE_APK)"
 	@echo "  make bump VERSION=1.x.y CODE=n - Update versionName and versionCode in build.gradle.kts"
 	@echo "  make test            - Run unit test suite"
+	@echo "  make lint            - Run Android Lint on debug variant"
 	@echo "  make clean           - Clean Gradle build outputs and $(DIST_DIR)/"
 
 # --- Development ---
@@ -50,6 +51,9 @@ test:
 	@echo "==> Running unit tests..."
 	./gradlew testDebugUnitTest
 
+lint:
+	@echo "==> Running Android Lint..."
+	./gradlew lintDebug
 # --- Release ---
 
 release-build:
