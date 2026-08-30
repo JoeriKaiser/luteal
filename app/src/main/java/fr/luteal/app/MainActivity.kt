@@ -1,5 +1,6 @@
 package fr.luteal.app
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
@@ -74,6 +75,7 @@ class MainActivity : FragmentActivity() {
                 val barrierUp = lockState is AppLockState.Resolving || lockState is AppLockState.Locked
                 // PIN length comes from a Keystore read: produceState keeps
                 // that suspend call out of composition.
+                @SuppressLint("ProduceStateDoesNotAssignValue")
                 val expectedPinLength by produceState<Int?>(initialValue = null, lockState) {
                     value = appLockManager.pinLength()
                 }

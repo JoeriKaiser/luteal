@@ -40,5 +40,5 @@ jobs:
           cache-provider: "basic"
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Build and test
-        run: ./gradlew assembleDebug testDebugUnitTest
+      - name: Build, lint, and test
+        run: ./gradlew assembleDebug lintDebug testDebugUnitTest
