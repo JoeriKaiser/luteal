@@ -14,9 +14,9 @@ val WarmStone98 = Color(0xFFFCFAF5)
 // value differed from the surface by roughly two percent, so resting cards
 // read as flat page rather than as objects. Luteal stays flat by default, so
 // this tonal gap is the only thing doing that grouping work in light mode.
-val WarmStone95 = Color(0xFFF1EDE1)
+val WarmStone95 = Color(0xFFECE6D8)
 val WarmStone90 = Color(0xFFE6E1D3)
-val WarmStone80 = Color(0xFFD6D2C8)
+val WarmStone80 = Color(0xFFB5AFA2)
 val WarmInk10 = Color(0xFF171C19)
 val WarmInk20 = Color(0xFF252B27)
 val WarmInk50 = Color(0xFF646B66)
@@ -102,7 +102,7 @@ val DarkColorScheme = darkColorScheme(
     surfaceVariant = Color(0xFF252D29),
     onSurfaceVariant = Color(0xFFC2C9C4),
     outline = Color(0xFF8B938D),
-    outlineVariant = Color(0xFF3D4540),
+    outlineVariant = Color(0xFF5A635E),
     error = Color(0xFFFFB3B2),
     onError = Color(0xFF5F1218),
     errorContainer = Color(0xFF7D292D),
