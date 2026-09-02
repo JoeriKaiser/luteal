@@ -1,0 +1,7 @@
+- Restored luteal phase estimation for typical cycle variability.
+- Prioritized recorded period flow over cycle phase estimates on all cycle days.
+- Sensiplan thermal shift evaluation now validates calendar continuity and coverline rules.
+- Fixed Duo partner projection decryption and stale link caching.
+- Prevented cycle deletion bounce loops and preserved daily entries during cloud sync.
+- Eliminated cold-start onboarding flash and improved interface accessibility (48dp touch targets).
+- Hardened app lock against reboot lockout resets and masked sensitive keys on clipboard copy.

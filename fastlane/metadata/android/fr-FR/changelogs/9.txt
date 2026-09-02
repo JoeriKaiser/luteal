@@ -1,0 +1,7 @@
+- Restauration de l'estimation de la phase lutéale pour les profils de cycle types.
+- Prise en compte prioritaire du flux menstruel enregistré sur les estimations de phase.
+- Évaluation thermique Sensiplan ajustée (continuité calendaire et règle de ligne de base).
+- Correction du déchiffrement des projections partagées Duo et de la gestion des liens révoqués.
+- Suppression des boucles de suppression de cycle et préservation des saisies lors de la synchronisation.
+- Suppression du clignotement d'accueil au démarrage et cibles tactiles agrandies à 48 dp.
+- Renforcement du verrouillage après redémarrage et masquage des clés sensibles dans le presse-papiers.
