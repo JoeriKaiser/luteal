@@ -44,6 +44,7 @@ import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import javax.inject.Inject
 
@@ -82,6 +83,22 @@ class LutealViewModel @Inject constructor(
         operationState,
         todayFlow
     ) { records, operation, today ->
+        val todayEntry = records.entries.firstOrNull { it.date == today }
+        val dayOfCycle = records.currentCycle?.takeIf { !today.isBefore(it.startDate) }?.let {
+            ChronoUnit.DAYS.between(it.startDate, today).toInt() + 1
+        }
+        val estimateResult = CycleEstimateCalculator.evaluate(
+            cycles = records.cycles,
+            ageBand = AgeBand.fromId(records.preferences.ageBand),
+            hasTimingContext = records.preferences.hasTimingContext
+        )
+        val estimate = (estimateResult as? CycleEstimateResult.Available)?.estimate
+        val currentPhase = CurrentCyclePhaseCalculator.evaluate(
+            today = today,
+            currentCycle = records.currentCycle,
+            todayEntry = todayEntry,
+            estimateResult = estimateResult
+        )
         LutealUiState(
             today = today,
             cycles = records.cycles,
@@ -89,18 +106,19 @@ class LutealViewModel @Inject constructor(
             entries = records.entries,
             biomarkers = records.biomarkers,
             preferences = records.preferences,
-            estimateResult = CycleEstimateCalculator.evaluate(
-                cycles = records.cycles,
-                ageBand = AgeBand.fromId(records.preferences.ageBand),
-                hasTimingContext = records.preferences.hasTimingContext
-            ),
+            estimateResult = estimateResult,
             entrySaveState = operation.entrySaveState,
-            operationFailed = operation.failed
+            operationFailed = operation.failed,
+            isInitializing = false,
+            todayEntry = todayEntry,
+            dayOfCycle = dayOfCycle,
+            estimate = estimate,
+            currentPhase = currentPhase
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = LutealUiState(today = initialToday)
+        initialValue = LutealUiState(today = initialToday, isInitializing = true)
     )
 
     fun saveEntry(entry: DailyEntry, biomarker: BiomarkerObservation, startsNewCycle: Boolean) {
@@ -246,27 +264,20 @@ data class LutealUiState(
     val preferences: UserPreferences = UserPreferences(),
     val estimateResult: CycleEstimateResult = CycleEstimateResult.NeedsMoreHistory,
     val entrySaveState: EntrySaveState = EntrySaveState.IDLE,
-    val operationFailed: Boolean = false
-) {
-    val estimate: CycleEstimate?
-        get() = (estimateResult as? CycleEstimateResult.Available)?.estimate
-
-    val todayEntry: DailyEntry?
-        get() = entries.firstOrNull { it.date == today }
-
-    val dayOfCycle: Int?
-        get() = currentCycle
-            ?.takeIf { !today.isBefore(it.startDate) }
-            ?.let { java.time.temporal.ChronoUnit.DAYS.between(it.startDate, today).toInt() + 1 }
-
-    val currentPhase: CurrentCyclePhase
-        get() = CurrentCyclePhaseCalculator.evaluate(
-            today = today,
-            currentCycle = currentCycle,
-            todayEntry = todayEntry,
-            estimateResult = estimateResult
-        )
-}
+    val operationFailed: Boolean = false,
+    val isInitializing: Boolean = false,
+    val todayEntry: DailyEntry? = entries.firstOrNull { it.date == today },
+    val dayOfCycle: Int? = currentCycle
+        ?.takeIf { !today.isBefore(it.startDate) }
+        ?.let { ChronoUnit.DAYS.between(it.startDate, today).toInt() + 1 },
+    val estimate: CycleEstimate? = (estimateResult as? CycleEstimateResult.Available)?.estimate,
+    val currentPhase: CurrentCyclePhase = CurrentCyclePhaseCalculator.evaluate(
+        today = today,
+        currentCycle = currentCycle,
+        todayEntry = todayEntry,
+        estimateResult = estimateResult
+    )
+)
 
 enum class EntrySaveState {
     IDLE,

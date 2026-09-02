@@ -22,7 +22,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,7 +52,7 @@ fun LutealMainScaffold(
     onPendingImportConsumed: () -> Unit = {},
     viewModel: LutealViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedDestination by rememberSaveable { mutableStateOf(LutealDestination.TODAY) }
     var editorRequest by remember { mutableStateOf<EditorRequest?>(null) }
     var showBackfillDialog by remember { mutableStateOf(false) }
@@ -109,7 +109,9 @@ fun LutealMainScaffold(
         }
     }
 
-    if (!uiState.preferences.hasCompletedOnboarding) {
+    if (uiState.isInitializing) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { }
+    } else if (!uiState.preferences.hasCompletedOnboarding) {
         OnboardingScreen(
             onComplete = { role, focusMap, ageBandId ->
                 viewModel.completeOnboarding(role, focusMap, ageBandId)

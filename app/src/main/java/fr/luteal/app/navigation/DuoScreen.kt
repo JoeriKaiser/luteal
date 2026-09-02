@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Favorite
@@ -45,6 +46,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.hilt.navigation.compose.hiltViewModel
 import fr.luteal.app.R
 import fr.luteal.core.common.LocalizedDateFormatter
@@ -512,7 +514,13 @@ private fun GrantToggle(
     val description = stringResource(descRes)
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(
+                value = checked,
+                role = Role.Switch,
+                onValueChange = { onToggleGrant(field, it) }
+            ),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -531,7 +539,7 @@ private fun GrantToggle(
         }
         Switch(
             checked = checked,
-            onCheckedChange = { onToggleGrant(field, it) }
+            onCheckedChange = null
         )
     }
 }
@@ -839,8 +847,8 @@ private fun nudgeText(name: String): String = stringResource(
 )
 
 @Composable
-private fun partnerTipTitle(id: String): String = stringResource(
-    when (id) {
+private fun partnerTipTitle(id: String): String {
+    val resId = when (id) {
         "partner_menstrual_comfort" -> R.string.partner_tip_partner_menstrual_comfort
         "partner_menstrual_space" -> R.string.partner_tip_partner_menstrual_space
         "partner_menstrual_listen" -> R.string.partner_tip_partner_menstrual_listen
@@ -855,13 +863,14 @@ private fun partnerTipTitle(id: String): String = stringResource(
         "partner_luteal_practical" -> R.string.partner_tip_partner_luteal_practical
         "partner_luteal_pmdd_space" -> R.string.partner_tip_partner_luteal_pmdd_space
         "partner_perimeno_support" -> R.string.partner_tip_partner_perimeno_support
-        else -> error("Unknown partner tip id: $id")
+        else -> null
     }
-)
+    return if (resId != null) stringResource(resId) else ""
+}
 
 @Composable
-private fun partnerTipMessage(id: String): String = stringResource(
-    when (id) {
+private fun partnerTipMessage(id: String): String {
+    val resId = when (id) {
         "partner_menstrual_comfort" -> R.string.partner_tip_partner_menstrual_comfort_message
         "partner_menstrual_space" -> R.string.partner_tip_partner_menstrual_space_message
         "partner_menstrual_listen" -> R.string.partner_tip_partner_menstrual_listen_message
@@ -876,6 +885,7 @@ private fun partnerTipMessage(id: String): String = stringResource(
         "partner_luteal_practical" -> R.string.partner_tip_partner_luteal_practical_message
         "partner_luteal_pmdd_space" -> R.string.partner_tip_partner_luteal_pmdd_space_message
         "partner_perimeno_support" -> R.string.partner_tip_partner_perimeno_support_message
-        else -> error("Unknown partner tip id: $id")
+        else -> null
     }
-)
+    return if (resId != null) stringResource(resId) else ""
+}

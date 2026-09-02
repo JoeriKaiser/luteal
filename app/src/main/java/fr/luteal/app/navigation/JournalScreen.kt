@@ -586,10 +586,10 @@ private fun SelectedDayInspectionCard(
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
                             IconButton(
                                 onClick = { onEditCycle(cycleStart) },
-                                modifier = Modifier.size(36.dp)
+                                modifier = Modifier.size(48.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Edit,
@@ -599,7 +599,7 @@ private fun SelectedDayInspectionCard(
                             }
                             IconButton(
                                 onClick = { onDeleteCycle(cycleStart) },
-                                modifier = Modifier.size(36.dp)
+                                modifier = Modifier.size(48.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Delete,
@@ -701,10 +701,10 @@ private fun JournalEntryRow(
                         modifier = Modifier.padding(horizontal = LutealSpacing.xs, vertical = 2.dp)
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
                     IconButton(
                         onClick = { onEditCycle(cycleStart) },
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Edit,
@@ -715,7 +715,7 @@ private fun JournalEntryRow(
                     }
                     IconButton(
                         onClick = { onDeleteCycle(cycleStart) },
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Delete,
