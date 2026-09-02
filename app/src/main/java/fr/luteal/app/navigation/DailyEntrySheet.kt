@@ -51,6 +51,7 @@ import fr.luteal.core.designsystem.component.LutealCheckboxRow
 import fr.luteal.core.designsystem.component.LutealPrimaryButton
 import fr.luteal.core.designsystem.component.LutealSecondaryButton
 import fr.luteal.core.designsystem.component.ObservationScale
+import fr.luteal.core.designsystem.component.ObservationScaleType
 import fr.luteal.core.designsystem.component.StatusPill
 import fr.luteal.core.designsystem.component.StatusTone
 import fr.luteal.core.designsystem.theme.LutealSpacing
@@ -90,8 +91,13 @@ fun DailyEntrySheet(
     onSave: (DailyEntry, BiomarkerObservation, Boolean) -> Unit
 ) {
     val stateKey = "${date}-${existingEntry?.updatedAt}-${existingBiomarker?.updatedAt}"
+    val initialBleeding = if (startPeriodIntent && (existingEntry?.bleedingIntensity == null || existingEntry.bleedingIntensity == BleedingIntensity.NONE)) {
+        BleedingIntensity.LIGHT.name
+    } else {
+        existingEntry?.bleedingIntensity?.name
+    }
     var bleedingName by rememberSaveable(stateKey) {
-        mutableStateOf(existingEntry?.bleedingIntensity?.name)
+        mutableStateOf(initialBleeding)
     }
     var pain by rememberSaveable(stateKey) { mutableStateOf(existingEntry?.painLevel) }
     var mood by rememberSaveable(stateKey) { mutableStateOf(existingEntry?.moodLevel) }
@@ -271,7 +277,8 @@ fun DailyEntrySheet(
                         supportingText = stringResource(R.string.editor_pain_scale_support),
                         value = pain,
                         onValueChange = { pain = it },
-                        valueDescription = painDescriptions::getValue
+                        valueDescription = painDescriptions::getValue,
+                        type = ObservationScaleType.PAIN
                     )
                 }
                 item {
@@ -280,7 +287,8 @@ fun DailyEntrySheet(
                         supportingText = stringResource(R.string.editor_mood_scale_support),
                         value = mood,
                         onValueChange = { mood = it },
-                        valueDescription = moodDescriptions::getValue
+                        valueDescription = moodDescriptions::getValue,
+                        type = ObservationScaleType.MOOD
                     )
                 }
                 item {
@@ -289,7 +297,8 @@ fun DailyEntrySheet(
                         supportingText = stringResource(R.string.editor_energy_scale_support),
                         value = energy,
                         onValueChange = { energy = it },
-                        valueDescription = energyDescriptions::getValue
+                        valueDescription = energyDescriptions::getValue,
+                        type = ObservationScaleType.ENERGY
                     )
                 }
 
@@ -423,7 +432,7 @@ fun DailyEntrySheet(
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    icon = Icons.Rounded.Save,
+                    icon = Icons.Rounded.Check,
                     enabled = !startPeriodIntent ||
                         (bleeding != null && bleeding != BleedingIntensity.NONE),
                     loading = isSaving
@@ -544,7 +553,7 @@ private fun BleedingChip(
             }
             else -> null
         },
-        trailingIcon = if (selected) {
+        trailingIcon = if (selected && intensity != null) {
             { Icon(Icons.Rounded.Check, contentDescription = null) }
         } else {
             null
