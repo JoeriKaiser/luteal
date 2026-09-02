@@ -26,6 +26,7 @@ import fr.luteal.core.network.contract.models.RecordSource
 import fr.luteal.core.network.contract.models.EntityType
 import fr.luteal.core.network.mapping.SyncMeta
 import fr.luteal.core.network.mapping.associatePeriodDays
+import fr.luteal.core.network.mapping.toBleedingIntensity
 import fr.luteal.core.network.mapping.fanOutBleeding
 import fr.luteal.core.network.mapping.toCycle
 import fr.luteal.core.network.mapping.toCycleData
@@ -73,6 +74,7 @@ interface SyncCursorStore {
      * [fr.luteal.core.network.auth.DeviceLabel].
      */
     suspend fun getDeviceLabel(): String
+    suspend fun clear() {}
 }
 
 /** Outcome of one sync pass. Contains no credentials. */
@@ -223,88 +225,102 @@ class CycleSyncEngine(
             }
         }
 
-        // No runCatching here: a 401 propagates to [sync], which converts it
-        // into a terminal SyncAuthException without touching stored
-        // credentials.
-        val result = client.syncPush(token, changes)
-
         var appliedCount = 0
-        for (applied in result.applied) {
-            val localId = localIdByWireId[applied.entityId] ?: applied.entityId.toString()
-            val pushedRev = pushedRevByWireId[applied.entityId]
-            val state = syncStateDao.getState(localId)
-            if (state != null && pushedRev != null && state.clientRev == pushedRev) {
-                // Envelope unchanged since the push snapshot: safe to ack.
-                // A concurrent local edit writes a fresh clientRev and keeps
-                // the envelope dirty, so the newer change is pushed on a
-                // later pass instead of being stranded by markClean.
-                if (state.deletedAtEpochMillis != null) {
-                    syncStateDao.deleteIfRev(localId, pushedRev)
-                } else {
-                    syncStateDao.markCleanIfRev(localId, pushedRev)
-                }
-            }
-            appliedCount++
-        }
-
-        val rejectedDetails = result.rejected.map { rejected ->
-            val wireId = rejected.entityId
-            val localId = wireId?.let { localIdByWireId[it] ?: it.toString() }
-            if (localId != null) {
-                syncStateDao.markRejected(localId, rejected.detail)
-            }
-            "${rejected.entityType.value}: ${rejected.detail}"
-        }
-
+        val rejectedDetails = mutableListOf<String>()
         var conflictsAdopted = 0
-        for (conflict in result.conflicts) {
-            when (conflict.entityType) {
-                EntityType.CYCLE -> {
-                    if (conflict.currentDeleted) {
-                        cycleRepository.deleteCycle(conflict.entityId.toString())
-                        syncStateDao.delete(conflict.entityId.toString())
-                        conflictsAdopted++
-                        continue
+
+        for (chunk in changes.chunked(500)) {
+            // No runCatching here: a 401 propagates to [sync], which converts it
+            // into a terminal SyncAuthException without touching stored
+            // credentials.
+            val result = client.syncPush(token, chunk)
+
+            for (applied in result.applied) {
+                val localId = localIdByWireId[applied.entityId] ?: applied.entityId.toString()
+                val pushedRev = pushedRevByWireId[applied.entityId]
+                val state = syncStateDao.getState(localId)
+                if (state != null && pushedRev != null && state.clientRev == pushedRev) {
+                    // Envelope unchanged since the push snapshot: safe to ack.
+                    // A concurrent local edit writes a fresh clientRev and keeps
+                    // the envelope dirty, so the newer change is pushed on a
+                    // later pass instead of being stranded by markClean.
+                    if (state.deletedAtEpochMillis != null) {
+                        syncStateDao.deleteIfRev(localId, pushedRev)
+                    } else {
+                        syncStateDao.markCleanIfRev(localId, pushedRev)
                     }
-                    val serverCycle = conflict.openCurrent(recordSealer)?.toCycleData() ?: continue
-                    val localPeriodDays = cycleRepository.getCyclesOnce()
-                        .firstOrNull { it.id == serverCycle.id.toString() }
-                        ?.periodDays.orEmpty()
-                    adoptCycle(serverCycle, localPeriodDays)
-                    conflictsAdopted++
                 }
-                EntityType.DAILY_ENTRY -> {
-                    if (conflict.currentDeleted) {
-                        adoptDailyEntryTombstone(conflict.entityId)
+                appliedCount++
+            }
+
+            for (rejected in result.rejected) {
+                val wireId = rejected.entityId
+                val localId = wireId?.let { localIdByWireId[it] ?: it.toString() }
+                if (localId != null) {
+                    syncStateDao.markRejected(localId, rejected.detail)
+                }
+                rejectedDetails += "${rejected.entityType.value}: ${rejected.detail}"
+            }
+
+            for (conflict in result.conflicts) {
+                when (conflict.entityType) {
+                    EntityType.CYCLE -> {
+                        if (conflict.currentDeleted) {
+                            cycleRepository.deleteCycle(conflict.entityId.toString())
+                            syncStateDao.delete(conflict.entityId.toString())
+                            conflictsAdopted++
+                            continue
+                        }
+                        val serverCycle = conflict.openCurrent(recordSealer)?.toCycleData() ?: continue
+                        val localPeriodDays = cycleRepository.getCyclesOnce()
+                            .firstOrNull { it.id == serverCycle.id.toString() }
+                            ?.periodDays.orEmpty()
+                        adoptCycle(serverCycle, localPeriodDays)
                         conflictsAdopted++
-                        continue
                     }
-                    val serverEntry = conflict.openCurrent(recordSealer)?.toDailyEntryData() ?: continue
-                    adoptDailyEntry(serverEntry)
-                    conflictsAdopted++
-                }
-                EntityType.SYMPTOM_LOG -> {
-                    if (conflict.currentDeleted) {
-                        symptomDao.deleteSymptomLog(conflict.entityId.toString())
-                        syncStateDao.delete(conflict.entityId.toString())
+                    EntityType.DAILY_ENTRY -> {
+                        if (conflict.currentDeleted) {
+                            adoptDailyEntryTombstone(conflict.entityId)
+                            conflictsAdopted++
+                            continue
+                        }
+                        val serverEntry = conflict.openCurrent(recordSealer)?.toDailyEntryData() ?: continue
+                        adoptDailyEntry(serverEntry)
                         conflictsAdopted++
-                        continue
                     }
-                    val serverLog = conflict.openCurrent(recordSealer)?.toSymptomLogData() ?: continue
-                    adoptSymptomLog(serverLog)
-                    conflictsAdopted++
-                }
-                EntityType.BIOMARKER_OBSERVATION -> {
-                    if (conflict.currentDeleted) {
-                        adoptBiomarkerTombstone(conflict.entityId)
+                    EntityType.SYMPTOM_LOG -> {
+                        if (conflict.currentDeleted) {
+                            symptomDao.deleteSymptomLog(conflict.entityId.toString())
+                            syncStateDao.delete(conflict.entityId.toString())
+                            conflictsAdopted++
+                            continue
+                        }
+                        val serverLog = conflict.openCurrent(recordSealer)?.toSymptomLogData() ?: continue
+                        adoptSymptomLog(serverLog)
                         conflictsAdopted++
-                        continue
                     }
-                    val server = conflict.openCurrent(recordSealer)?.toBiomarkerObservationPayload() ?: continue
-                    adoptBiomarker(server)
-                    conflictsAdopted++
+                    EntityType.BIOMARKER_OBSERVATION -> {
+                        if (conflict.currentDeleted) {
+                            adoptBiomarkerTombstone(conflict.entityId)
+                            conflictsAdopted++
+                            continue
+                        }
+                        val server = conflict.openCurrent(recordSealer)?.toBiomarkerObservationPayload() ?: continue
+                        adoptBiomarker(server)
+                        conflictsAdopted++
+                    }
+                    EntityType.BLEEDING_OBSERVATION -> {
+                        if (conflict.currentDeleted) {
+                            adoptBleedingObservationTombstone(conflict.entityId)
+                            conflictsAdopted++
+                            continue
+                        }
+                        val serverObs = conflict.openCurrent(recordSealer)?.toBleedingObservationData() ?: continue
+                        adoptBleedingObservation(serverObs)
+                        conflictsAdopted++
+                    }
+                    else -> { /* other conflicts are ignored or resolved via re-pull */ }
                 }
-                else -> { /* bleeding conflicts are resolved via cycle re-pull */ }
             }
         }
 
@@ -524,6 +540,7 @@ class CycleSyncEngine(
                     val cycleId = change.entityId.toString()
                     if (change.deleted) {
                         cycleRepository.deleteCycle(cycleId)
+                        syncStateDao.delete(cycleId)
                         tombstones++
                     } else {
                         val cycleData = runCatching {
@@ -577,13 +594,23 @@ class CycleSyncEngine(
                         recordsApplied++
                     }
                 }
+                EntityType.BLEEDING_OBSERVATION -> {
+                    if (change.deleted) {
+                        adoptBleedingObservationTombstone(change.entityId)
+                        tombstones++
+                    } else {
+                        val observation = runCatching {
+                            change.openPayload(recordSealer)?.toBleedingObservationData()
+                        }.getOrNull() ?: continue
+                        adoptBleedingObservation(observation)
+                        recordsApplied++
+                    }
+                }
                 else -> {
-                    // BLEEDING_OBSERVATION and other types are handled via their
-                    // parent entity (cycle period-day association above).
+                    // Unknown or unsupported types are skipped.
                 }
             }
         }
-
         return PageOutcome(recordsApplied, tombstones)
     }
 
@@ -604,14 +631,15 @@ class CycleSyncEngine(
 
     private suspend fun adoptDailyEntry(entryData: fr.luteal.core.network.contract.models.DailyEntryData) {
         val entry = entryData.toDailyEntry()
+        val existing = dailyEntryDao.getEntryOnce(entry.date.toString())
         dailyEntryDao.upsert(
             DailyEntryEntity(
                 date = entry.date.toString(),
-                bleedingIntensity = null, // bleeding comes via bleeding_observations
+                bleedingIntensity = entry.bleedingIntensity?.name ?: existing?.bleedingIntensity,
                 painLevel = entry.painLevel,
                 moodLevel = entry.moodLevel,
                 energyLevel = entry.energyLevel,
-                symptomIdsJson = "[]",
+                symptomIdsJson = existing?.symptomIdsJson ?: "[]",
                 notes = entry.notes,
                 updatedAtEpochMillis = entry.updatedAt.toEpochMilli()
             )
@@ -697,6 +725,58 @@ class CycleSyncEngine(
         syncStateDao.delete(wireId.toString())
     }
 
+    private suspend fun adoptBleedingObservation(observation: fr.luteal.core.network.contract.models.BleedingObservationData) {
+        val dateStr = observation.observedDate.toString()
+        val intensity = observation.flow.toBleedingIntensity()
+        val existing = dailyEntryDao.getEntryOnce(dateStr)
+        if (existing != null) {
+            dailyEntryDao.upsert(
+                existing.copy(
+                    bleedingIntensity = intensity.name,
+                    updatedAtEpochMillis = maxOf(existing.updatedAtEpochMillis, observation.updatedAt.toInstant().toEpochMilli())
+                )
+            )
+        } else {
+            dailyEntryDao.upsert(
+                DailyEntryEntity(
+                    date = dateStr,
+                    bleedingIntensity = intensity.name,
+                    painLevel = null,
+                    moodLevel = null,
+                    energyLevel = null,
+                    symptomIdsJson = "[]",
+                    notes = observation.notes,
+                    updatedAtEpochMillis = observation.updatedAt.toInstant().toEpochMilli()
+                )
+            )
+        }
+        syncStateDao.upsert(
+            SyncStateEntity(
+                entityId = observation.id.toString(),
+                entityType = SyncStateEntity.TYPE_BLEEDING_OBSERVATION,
+                clientRev = observation.clientRev.toString(),
+                createdAtEpochMillis = observation.createdAt.toInstant().toEpochMilli(),
+                updatedAtEpochMillis = observation.updatedAt.toInstant().toEpochMilli(),
+                deletedAtEpochMillis = observation.deletedAt?.toInstant()?.toEpochMilli(),
+                dirty = false,
+                lastPushError = null
+            )
+        )
+    }
+
+    private suspend fun adoptBleedingObservationTombstone(wireId: UUID) {
+        val date = dailyEntryDao.getAllEntriesOnce().firstOrNull {
+            deterministicId("bleeding", it.date) == wireId
+        }?.date
+        if (date != null) {
+            val existing = dailyEntryDao.getEntryOnce(date)
+            if (existing != null) {
+                dailyEntryDao.upsert(existing.copy(bleedingIntensity = null))
+            }
+        }
+        syncStateDao.delete(wireId.toString())
+    }
+
     private suspend fun resolveBiomarkerLocalId(wireId: UUID): String? {
         syncStateDao.getAllStates()
             .firstOrNull { it.entityType == SyncStateEntity.TYPE_BIOMARKER_OBSERVATION && wireIdFor(it) == wireId }
@@ -708,7 +788,7 @@ class CycleSyncEngine(
     }
 
     private fun wireIdFor(state: SyncStateEntity): UUID? = when (state.entityType) {
-        SyncStateEntity.TYPE_CYCLE, SyncStateEntity.TYPE_SYMPTOM_LOG ->
+        SyncStateEntity.TYPE_CYCLE, SyncStateEntity.TYPE_SYMPTOM_LOG, SyncStateEntity.TYPE_BLEEDING_OBSERVATION ->
             runCatching { UUID.fromString(state.entityId) }.getOrNull()
         SyncStateEntity.TYPE_DAILY_ENTRY ->
             runCatching { LocalDate.parse(state.entityId) }.getOrNull()

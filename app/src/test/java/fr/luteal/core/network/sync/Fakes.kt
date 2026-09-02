@@ -26,6 +26,7 @@ class FakeCycleRepository(initial: List<Cycle> = emptyList()) : CycleRepository 
     val cycles = LinkedHashMap<String, Cycle>().apply { initial.associateByTo(this) { it.id } }
     val upsertedIds = mutableListOf<String>()
     val deletedIds = mutableListOf<String>()
+    var onDelete: (suspend (String) -> Unit)? = null
 
     override fun getCycles(): Flow<List<Cycle>> = flowOf(cycles.values.toList())
     override fun getCurrentCycle(): Flow<Cycle?> = flowOf(cycles.values.firstOrNull { it.endDate == null })
@@ -43,6 +44,7 @@ class FakeCycleRepository(initial: List<Cycle> = emptyList()) : CycleRepository 
     override suspend fun deleteCycle(id: String) {
         cycles.remove(id)
         deletedIds += id
+        onDelete?.invoke(id)
     }
 
     override suspend fun updateCycleExclusion(
@@ -215,6 +217,9 @@ class FakeCursorStore(
 
     override suspend fun getBaseUrl(): String = baseUrl
     override suspend fun getDeviceLabel(): String = deviceLabel
+    override suspend fun clear() {
+        cursor = 0L
+    }
 }
 
 /** Scripted [FolicularApiClient] for engine tests. */

@@ -110,11 +110,12 @@ class DuoViewModel @Inject constructor(
                 }
                 .onFailure { err ->
                     val missingLink = err is fr.luteal.core.network.FolicularApiException && err.status == 404
-                    val cached = widgetCacheRepository.getLatest()
-                    if (missingLink && cached == null) {
-                        _uiState.update { it.copy(isLoading = false) }
+                    if (missingLink) {
+                        widgetCacheRepository.clear()
+                        _uiState.update { DuoUiState(phase = DuoPhase.NoLink, isLoading = false) }
                         discoverLinks()
                     } else {
+                        val cached = widgetCacheRepository.getLatest()
                         applyCachedProjection()
                         _uiState.update { it.copy(isLoading = false, error = if (cached != null) null else err.message) }
                     }
@@ -328,6 +329,7 @@ class DuoViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching { duoRepository.revokeLink(linkId) }
                 .onSuccess {
+                    duoKeyStore.remove(linkId)
                     widgetCacheRepository.clear()
                     _uiState.update {
                         DuoUiState(phase = DuoPhase.NoLink)

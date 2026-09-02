@@ -15,7 +15,7 @@ import javax.inject.Singleton
  * recover a key it never held.
  */
 @Singleton
-class DuoKeyStore @Inject constructor(
+open class DuoKeyStore @Inject constructor(
     @ApplicationContext context: Context
 ) {
     private companion object {
@@ -29,18 +29,18 @@ class DuoKeyStore @Inject constructor(
         keyAlias = KEY_ALIAS
     )
 
-    fun save(linkId: String, linkKey: ByteArray) {
+    open fun save(linkId: String, linkKey: ByteArray) {
         store.put(linkId, DuoCrypto.encodeKey(linkKey))
     }
 
-    fun load(linkId: String): ByteArray? =
+    open fun load(linkId: String): ByteArray? =
         store.get(linkId)?.let { runCatching { DuoCrypto.decodeKey(it) }.getOrNull() }
 
-    fun remove(linkId: String) {
+    open fun remove(linkId: String) {
         store.remove(linkId)
     }
 
-    fun clear() {
+    open fun clear() {
         store.clear()
     }
 }

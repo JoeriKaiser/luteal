@@ -285,7 +285,8 @@ fun SettingsScreen(
             getAccountCode = viewModel::getAccountCode,
             onRecoveryCodeChange = viewModel::onRecoveryCodeChange,
             onRecoverAccount = viewModel::recoverAccount,
-            onDismissRecoveryMessage = viewModel::clearRecoveryState
+            onDismissRecoveryMessage = viewModel::clearRecoveryState,
+            onUnlinkSync = viewModel::unlinkSync
         )
         if (BuildConfig.DEBUG) {
             TestDataCard(
@@ -1485,7 +1486,8 @@ private fun SyncCard(
     getAccountCode: () -> String?,
     onRecoveryCodeChange: (String) -> Unit,
     onRecoverAccount: () -> Unit,
-    onDismissRecoveryMessage: () -> Unit
+    onDismissRecoveryMessage: () -> Unit,
+    onUnlinkSync: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
         SettingsSectionHeader(title = stringResource(R.string.settings_sync_title))
@@ -1559,6 +1561,14 @@ private fun SyncCard(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                 AccountCodeSection(state = state, getAccountCode = getAccountCode)
+
+                if (state.isLinked || state.hasAccount) {
+                    LutealSecondaryButton(
+                        text = stringResource(R.string.settings_sync_unlink),
+                        onClick = onUnlinkSync,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
                 if (!state.hasAccount) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
