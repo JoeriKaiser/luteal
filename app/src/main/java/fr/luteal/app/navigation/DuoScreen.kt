@@ -1,5 +1,8 @@
 package fr.luteal.app.navigation
 
+import android.content.Context
+import android.os.Build
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Favorite
@@ -37,12 +41,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.semantics.Role
 import androidx.hilt.navigation.compose.hiltViewModel
 import fr.luteal.app.R
 import fr.luteal.core.common.LocalizedDateFormatter
@@ -287,8 +291,8 @@ private fun InvitationPendingSection(
     pairingCode: String?,
     onCancel: () -> Unit
 ) {
+    val context = LocalContext.current
     var copied by remember { mutableStateOf(false) }
-    val clipboard = LocalClipboardManager.current
 
     LutealCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
@@ -320,7 +324,20 @@ private fun InvitationPendingSection(
                         if (copied) R.string.duo_code_copied else R.string.duo_code_copy
                     ),
                     onClick = {
-                        clipboard.setText(AnnotatedString(code))
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                        if (clipboard != null) {
+                            val clip = android.content.ClipData.newPlainText(
+                                context.getString(R.string.duo_code_label),
+                                code
+                            ).apply {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    description.extras = android.os.PersistableBundle().apply {
+                                        putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true)
+                                    }
+                                }
+                            }
+                            clipboard.setPrimaryClip(clip)
+                        }
                         copied = true
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -497,7 +514,13 @@ private fun GrantToggle(
     val description = stringResource(descRes)
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(
+                value = checked,
+                role = Role.Switch,
+                onValueChange = { onToggleGrant(field, it) }
+            ),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -516,7 +539,7 @@ private fun GrantToggle(
         }
         Switch(
             checked = checked,
-            onCheckedChange = { onToggleGrant(field, it) }
+            onCheckedChange = null
         )
     }
 }
@@ -824,8 +847,8 @@ private fun nudgeText(name: String): String = stringResource(
 )
 
 @Composable
-private fun partnerTipTitle(id: String): String = stringResource(
-    when (id) {
+private fun partnerTipTitle(id: String): String {
+    val resId = when (id) {
         "partner_menstrual_comfort" -> R.string.partner_tip_partner_menstrual_comfort
         "partner_menstrual_space" -> R.string.partner_tip_partner_menstrual_space
         "partner_menstrual_listen" -> R.string.partner_tip_partner_menstrual_listen
@@ -840,13 +863,14 @@ private fun partnerTipTitle(id: String): String = stringResource(
         "partner_luteal_practical" -> R.string.partner_tip_partner_luteal_practical
         "partner_luteal_pmdd_space" -> R.string.partner_tip_partner_luteal_pmdd_space
         "partner_perimeno_support" -> R.string.partner_tip_partner_perimeno_support
-        else -> error("Unknown partner tip id: $id")
+        else -> null
     }
-)
+    return if (resId != null) stringResource(resId) else ""
+}
 
 @Composable
-private fun partnerTipMessage(id: String): String = stringResource(
-    when (id) {
+private fun partnerTipMessage(id: String): String {
+    val resId = when (id) {
         "partner_menstrual_comfort" -> R.string.partner_tip_partner_menstrual_comfort_message
         "partner_menstrual_space" -> R.string.partner_tip_partner_menstrual_space_message
         "partner_menstrual_listen" -> R.string.partner_tip_partner_menstrual_listen_message
@@ -861,6 +885,7 @@ private fun partnerTipMessage(id: String): String = stringResource(
         "partner_luteal_practical" -> R.string.partner_tip_partner_luteal_practical_message
         "partner_luteal_pmdd_space" -> R.string.partner_tip_partner_luteal_pmdd_space_message
         "partner_perimeno_support" -> R.string.partner_tip_partner_perimeno_support_message
-        else -> error("Unknown partner tip id: $id")
+        else -> null
     }
-)
+    return if (resId != null) stringResource(resId) else ""
+}

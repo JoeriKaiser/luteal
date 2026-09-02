@@ -1,6 +1,8 @@
 package fr.luteal.core.network.sync
 
 import fr.luteal.core.data.entity.SyncStateEntity
+import fr.luteal.core.data.entity.DailyEntryEntity
+import fr.luteal.core.data.entity.SymptomLogEntity
 import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.model.Cycle
 import fr.luteal.core.model.PeriodDay
@@ -88,8 +90,8 @@ class CycleSyncEngineTest {
         notes = ""
     )
 
-    private fun bleedingData(date: LocalDate, flow: Flow) = BleedingObservationData(
-        id = UUID.randomUUID(),
+    private fun bleedingData(date: LocalDate, flow: Flow, id: UUID = UUID.randomUUID()) = BleedingObservationData(
+        id = id,
         clientRev = UUID.randomUUID(),
         createdAt = now,
         updatedAt = now,
@@ -222,7 +224,7 @@ class CycleSyncEngineTest {
         assertEquals(listOf(0L), api.pullSinceValues)
         assertEquals(5L, cursor.getCursor())
         assertEquals(5L, report.cursor)
-        assertEquals(1, report.recordsApplied)
+        assertEquals(3, report.recordsApplied)
 
         // The cycle was re-adopted with its period days rebuilt from bleeding.
         val adopted = repo.cycles[cycleId.toString()]!!
@@ -506,5 +508,231 @@ class CycleSyncEngineTest {
         assertTrue(state.dirty)
         assertNull(state.deletedAtEpochMillis)
         assertEquals(recreatedRev, state.clientRev)
+    }
+
+    @Test
+    fun `pulled cycle deletion leaves clean sync state and does not bounce dirty tombstone`() = runTest {
+        val stateDao = FakeSyncStateDao().apply {
+            upsert(dirtyState().copy(dirty = false))
+        }
+        val repo = FakeCycleRepository(listOf(localCycle())).apply {
+            onDelete = { id ->
+                stateDao.upsert(
+                    SyncStateEntity(
+                        entityId = id,
+                        entityType = SyncStateEntity.TYPE_CYCLE,
+                        clientRev = UUID.randomUUID().toString(),
+                        createdAtEpochMillis = now.toInstant().toEpochMilli(),
+                        updatedAtEpochMillis = now.toInstant().toEpochMilli(),
+                        deletedAtEpochMillis = now.toInstant().toEpochMilli(),
+                        dirty = true
+                    )
+                )
+            }
+        }
+        val creds = FakeCredentialStore(SyncCredentials("acct", "code", "ltok"))
+        val cursor = FakeCursorStore(cursor = 0L)
+        val api = FakeApiClient().apply {
+            pullResults += PullResultWire(
+                changes = listOf(
+                    PullChangeWire(
+                        seq = 1L,
+                        entityType = EntityType.CYCLE,
+                        entityId = cycleId,
+                        clientRev = UUID.randomUUID(),
+                        deleted = true,
+                        updatedAt = now,
+                        ciphertext = null
+                    )
+                ),
+                cursor = 1L,
+                hasMore = false
+            )
+        }
+
+        val report = engine(repo, stateDao, creds, cursor, api).sync()
+
+        assertEquals(1, report.tombstonesApplied)
+        assertNull(repo.cycles[cycleId.toString()])
+        assertNull(stateDao.getState(cycleId.toString()))
+        assertTrue(stateDao.getDirtyStates().isEmpty())
+    }
+
+    @Test
+    fun `pushDirty chunks changes into batches of at most 500 items`() = runTest {
+        val stateDao = FakeSyncStateDao()
+        val totalChanges = 1200
+        for (i in 1..totalChanges) {
+            val logId = UUID.randomUUID().toString()
+            stateDao.upsert(
+                SyncStateEntity(
+                    entityId = logId,
+                    entityType = SyncStateEntity.TYPE_SYMPTOM_LOG,
+                    clientRev = UUID.randomUUID().toString(),
+                    createdAtEpochMillis = now.toInstant().toEpochMilli(),
+                    updatedAtEpochMillis = now.toInstant().toEpochMilli(),
+                    dirty = true
+                )
+            )
+        }
+        val symptomDao = FakeSymptomDao().apply {
+            for (state in stateDao.getAllStates()) {
+                insertSymptomLog(
+                    SymptomLogEntity(
+                        id = state.entityId,
+                        date = "2026-07-01",
+                        timestampEpochMillis = now.toInstant().toEpochMilli(),
+                        symptomId = "cramps",
+                        severity = 2,
+                        notes = "",
+                        isSynced = true
+                    )
+                )
+            }
+        }
+        val creds = FakeCredentialStore(SyncCredentials("acct", "code", "ltok"))
+        val cursor = FakeCursorStore(cursor = 10L)
+        val api = FakeApiClient().apply {
+            pushResult = PushResultWire(
+                applied = emptyList(),
+                rejected = emptyList(),
+                conflicts = emptyList(),
+                cursor = 10L
+            )
+            pullResults += PullResultWire(emptyList(), 10L, false)
+        }
+
+        val report = engine(
+            repo = FakeCycleRepository(),
+            stateDao = stateDao,
+            creds = creds,
+            cursor = cursor,
+            api = api,
+            symptomDao = symptomDao
+        ).sync()
+
+        assertEquals(3, api.pushCalls.size)
+        assertEquals(500, api.pushCalls[0].size)
+        assertEquals(500, api.pushCalls[1].size)
+        assertEquals(200, api.pushCalls[2].size)
+        assertEquals(1200, report.pushedRecords)
+    }
+
+    @Test
+    fun `daily entry adoption preserves local bleeding intensity and symptom ids`() = runTest {
+        val dateStr = "2026-07-05"
+        val date = LocalDate.parse(dateStr)
+        val entryId = fr.luteal.core.network.mapping.deterministicId("daily-entry", dateStr)
+        val dailyEntryDao = FakeDailyEntryDao().apply {
+            upsert(
+                DailyEntryEntity(
+                    date = dateStr,
+                    bleedingIntensity = BleedingIntensity.HEAVY.name,
+                    painLevel = 1,
+                    moodLevel = 2,
+                    energyLevel = 3,
+                    symptomIdsJson = "[\"headache\",\"nausea\"]",
+                    notes = "Local notes",
+                    updatedAtEpochMillis = 1000L
+                )
+            )
+        }
+        val stateDao = FakeSyncStateDao()
+        val creds = FakeCredentialStore(
+            SyncCredentials(
+                accountId = registerResponse.account.id.toString(),
+                accountCode = registerResponse.account.code,
+                deviceToken = registerResponse.device.token
+            )
+        )
+        val cursor = FakeCursorStore(cursor = 0L)
+        val incomingDailyEntry = fr.luteal.core.network.contract.models.DailyEntryData(
+            id = entryId,
+            clientRev = UUID.randomUUID(),
+            createdAt = now,
+            updatedAt = now,
+            entryDate = date,
+            painLevel = 4,
+            moodLevel = 5,
+            energyLevel = 2,
+            notes = "Server updated notes"
+        )
+        val api = FakeApiClient().apply {
+            pullResults += PullResultWire(
+                changes = listOf(
+                    sealedPull(
+                        1L, EntityType.DAILY_ENTRY, entryId,
+                        incomingDailyEntry.toJsonElement()
+                    )
+                ),
+                cursor = 1L,
+                hasMore = false
+            )
+        }
+
+        val report = engine(
+            repo = FakeCycleRepository(),
+            stateDao = stateDao,
+            creds = creds,
+            cursor = cursor,
+            api = api,
+            dailyEntryDao = dailyEntryDao
+        ).sync()
+
+        assertEquals(1, report.recordsApplied)
+        val adopted = dailyEntryDao.getEntryOnce(dateStr)!!
+        assertEquals("Server updated notes", adopted.notes)
+        assertEquals(4, adopted.painLevel)
+        assertEquals(5, adopted.moodLevel)
+        assertEquals(2, adopted.energyLevel)
+        assertEquals(BleedingIntensity.HEAVY.name, adopted.bleedingIntensity)
+        assertEquals("[\"headache\",\"nausea\"]", adopted.symptomIdsJson)
+    }
+
+    @Test
+    fun `pulled bleeding observation updates daily entry and upserts clean sync state`() = runTest {
+        val dateStr = "2026-07-06"
+        val date = LocalDate.parse(dateStr)
+        val bleedingWireId = UUID.randomUUID()
+        val dailyEntryDao = FakeDailyEntryDao()
+        val stateDao = FakeSyncStateDao()
+        val creds = FakeCredentialStore(
+            SyncCredentials(
+                accountId = registerResponse.account.id.toString(),
+                accountCode = registerResponse.account.code,
+                deviceToken = registerResponse.device.token
+            )
+        )
+        val cursor = FakeCursorStore(cursor = 0L)
+        val api = FakeApiClient().apply {
+            pullResults += PullResultWire(
+                changes = listOf(
+                    sealedPull(
+                        1L, EntityType.BLEEDING_OBSERVATION, bleedingWireId,
+                        bleedingData(date, Flow.HEAVY, id = bleedingWireId).toJsonElement()
+                    )
+                ),
+                cursor = 1L,
+                hasMore = false
+            )
+        }
+
+        val report = engine(
+            repo = FakeCycleRepository(),
+            stateDao = stateDao,
+            creds = creds,
+            cursor = cursor,
+            api = api,
+            dailyEntryDao = dailyEntryDao
+        ).sync()
+
+        assertEquals(1, report.recordsApplied)
+        val entry = dailyEntryDao.getEntryOnce(dateStr)
+        assertNotNull(entry)
+        assertEquals(BleedingIntensity.HEAVY.name, entry!!.bleedingIntensity)
+        val syncState = stateDao.getState(bleedingWireId.toString())
+        assertNotNull(syncState)
+        assertEquals(SyncStateEntity.TYPE_BLEEDING_OBSERVATION, syncState!!.entityType)
+        assertFalse(syncState.dirty)
     }
 }

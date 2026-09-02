@@ -31,4 +31,8 @@ class DataStoreSyncCursorStore(
         syncDataStore.setDeviceLabel(generated)
         return generated
     }
+
+    override suspend fun clear() {
+        syncDataStore.clear()
+    }
 }

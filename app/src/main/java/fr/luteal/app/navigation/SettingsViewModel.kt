@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -77,6 +78,17 @@ class SettingsViewModel @Inject constructor(
     private val clinicalReportAggregator: ClinicalReportAggregator,
     private val notificationScheduler: NotificationScheduler
 ) : ViewModel() {
+    private val syncCursorStore: SyncCursorStore get() = cursorStore
+
+    private val _syncUiState = MutableStateFlow(
+        SettingsSyncUiState(
+            hasAccount = credentialStore.load() != null,
+            isLinked = credentialStore.load() != null,
+            accountCode = credentialStore.load()?.accountCode,
+            deviceToken = credentialStore.load()?.deviceToken
+        )
+    )
+    val syncUiState: StateFlow<SettingsSyncUiState> = _syncUiState.asStateFlow()
 
     /** Local edit buffer for the base URL field, kept out of the DataStore. */
     private val baseUrlDraft = MutableStateFlow("")
@@ -99,8 +111,8 @@ class SettingsViewModel @Inject constructor(
         }
 
     private val drafts: Flow<Drafts> =
-        combine(baseUrlDraft, recoveryCodeDraft, fileOps) { base, recovery, files ->
-            Drafts(base, recovery, files.export, files.wipe, files.importOp, files.report)
+        combine(baseUrlDraft, recoveryCodeDraft, fileOps, _syncUiState) { base, recovery, files, syncUi ->
+            Drafts(base, recovery, files.export, files.wipe, files.importOp, files.report, syncUi)
         }
     val uiState: StateFlow<SettingsSyncUiState> = combine(
         userRepository.getUserPreferences(),
@@ -109,6 +121,8 @@ class SettingsViewModel @Inject constructor(
         testDataActionState,
         recoveryState
     ) { preferences, syncPreferences, draft, actionState, recovery ->
+        val creds = credentialStore.load()
+        val isLinked = creds != null
         SettingsSyncUiState(
             onlineSyncEnabled = preferences.syncMode == SyncMode.ONLINE_CLOUD.name,
             baseUrlDraft = draft.baseUrl,
@@ -123,7 +137,10 @@ class SettingsViewModel @Inject constructor(
             wipeState = draft.wipeState,
             importState = draft.importState,
             reportExportState = draft.reportExportState,
-            hasAccount = credentialStore.load() != null,
+            hasAccount = isLinked,
+            isLinked = isLinked,
+            accountCode = creds?.accountCode,
+            deviceToken = creds?.deviceToken,
             declaredContexts = preferences.declaredContexts,
             ageBand = AgeBand.fromId(preferences.ageBand),
             isAppLockEnabled = preferences.isAppLockEnabled,
@@ -230,10 +247,22 @@ class SettingsViewModel @Inject constructor(
 
     fun getAccountCode(): String? = credentialStore.load()?.accountCode
 
+    fun unlinkSync() {
+        viewModelScope.launch {
+            credentialStore.clear()
+            syncCursorStore.clear()
+            _syncUiState.update { it.copy(isLinked = false, accountCode = null, deviceToken = null) }
+        }
+    }
+
     // --- Account recovery ---------------------------------------------------
 
     fun onRecoveryCodeChange(value: String) {
         recoveryCodeDraft.value = value
+    }
+
+    fun recoverAccount() {
+        recoverAccount(recoveryCodeDraft.value)
     }
 
     /**
@@ -244,18 +273,15 @@ class SettingsViewModel @Inject constructor(
      * could substitute for it. On success the credentials are stored and the
      * next sync pulls and decrypts the account's history.
      */
-    fun recoverAccount() {
-        val code = recoveryCodeDraft.value.trim()
+    fun recoverAccount(accountCode: String) {
+        val code = accountCode.trim()
         if (code.isBlank()) return
-        if (credentialStore.load() != null) {
-            recoveryState.value = RecoveryState.Error(messageResId = R.string.settings_recovery_error_already_linked)
-            return
-        }
         viewModelScope.launch {
             recoveryState.value = RecoveryState.Loading
             runCatching {
                 val client = apiClientFactory.create(cursorStore.getBaseUrl())
                 val result = client.addDevice(code, cursorStore.getDeviceLabel())
+                credentialStore.clear()
                 credentialStore.save(
                     SyncCredentials(
                         accountId = result.accountId,
@@ -266,9 +292,17 @@ class SettingsViewModel @Inject constructor(
                 // A restored device starts from cursor zero so it pulls the
                 // whole history rather than resuming someone else's position.
                 syncDataStore.setCursor(0L)
-            }.onSuccess {
+                result
+            }.onSuccess { result ->
                 recoveryState.value = RecoveryState.Success
                 recoveryCodeDraft.value = ""
+                _syncUiState.update {
+                    it.copy(
+                        isLinked = true,
+                        accountCode = code,
+                        deviceToken = result.deviceToken
+                    )
+                }
                 syncScheduler.syncNow()
             }.onFailure { err ->
                 recoveryState.value = RecoveryState.Error(
@@ -599,6 +633,9 @@ data class SettingsSyncUiState(
     val importState: DataImportState = DataImportState.Idle,
     val reportExportState: DataExportState = DataExportState.Idle,
     val hasAccount: Boolean = false,
+    val isLinked: Boolean = false,
+    val accountCode: String? = null,
+    val deviceToken: String? = null,
     /** Contexts the user has declared, editable after onboarding. */
     val declaredContexts: Set<TrackingContext> = emptySet(),
     /** Null means no band declared, which is a valid state. */
@@ -636,7 +673,8 @@ private data class Drafts(
     val exportState: DataExportState,
     val wipeState: DataWipeState,
     val importState: DataImportState,
-    val reportExportState: DataExportState
+    val reportExportState: DataExportState,
+    val syncUi: SettingsSyncUiState = SettingsSyncUiState()
 )
 
 sealed interface TestDataActionState {

@@ -24,6 +24,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.ceil
 
+private const val MAX_LOCKOUT_MILLIS = 300_000L
+
 @Singleton
 class AppLockManager @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -167,11 +169,26 @@ class AppLockManager @Inject constructor(
      * defeated by rolling the device clock back; the monotonic deadline
      * ([UserPreferences.lockoutUntilElapsedRealtimeMillis], from
      * [SystemClock.elapsedRealtime]) cannot be rolled back but resets on
-     * reboot. A lockout is active while either clock says so.
+     * reboot.
+     *
+     * On reboot, [SystemClock.elapsedRealtime] resets to zero, causing
+     * [UserPreferences.lockoutUntilElapsedRealtimeMillis] - [SystemClock.elapsedRealtime]
+     * to jump to an excessively large number. Because the maximum lockout is 300 seconds,
+     * any monotonic difference exceeding 300,000 ms indicates a reboot reset and is
+     * invalidated, falling back to the wall-clock deadline.
      */
     private fun remainingLockoutSeconds(prefs: UserPreferences): Int {
         val byWallClock = prefs.lockoutUntilEpochMillis - System.currentTimeMillis()
-        val byMonotonic = prefs.lockoutUntilElapsedRealtimeMillis - SystemClock.elapsedRealtime()
+        val monotonicDiff = prefs.lockoutUntilElapsedRealtimeMillis - SystemClock.elapsedRealtime()
+        val byMonotonic = if (
+            prefs.lockoutUntilElapsedRealtimeMillis <= 0L ||
+            monotonicDiff <= 0L ||
+            monotonicDiff > MAX_LOCKOUT_MILLIS
+        ) {
+            0L
+        } else {
+            monotonicDiff
+        }
         val remainingMillis = maxOf(byWallClock, byMonotonic)
         return if (remainingMillis > 0) ceil(remainingMillis / 1000.0).toInt() else 0
     }

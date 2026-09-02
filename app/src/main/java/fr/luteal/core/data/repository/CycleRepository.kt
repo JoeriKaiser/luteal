@@ -2,6 +2,7 @@ package fr.luteal.core.data.repository
 
 import fr.luteal.core.model.Cycle
 import kotlinx.coroutines.flow.Flow
+import java.time.LocalDate
 
 interface CycleRepository {
     fun getCycles(): Flow<List<Cycle>>
@@ -17,4 +18,7 @@ interface CycleRepository {
     suspend fun upsertCycle(cycle: Cycle)
     suspend fun deleteCycle(id: String)
     suspend fun updateCycleExclusion(id: String, isExcluded: Boolean, reason: fr.luteal.core.model.CycleExclusionReason?)
+    suspend fun addBackfilledCycle(startDate: LocalDate)
+    suspend fun editCycleStartDate(cycleId: String, newStartDate: LocalDate)
+    suspend fun deleteCycleAndReconcile(cycleId: String)
 }

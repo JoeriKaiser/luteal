@@ -283,6 +283,7 @@
     <string name="settings_sync_account_code_copy">Copier le code</string>
     <string name="settings_sync_account_code_copied">Code copié</string>
     <string name="settings_sync_account_code_none">Aucun compte enregistré. Le compte sera créé lors de la première synchronisation.</string>
+    <string name="settings_sync_unlink">Déconnecter la synchronisation</string>
     <string name="settings_recovery_title">Restaurer un compte existant</string>
     <string name="settings_recovery_body">Sur un nouvel appareil, saisissez le code de compte conservé lors de la création. C’est le seul moyen de retrouver vos données : elles sont chiffrées avec ce code, et le serveur ne peut pas les déchiffrer sans lui.</string>
     <string name="settings_recovery_label">Code de compte</string>

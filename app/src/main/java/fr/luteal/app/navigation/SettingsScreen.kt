@@ -53,10 +53,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -287,7 +285,8 @@ fun SettingsScreen(
             getAccountCode = viewModel::getAccountCode,
             onRecoveryCodeChange = viewModel::onRecoveryCodeChange,
             onRecoverAccount = viewModel::recoverAccount,
-            onDismissRecoveryMessage = viewModel::clearRecoveryState
+            onDismissRecoveryMessage = viewModel::clearRecoveryState,
+            onUnlinkSync = viewModel::unlinkSync
         )
         if (BuildConfig.DEBUG) {
             TestDataCard(
@@ -1487,7 +1486,8 @@ private fun SyncCard(
     getAccountCode: () -> String?,
     onRecoveryCodeChange: (String) -> Unit,
     onRecoverAccount: () -> Unit,
-    onDismissRecoveryMessage: () -> Unit
+    onDismissRecoveryMessage: () -> Unit,
+    onUnlinkSync: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
         SettingsSectionHeader(title = stringResource(R.string.settings_sync_title))
@@ -1562,6 +1562,14 @@ private fun SyncCard(
 
                 AccountCodeSection(state = state, getAccountCode = getAccountCode)
 
+                if (state.isLinked || state.hasAccount) {
+                    LutealSecondaryButton(
+                        text = stringResource(R.string.settings_sync_unlink),
+                        onClick = onUnlinkSync,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
                 if (!state.hasAccount) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     AccountRecoverySection(
@@ -1581,7 +1589,7 @@ private fun AccountCodeSection(state: SettingsSyncUiState, getAccountCode: () ->
     val accountCode = remember(state.hasAccount, state.lastSyncedEpochMillis) {
         getAccountCode()
     }
-    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
     var copied by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
@@ -1611,7 +1619,20 @@ private fun AccountCodeSection(state: SettingsSyncUiState, getAccountCode: () ->
                 text = if (copied) stringResource(R.string.settings_sync_account_code_copied)
                 else stringResource(R.string.settings_sync_account_code_copy),
                 onClick = {
-                    clipboardManager.setText(AnnotatedString(accountCode))
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                    if (clipboard != null) {
+                        val clip = android.content.ClipData.newPlainText(
+                            context.getString(R.string.settings_sync_account_code_title),
+                            accountCode
+                        ).apply {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                description.extras = android.os.PersistableBundle().apply {
+                                    putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true)
+                                }
+                            }
+                        }
+                        clipboard.setPrimaryClip(clip)
+                    }
                     copied = true
                 },
                 modifier = Modifier.fillMaxWidth()

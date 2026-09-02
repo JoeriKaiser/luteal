@@ -19,12 +19,14 @@ import fr.luteal.core.network.auth.SyncCredentials
 import fr.luteal.core.network.contract.models.Register201Response
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
-
+import java.time.LocalDate
+import java.util.UUID
 /** In-memory [CycleRepository] for engine tests. */
 class FakeCycleRepository(initial: List<Cycle> = emptyList()) : CycleRepository {
     val cycles = LinkedHashMap<String, Cycle>().apply { initial.associateByTo(this) { it.id } }
     val upsertedIds = mutableListOf<String>()
     val deletedIds = mutableListOf<String>()
+    var onDelete: (suspend (String) -> Unit)? = null
 
     override fun getCycles(): Flow<List<Cycle>> = flowOf(cycles.values.toList())
     override fun getCurrentCycle(): Flow<Cycle?> = flowOf(cycles.values.firstOrNull { it.endDate == null })
@@ -42,6 +44,7 @@ class FakeCycleRepository(initial: List<Cycle> = emptyList()) : CycleRepository 
     override suspend fun deleteCycle(id: String) {
         cycles.remove(id)
         deletedIds += id
+        onDelete?.invoke(id)
     }
 
     override suspend fun updateCycleExclusion(
@@ -51,6 +54,40 @@ class FakeCycleRepository(initial: List<Cycle> = emptyList()) : CycleRepository 
     ) {
         cycles[id]?.let {
             cycles[id] = it.copy(isExcludedFromEstimates = isExcluded, exclusionReason = reason)
+        }
+    }
+
+    override suspend fun addBackfilledCycle(startDate: LocalDate) {
+        val newCycle = Cycle(
+            id = UUID.randomUUID().toString(),
+            startDate = startDate
+        )
+        val all = (cycles.values + newCycle).sortedBy { it.startDate }
+        for (i in all.indices) {
+            val current = all[i]
+            val nextStart = all.getOrNull(i + 1)?.startDate
+            cycles[current.id] = current.copy(endDate = nextStart?.minusDays(1))
+        }
+    }
+
+    override suspend fun editCycleStartDate(cycleId: String, newStartDate: LocalDate) {
+        val all = cycles.values.map {
+            if (it.id == cycleId) it.copy(startDate = newStartDate) else it
+        }.sortedBy { it.startDate }
+        for (i in all.indices) {
+            val current = all[i]
+            val nextStart = all.getOrNull(i + 1)?.startDate
+            cycles[current.id] = current.copy(endDate = nextStart?.minusDays(1))
+        }
+    }
+
+    override suspend fun deleteCycleAndReconcile(cycleId: String) {
+        deleteCycle(cycleId)
+        val remaining = cycles.values.sortedBy { it.startDate }
+        for (i in remaining.indices) {
+            val current = remaining[i]
+            val nextStart = remaining.getOrNull(i + 1)?.startDate
+            cycles[current.id] = current.copy(endDate = nextStart?.minusDays(1))
         }
     }
 }
@@ -180,6 +217,9 @@ class FakeCursorStore(
 
     override suspend fun getBaseUrl(): String = baseUrl
     override suspend fun getDeviceLabel(): String = deviceLabel
+    override suspend fun clear() {
+        cursor = 0L
+    }
 }
 
 /** Scripted [FolicularApiClient] for engine tests. */

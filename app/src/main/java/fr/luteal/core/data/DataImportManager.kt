@@ -221,24 +221,34 @@ class DataImportManager @Inject constructor(
                             val existing = dailyEntryDao.getEntryOnce(entryDto.date)
                             if (existing == null || updatedAtMillis >= existing.updatedAtEpochMillis) {
                                 dailyEntryDao.upsert(entity)
+                                syncStateDao.upsert(
+                                    SyncStateEntity(
+                                        entityType = SyncStateEntity.TYPE_DAILY_ENTRY,
+                                        entityId = entity.date,
+                                        clientRev = UUID.randomUUID().toString(),
+                                        createdAtEpochMillis = updatedAtMillis,
+                                        updatedAtEpochMillis = now,
+                                        dirty = true,
+                                        lastPushError = null
+                                    )
+                                )
                                 entriesCount++
                             }
                         } else {
                             dailyEntryDao.upsert(entity)
+                            syncStateDao.upsert(
+                                SyncStateEntity(
+                                    entityType = SyncStateEntity.TYPE_DAILY_ENTRY,
+                                    entityId = entity.date,
+                                    clientRev = UUID.randomUUID().toString(),
+                                    createdAtEpochMillis = updatedAtMillis,
+                                    updatedAtEpochMillis = now,
+                                    dirty = true,
+                                    lastPushError = null
+                                )
+                            )
                             entriesCount++
                         }
-
-                        syncStateDao.upsert(
-                            SyncStateEntity(
-                                entityType = SyncStateEntity.TYPE_DAILY_ENTRY,
-                                entityId = entity.date,
-                                clientRev = UUID.randomUUID().toString(),
-                                createdAtEpochMillis = updatedAtMillis,
-                                updatedAtEpochMillis = now,
-                                dirty = true,
-                                lastPushError = null
-                            )
-                        )
                     }
 
                     // Restore Symptom Logs
@@ -307,23 +317,34 @@ class DataImportManager @Inject constructor(
                             val existing = biomarkerDao.getObservationOnce(biomarkerDto.date)
                             if (existing == null || updatedAtMillis >= existing.updatedAtEpochMillis) {
                                 biomarkerDao.upsert(entity)
+                                syncStateDao.upsert(
+                                    SyncStateEntity(
+                                        entityType = SyncStateEntity.TYPE_BIOMARKER_OBSERVATION,
+                                        entityId = SyncStateEntity.biomarkerEntityId(entity.date),
+                                        clientRev = UUID.randomUUID().toString(),
+                                        createdAtEpochMillis = updatedAtMillis,
+                                        updatedAtEpochMillis = now,
+                                        dirty = true,
+                                        lastPushError = null
+                                    )
+                                )
                                 biomarkersCount++
                             }
                         } else {
                             biomarkerDao.upsert(entity)
+                            syncStateDao.upsert(
+                                SyncStateEntity(
+                                    entityType = SyncStateEntity.TYPE_BIOMARKER_OBSERVATION,
+                                    entityId = SyncStateEntity.biomarkerEntityId(entity.date),
+                                    clientRev = UUID.randomUUID().toString(),
+                                    createdAtEpochMillis = updatedAtMillis,
+                                    updatedAtEpochMillis = now,
+                                    dirty = true,
+                                    lastPushError = null
+                                )
+                            )
                             biomarkersCount++
                         }
-                        syncStateDao.upsert(
-                            SyncStateEntity(
-                                entityType = SyncStateEntity.TYPE_BIOMARKER_OBSERVATION,
-                                entityId = SyncStateEntity.biomarkerEntityId(entity.date),
-                                clientRev = UUID.randomUUID().toString(),
-                                createdAtEpochMillis = updatedAtMillis,
-                                updatedAtEpochMillis = now,
-                                dirty = true,
-                                lastPushError = null
-                            )
-                        )
                     }
 
                     if (strategy == ImportStrategy.REPLACE_ALL) {

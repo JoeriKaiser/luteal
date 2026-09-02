@@ -75,17 +75,11 @@ object CurrentCyclePhaseCalculator {
         val canonicalPeriodDay = cycle.periodDays.firstOrNull { it.date == today }
         val observedFlow = canonicalPeriodDay?.bleedingIntensity ?: todayEntry?.bleedingIntensity
 
-        if (dayIndex == 0 || canonicalPeriodDay?.bleedingIntensity.isPeriodFlow()) {
+        if (dayIndex == 0 || observedFlow.isPeriodFlow()) {
             return CurrentCyclePhase.Available(CyclePhase.MENSTRUAL, PhaseCertainty.RECORDED)
         }
 
         if (dayIndex < EARLY_CYCLE_DAYS) {
-            if (observedFlow.isPeriodFlow()) {
-                return CurrentCyclePhase.Available(
-                    CyclePhase.MENSTRUAL,
-                    PhaseCertainty.RECORDED
-                )
-            }
             if (observedFlow == null || observedFlow == BleedingIntensity.SPOTTING) {
                 return CurrentCyclePhase.Indeterminate(
                     PhaseIndeterminateReason.EARLY_CYCLE_WITHOUT_BLEEDING_DETAIL
@@ -117,9 +111,11 @@ object CurrentCyclePhaseCalculator {
             ChronoUnit.DAYS.between(estimate.centralDate, estimate.latestDate)
         )
         val ovulationCentral = estimate.centralDate.minusDays(LUTEAL_ANCHOR_DAYS)
-        val ovulationRadius = nextPeriodRadius + OVULATION_EXTRA_RADIUS_DAYS
-        val ovulationEarliest = ovulationCentral.minusDays(ovulationRadius)
-        val ovulationLatest = ovulationCentral.plusDays(ovulationRadius)
+        val daysUntilEarliestPeriod = ChronoUnit.DAYS.between(ovulationCentral, estimate.earliestDate)
+        val maxOvulationRadius = maxOf(1L, daysUntilEarliestPeriod - 2)
+        val ovulationRadius = minOf(nextPeriodRadius + OVULATION_EXTRA_RADIUS_DAYS, maxOvulationRadius)
+        val ovulationEarliest = ovulationCentral.minusDays(ovulationRadius.toLong())
+        val ovulationLatest = ovulationCentral.plusDays(ovulationRadius.toLong())
 
         return when {
             today.isBefore(ovulationEarliest) -> CurrentCyclePhase.Available(

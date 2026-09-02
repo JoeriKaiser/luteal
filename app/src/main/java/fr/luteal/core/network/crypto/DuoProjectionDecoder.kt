@@ -17,7 +17,7 @@ class DuoProjectionDecoder @Inject constructor(
         val key = keyStore.load(linkId) ?: return DuoProjectionDecodeResult.KeyMissing
 
         return runCatching {
-            val plaintext = DuoCrypto.open(key, linkId, String(payload))
+            val plaintext = DuoCrypto.openRaw(key, linkId, payload)
             ContractJson.decodeFromString(DuoProjection.serializer(), String(plaintext))
         }.fold(
             onSuccess = { DuoProjectionDecodeResult.Available(it) },

@@ -50,8 +50,8 @@ class CycleEstimateCalculatorTest {
         // Interval is 28 days; central = 2025-01-29 + 28 = 2025-02-26.
         assertEquals(LocalDate.parse("2025-02-26"), estimate.centralDate)
         // One interval carries no variability signal, so the undeclared prior
-        // fully determines the radius: ceil(1.96 * 4.54 * sqrt(2/3)) = 8.
-        assertEquals(8, radiusOf(estimate))
+        // fully determines the radius: ceil(1.96 * 4.54) = 9.
+        assertEquals(9, radiusOf(estimate))
         assertEquals(0, estimate.variabilityDays)
     }
 

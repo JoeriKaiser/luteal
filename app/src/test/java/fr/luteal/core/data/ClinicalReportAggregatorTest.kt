@@ -130,4 +130,81 @@ class ClinicalReportAggregatorTest {
         assertTrue(html.contains("Crampes utérines"))
         assertTrue(html.contains("Heavy pain"))
     }
+
+    @Test
+    fun historicalCyclesWithoutEndDateDoNotLeakFutureEntries() = runTest {
+        database.cycleDao().insertCycle(
+            CycleEntity(id = "c1", startDate = "2026-05-01", endDate = null, averageLengthDays = 28, lutealPhaseLengthDays = 14, periodDaysJson = "[]")
+        )
+        database.cycleDao().insertCycle(
+            CycleEntity(id = "c2", startDate = "2026-05-29", endDate = "2026-06-25", averageLengthDays = 28, lutealPhaseLengthDays = 14, periodDaysJson = "[]")
+        )
+
+        // Entries within c1 range (2026-05-01 to 2026-05-28)
+        database.dailyEntryDao().upsert(
+            DailyEntryEntity(date = "2026-05-01", bleedingIntensity = "HEAVY", painLevel = 3, moodLevel = 3, energyLevel = 3, symptomIdsJson = "[]", notes = "", updatedAtEpochMillis = 1000L)
+        )
+        database.dailyEntryDao().upsert(
+            DailyEntryEntity(date = "2026-05-28", bleedingIntensity = "SPOTTING", painLevel = 1, moodLevel = 3, energyLevel = 3, symptomIdsJson = "[]", notes = "", updatedAtEpochMillis = 1000L)
+        )
+
+        // Entries within c2 range (2026-05-29 to 2026-06-25)
+        database.dailyEntryDao().upsert(
+            DailyEntryEntity(date = "2026-05-29", bleedingIntensity = "HEAVY", painLevel = 4, moodLevel = 3, energyLevel = 3, symptomIdsJson = "[]", notes = "", updatedAtEpochMillis = 1000L)
+        )
+        database.dailyEntryDao().upsert(
+            DailyEntryEntity(date = "2026-06-10", bleedingIntensity = "NONE", painLevel = 2, moodLevel = 3, energyLevel = 3, symptomIdsJson = "[]", notes = "", updatedAtEpochMillis = 1000L)
+        )
+
+        val config = ClinicalReportConfig(preset = ReportDateRangePreset.ALL_CYCLES)
+        val data = aggregator.aggregate(config, now = LocalDate.of(2026, 7, 1))
+
+        assertEquals(2, data.cycleStats.cycles.size)
+
+        val c1Row = data.cycleStats.cycles.first { it.cycleId == "c1" }
+        assertEquals(LocalDate.of(2026, 5, 28), c1Row.endDate)
+        assertEquals(28, c1Row.lengthDays)
+        assertEquals(2, c1Row.bleedingDaysCount)
+        assertEquals(2, c1Row.painDaysCount)
+
+        val c2Row = data.cycleStats.cycles.first { it.cycleId == "c2" }
+        assertEquals(LocalDate.of(2026, 6, 25), c2Row.endDate)
+        assertEquals(28, c2Row.lengthDays)
+        assertEquals(1, c2Row.bleedingDaysCount)
+        assertEquals(2, c2Row.painDaysCount)
+    }
+
+    @Test
+    fun excludedAndImplausibleCyclesDoNotSkewCompletedCycleStatistics() = runTest {
+        database.cycleDao().insertCycle(
+            CycleEntity(id = "c1", startDate = "2026-01-01", endDate = "2026-01-28", averageLengthDays = 28, lutealPhaseLengthDays = 14, periodDaysJson = "[]")
+        )
+        database.cycleDao().insertCycle(
+            CycleEntity(id = "c2", startDate = "2026-01-29", endDate = "2026-02-27", averageLengthDays = 30, lutealPhaseLengthDays = 14, periodDaysJson = "[]")
+        )
+        database.cycleDao().insertCycle(
+            CycleEntity(
+                id = "c3",
+                startDate = "2026-02-28",
+                endDate = "2026-04-28",
+                averageLengthDays = 60,
+                lutealPhaseLengthDays = 14,
+                periodDaysJson = "[]",
+                isExcludedFromEstimates = true,
+                exclusionReason = "PREGNANCY"
+            )
+        )
+        database.cycleDao().insertCycle(
+            CycleEntity(id = "c4", startDate = "2026-04-29", endDate = "2026-05-08", averageLengthDays = 10, lutealPhaseLengthDays = 5, periodDaysJson = "[]")
+        )
+
+        val config = ClinicalReportConfig(preset = ReportDateRangePreset.ALL_CYCLES)
+        val data = aggregator.aggregate(config, now = LocalDate.of(2026, 6, 1))
+
+        assertEquals(4, data.cycleStats.totalCyclesCount)
+        assertEquals(2, data.cycleStats.completedCyclesCount)
+        assertEquals(29.0, data.cycleStats.meanLengthDays!!, 0.01)
+        assertEquals(LocalDate.of(2026, 1, 1), data.cycleStats.shortestCycleDate)
+        assertEquals(LocalDate.of(2026, 1, 29), data.cycleStats.longestCycleDate)
+    }
 }

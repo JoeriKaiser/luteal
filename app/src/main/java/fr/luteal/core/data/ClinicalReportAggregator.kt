@@ -8,6 +8,7 @@ import fr.luteal.core.model.ClinicalReportConfig
 import fr.luteal.core.model.ClinicalReportData
 import fr.luteal.core.model.Cycle
 import fr.luteal.core.model.CycleExclusionReason
+import fr.luteal.core.model.CycleEstimateCalculator
 import fr.luteal.core.model.CycleReportRow
 import fr.luteal.core.model.CycleStatistics
 import fr.luteal.core.model.DailyEntry
@@ -180,6 +181,7 @@ class ClinicalReportAggregator @Inject constructor(
                 val cycle = selectedCycles[i]
                 val nextStart = if (i < selectedCycles.size - 1) selectedCycles[i + 1].startDate else null
                 val isCompleted = cycle.endDate != null || nextStart != null
+                val effectiveEnd = cycle.endDate ?: nextStart?.minusDays(1)
                 val length = if (nextStart != null) {
                     ChronoUnit.DAYS.between(cycle.startDate, nextStart).toInt()
                 } else if (cycle.endDate != null) {
@@ -189,7 +191,7 @@ class ClinicalReportAggregator @Inject constructor(
                 }
 
                 val cycleEntries = selectedEntries.filter { entry ->
-                    entry.date >= cycle.startDate && (cycle.endDate == null || entry.date <= cycle.endDate)
+                    entry.date >= cycle.startDate && (effectiveEnd == null || entry.date <= effectiveEnd)
                 }
 
                 val bleedingDaysCount = cycleEntries.count {
@@ -205,7 +207,7 @@ class ClinicalReportAggregator @Inject constructor(
                     CycleReportRow(
                         cycleId = cycle.id,
                         startDate = cycle.startDate,
-                        endDate = cycle.endDate ?: nextStart?.minusDays(1),
+                        endDate = effectiveEnd,
                         lengthDays = length,
                         bleedingDaysCount = bleedingDaysCount,
                         peakFlow = peakFlow,
@@ -215,8 +217,10 @@ class ClinicalReportAggregator @Inject constructor(
                     )
                 )
 
-                if (isCompleted) {
+                if (isCompleted && !cycle.isExcludedFromEstimates && length in CycleEstimateCalculator.plausibleCycleDays) {
                     completedLengths.add(length)
+                }
+                if (isCompleted) {
                     bleedingDaysList.add(bleedingDaysCount)
                 }
             }
@@ -241,10 +245,9 @@ class ClinicalReportAggregator @Inject constructor(
             val maxLength = completedLengths.maxOrNull()
             val meanBleeding = if (bleedingDaysList.isNotEmpty()) bleedingDaysList.average() else null
 
-            val shortestCycle = selectedCycles.filter { it.endDate != null }
-                .minByOrNull { ChronoUnit.DAYS.between(it.startDate, it.endDate).toInt() + 1 }
-            val longestCycle = selectedCycles.filter { it.endDate != null }
-                .maxByOrNull { ChronoUnit.DAYS.between(it.startDate, it.endDate).toInt() + 1 }
+            val validCompletedCycles = cycleRows.filter { !it.isExcluded && it.lengthDays in CycleEstimateCalculator.plausibleCycleDays }
+            val shortestCycle = validCompletedCycles.minByOrNull { it.lengthDays }
+            val longestCycle = validCompletedCycles.maxByOrNull { it.lengthDays }
 
             val cycleStats = CycleStatistics(
                 totalCyclesCount = selectedCycles.size,
