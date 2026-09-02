@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
@@ -125,7 +126,7 @@ fun CalendarDayCell(
     }
 
     val textColor: Color = when {
-        !day.isCurrentMonth -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+        !day.isCurrentMonth -> MaterialTheme.colorScheme.outline
         day.hasBleeding -> phaseColors.menstrual.content
         day.isToday -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.onSurface
@@ -162,16 +163,16 @@ fun CalendarDayCell(
     Box(
         modifier = modifier
             .heightIn(min = 48.dp)
+            .clickable(
+                role = Role.Button,
+                onClick = onClick
+            )
             .padding(2.dp)
             .clip(RoundedCornerShape(LutealSpacing.xs))
             .background(cellBackground)
             .then(
                 if (cellBorder != null) Modifier.border(cellBorder, RoundedCornerShape(LutealSpacing.xs))
                 else Modifier
-            )
-            .clickable(
-                role = Role.Button,
-                onClick = onClick
             )
             .semantics {
                 contentDescription = cdString
@@ -192,23 +193,39 @@ fun CalendarDayCell(
                 textAlign = TextAlign.Center
             )
 
-            // Observation or cycle-start indicator dot
-            if (day.hasObservations || day.isCycleStart) {
-                Spacer(modifier = Modifier.height(2.dp))
-                Box(
-                    modifier = Modifier
-                        .size(4.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (day.isCycleStart) phaseColors.menstrual.content
-                            else MaterialTheme.colorScheme.secondary
-                        )
-                )
-            } else {
-                Spacer(modifier = Modifier.height(6.dp))
+            // Observation or cycle-start indicator
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    day.hasObservations && day.isCycleStart -> {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CalendarDot(color = phaseColors.menstrual.content, size = 5.dp)
+                            CalendarDot(color = MaterialTheme.colorScheme.secondary, size = 5.dp)
+                        }
+                    }
+                    day.isCycleStart -> CalendarDot(color = phaseColors.menstrual.content, size = 6.dp)
+                    day.hasObservations -> CalendarDot(color = MaterialTheme.colorScheme.secondary, size = 6.dp)
+                }
             }
         }
     }
+}
+
+@Composable
+private fun CalendarDot(color: Color, size: Dp) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(color)
+    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)
