@@ -37,7 +37,7 @@ import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeviceThermostat
 import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.FormatListBulleted
+import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.Today
 import androidx.compose.material.icons.rounded.WaterDrop
@@ -70,6 +70,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.luteal.app.LutealUiState
 import fr.luteal.app.R
@@ -254,7 +255,7 @@ fun JournalScreen(
                     },
                     icon = {
                         Icon(
-                            imageVector = Icons.Rounded.FormatListBulleted,
+                            imageVector = Icons.AutoMirrored.Rounded.FormatListBulleted,
                             contentDescription = null
                         )
                     }
@@ -478,26 +479,40 @@ private fun MonthNavigationBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        IconButton(
+            onClick = onPreviousMonth,
+            modifier = Modifier.size(48.dp)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
+                contentDescription = stringResource(R.string.calendar_previous_month)
+            )
+        }
+
+        Text(
+            text = LocalizedDateFormatter.formatMonthYear(currentMonth.atDay(1), locale),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+            textAlign = TextAlign.Center
+        )
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+            horizontalArrangement = Arrangement.End
         ) {
-            IconButton(
-                onClick = onPreviousMonth,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
-                    contentDescription = stringResource(R.string.calendar_previous_month)
-                )
+            if (!isCurrentMonthToday) {
+                IconButton(
+                    onClick = onJumpToToday,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Today,
+                        contentDescription = stringResource(R.string.calendar_today_button),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
-
-            Text(
-                text = LocalizedDateFormatter.formatMonthYear(currentMonth.atDay(1), locale),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
             IconButton(
                 onClick = onNextMonth,
                 modifier = Modifier.size(48.dp)
@@ -507,14 +522,6 @@ private fun MonthNavigationBar(
                     contentDescription = stringResource(R.string.calendar_next_month)
                 )
             }
-        }
-
-        if (!isCurrentMonthToday) {
-            LutealSecondaryButton(
-                text = stringResource(R.string.calendar_today_button),
-                onClick = onJumpToToday,
-                icon = Icons.Rounded.Today
-            )
         }
     }
 }
