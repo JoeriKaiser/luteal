@@ -2,14 +2,17 @@ package fr.luteal.core.data.repository
 
 import androidx.room.withTransaction
 import fr.luteal.core.data.entity.CycleEntity
+import fr.luteal.core.data.entity.DailyEntryEntity
 import fr.luteal.core.data.entity.SyncStateEntity
 import fr.luteal.core.data.local.CycleDao
+import fr.luteal.core.data.local.DailyEntryDao
 import fr.luteal.core.data.local.LutealDatabase
 import fr.luteal.core.data.local.SyncStateDao
 import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.model.Cycle
 import fr.luteal.core.model.PeriodDay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import org.json.JSONObject
@@ -23,24 +26,27 @@ import javax.inject.Singleton
 class CycleRepositoryImpl @Inject constructor(
     private val database: LutealDatabase,
     private val cycleDao: CycleDao,
+    private val dailyEntryDao: DailyEntryDao,
     private val syncStateDao: SyncStateDao,
     private val clock: Clock
 ) : CycleRepository {
 
     override fun getCycles(): Flow<List<Cycle>> {
-        return cycleDao.getAllCycles().map { entities ->
-            entities.map { it.toDomain() }
+        return combine(cycleDao.getAllCycles(), dailyEntryDao.observeEntries()) { cycleEntities, dailyEntries ->
+            cycleEntities.map { it.toDomain(dailyEntries) }
         }
     }
 
     override fun getCurrentCycle(): Flow<Cycle?> {
-        return cycleDao.getCurrentCycle().map { entity ->
-            entity?.toDomain()
+        return combine(cycleDao.getCurrentCycle(), dailyEntryDao.observeEntries()) { entity, dailyEntries ->
+            entity?.toDomain(dailyEntries)
         }
     }
 
     override suspend fun getCyclesOnce(): List<Cycle> {
-        return cycleDao.getAllCyclesOnce().map { it.toDomain() }
+        val cycleEntities = cycleDao.getAllCyclesOnce()
+        val dailyEntries = dailyEntryDao.getAllEntriesOnce()
+        return cycleEntities.map { it.toDomain(dailyEntries) }
     }
 
     override suspend fun saveCycle(cycle: Cycle) {
@@ -92,6 +98,82 @@ class CycleRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun addBackfilledCycle(startDate: LocalDate) {
+        database.withTransaction {
+            val existing = cycleDao.getAllCyclesOnce()
+            require(existing.none { LocalDate.parse(it.startDate) == startDate }) {
+                "Un cycle existe déjà à cette date."
+            }
+
+            val newCycle = CycleEntity(
+                id = UUID.randomUUID().toString(),
+                startDate = startDate.toString(),
+                endDate = null,
+                periodDaysJson = "[]",
+                averageLengthDays = 28,
+                lutealPhaseLengthDays = 14,
+                isSynced = false,
+                isExcludedFromEstimates = false,
+                exclusionReason = null
+            )
+
+            val updatedList = (existing + newCycle).sortedBy { LocalDate.parse(it.startDate) }
+
+            for (i in updatedList.indices) {
+                val current = updatedList[i]
+                val nextStart = updatedList.getOrNull(i + 1)?.let { LocalDate.parse(it.startDate) }
+                val newEndDate = nextStart?.minusDays(1)?.toString()
+                if (current.id == newCycle.id || current.endDate != newEndDate) {
+                    cycleDao.insertCycle(current.copy(endDate = newEndDate))
+                    markDirty(current.id)
+                }
+            }
+        }
+    }
+
+    override suspend fun editCycleStartDate(cycleId: String, newStartDate: LocalDate) {
+        database.withTransaction {
+            val existing = cycleDao.getAllCyclesOnce()
+            val target = existing.firstOrNull { it.id == cycleId }
+                ?: error("Cycle introuvable.")
+            if (LocalDate.parse(target.startDate) == newStartDate) return@withTransaction
+
+            require(existing.none { it.id != cycleId && LocalDate.parse(it.startDate) == newStartDate }) {
+                "Un autre cycle commence déjà à cette date."
+            }
+
+            val updatedList = existing.map {
+                if (it.id == cycleId) it.copy(startDate = newStartDate.toString()) else it
+            }.sortedBy { LocalDate.parse(it.startDate) }
+
+            for (i in updatedList.indices) {
+                val current = updatedList[i]
+                val nextStart = updatedList.getOrNull(i + 1)?.let { LocalDate.parse(it.startDate) }
+                val newEndDate = nextStart?.minusDays(1)?.toString()
+                if (current.id == cycleId || current.endDate != newEndDate) {
+                    cycleDao.insertCycle(current.copy(endDate = newEndDate))
+                    markDirty(current.id)
+                }
+            }
+        }
+    }
+
+    override suspend fun deleteCycleAndReconcile(cycleId: String) {
+        database.withTransaction {
+            deleteCycle(cycleId)
+            val remaining = cycleDao.getAllCyclesOnce().sortedBy { LocalDate.parse(it.startDate) }
+            for (i in remaining.indices) {
+                val current = remaining[i]
+                val nextStart = remaining.getOrNull(i + 1)?.let { LocalDate.parse(it.startDate) }
+                val newEndDate = nextStart?.minusDays(1)?.toString()
+                if (current.endDate != newEndDate) {
+                    cycleDao.insertCycle(current.copy(endDate = newEndDate))
+                    markDirty(current.id)
+                }
+            }
+        }
+    }
+
     /**
      * Records a fresh envelope for a locally edited cycle: a new client_rev on
      * every edit (the conflict tiebreak), created_at preserved across edits,
@@ -115,17 +197,55 @@ class CycleRepositoryImpl @Inject constructor(
         )
     }
 
-    private fun CycleEntity.toDomain(): Cycle {
+    private fun CycleEntity.toDomain(entries: List<DailyEntryEntity> = emptyList()): Cycle {
+        val cycleStart = LocalDate.parse(startDate)
+        val cycleEnd = endDate?.let { LocalDate.parse(it) } ?: LocalDate.now(clock)
+
+        val bleedingPeriodDays = entries.mapNotNull { entry ->
+            val entryDate = runCatching { LocalDate.parse(entry.date) }.getOrNull() ?: return@mapNotNull null
+            if (entryDate in cycleStart..cycleEnd) {
+                val intensity = entry.bleedingIntensity?.let { stored ->
+                    BleedingIntensity.entries.firstOrNull { it.name.equals(stored, ignoreCase = true) }
+                }
+                if (intensity != null && intensity != BleedingIntensity.NONE) {
+                    PeriodDay(
+                        date = entryDate,
+                        bleedingIntensity = intensity,
+                        notes = entry.notes,
+                        symptomIds = entry.symptomIdsJson.toSymptomIds()
+                    )
+                } else null
+            } else null
+        }.sortedBy { it.date }
+
+        val resolvedPeriodDays = if (bleedingPeriodDays.isNotEmpty()) {
+            bleedingPeriodDays
+        } else {
+            periodDaysJson.toPeriodDays()
+        }
+
         return Cycle(
             id = id,
-            startDate = LocalDate.parse(startDate),
+            startDate = cycleStart,
             endDate = endDate?.let { LocalDate.parse(it) },
             averageLengthDays = averageLengthDays,
             lutealPhaseLengthDays = lutealPhaseLengthDays,
-            periodDays = periodDaysJson.toPeriodDays(),
+            periodDays = resolvedPeriodDays,
             isExcludedFromEstimates = isExcludedFromEstimates,
             exclusionReason = fr.luteal.core.model.CycleExclusionReason.fromKey(exclusionReason)
         )
+    }
+
+    private fun String.toSymptomIds(): List<String> {
+        if (isBlank()) return emptyList()
+        return runCatching {
+            val array = JSONArray(this)
+            val list = mutableListOf<String>()
+            for (i in 0 until array.length()) {
+                list.add(array.getString(i))
+            }
+            list
+        }.getOrDefault(emptyList())
     }
 
     private fun Cycle.toEntity(): CycleEntity {

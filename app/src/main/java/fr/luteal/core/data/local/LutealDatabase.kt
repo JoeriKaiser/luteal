@@ -141,13 +141,13 @@ abstract class LutealDatabase : RoomDatabase() {
                         date TEXT NOT NULL PRIMARY KEY,
                         bbtCelsius REAL,
                         bbtTime TEXT,
-                        bbtQuality TEXT NOT NULL DEFAULT 'normal',
-                        bbtDisturbancesJson TEXT NOT NULL DEFAULT '[]',
+                        bbtQuality TEXT NOT NULL,
+                        bbtDisturbancesJson TEXT NOT NULL,
                         cervicalSensation TEXT,
                         cervicalTexture TEXT,
                         lhTestResult TEXT,
                         hcgTestResult TEXT,
-                        notes TEXT NOT NULL DEFAULT '',
+                        notes TEXT NOT NULL,
                         updatedAtEpochMillis INTEGER NOT NULL
                     )
                     """.trimIndent()
