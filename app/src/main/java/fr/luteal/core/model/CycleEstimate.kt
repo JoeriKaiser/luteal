@@ -194,22 +194,19 @@ object CycleEstimateCalculator {
         priorSdDays: Double
     ): Int {
         val n = lengths.size
-        val sampleVariance = if (n < 2) {
-            0.0
+        val priorVariance = priorSdDays * priorSdDays
+        val shrunkVariance = if (n < 2) {
+            priorVariance
         } else {
             val mean = lengths.average()
-            lengths.sumOf { (it - mean) * (it - mean) } / (n - 1)
-        }
-
-        val priorWeight = if (highVariability) {
-            PRIOR_WEIGHT_HIGH_VARIABILITY
-        } else {
-            PRIOR_WEIGHT
-        }
-
-        val priorVariance = priorSdDays * priorSdDays
-        val shrunkVariance =
+            val sampleVariance = lengths.sumOf { (it - mean) * (it - mean) } / (n - 1)
+            val priorWeight = if (highVariability) {
+                PRIOR_WEIGHT_HIGH_VARIABILITY
+            } else {
+                PRIOR_WEIGHT
+            }
             (n * sampleVariance + priorWeight * priorVariance) / (n + priorWeight)
+        }
 
         // A declared timing context guarantees at least population-level
         // uncertainty. If the user's own cycles are more variable than that,

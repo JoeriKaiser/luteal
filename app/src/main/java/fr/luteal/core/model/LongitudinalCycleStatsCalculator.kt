@@ -53,7 +53,9 @@ object LongitudinalCycleStatsCalculator {
             }
 
             if (!isCurrent) {
-                prevCompletedLength = length
+                if (!cycle.isExcludedFromEstimates) {
+                    prevCompletedLength = length
+                }
                 if (!cycle.isExcludedFromEstimates && length in CycleEstimateCalculator.plausibleCycleDays) {
                     completedLengths.add(length)
                 }

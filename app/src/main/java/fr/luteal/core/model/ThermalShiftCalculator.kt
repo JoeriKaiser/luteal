@@ -1,6 +1,7 @@
 package fr.luteal.core.model
 
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 sealed interface ThermalShiftResult {
     data object None : ThermalShiftResult
@@ -14,7 +15,6 @@ sealed interface ThermalShiftResult {
 
 object ThermalShiftCalculator {
     private const val MIN_SHIFT_DELTA_CELSIUS = 0.20
-    private const val COVERLINE_OFFSET_CELSIUS = 0.05
 
     fun evaluateCycle(
         cycleStartDate: LocalDate,
@@ -31,6 +31,17 @@ object ThermalShiftCalculator {
         if (validTemps.size < 9) return ThermalShiftResult.None
 
         for (index in 0..(validTemps.size - 9)) {
+            val transitionValid = ChronoUnit.DAYS.between(
+                validTemps[index + 5].date,
+                validTemps[index + 6].date
+            ) <= 2
+            if (!transitionValid) continue
+
+            val continuityValid = (index until (index + 8)).all { i ->
+                ChronoUnit.DAYS.between(validTemps[i].date, validTemps[i + 1].date) <= 3
+            }
+            if (!continuityValid) continue
+
             val sixLows = validTemps.subList(index, index + 6).mapNotNull { it.bbt?.valueCelsius }
             val threeHighs = validTemps.subList(index + 6, index + 9).mapNotNull { it.bbt?.valueCelsius }
             val maxLow = sixLows.maxOrNull() ?: continue
@@ -38,7 +49,7 @@ object ThermalShiftCalculator {
             val thirdDaySignificantlyHigher = threeHighs[2] >= (maxLow + MIN_SHIFT_DELTA_CELSIUS)
             if (allThreeHigher && thirdDaySignificantlyHigher) {
                 return ThermalShiftResult.Confirmed(
-                    coverlineCelsius = maxLow + COVERLINE_OFFSET_CELSIUS,
+                    coverlineCelsius = maxLow,
                     firstHighDay = validTemps[index + 6].date,
                     baselineLowTemps = sixLows,
                     highTemps = threeHighs

@@ -16,7 +16,7 @@ class ThermalShiftCalculatorTest {
         )
         val result = ThermalShiftCalculator.evaluateCycle(start, observations)
         val confirmed = result as ThermalShiftResult.Confirmed
-        assertEquals(36.50, confirmed.coverlineCelsius, 0.001)
+        assertEquals(36.45, confirmed.coverlineCelsius, 0.001)
         assertEquals(start.plusDays(6), confirmed.firstHighDay)
     }
 
@@ -50,6 +50,16 @@ class ThermalShiftCalculatorTest {
         }
         val result = ThermalShiftCalculator.evaluateCycle(start, observations)
         assertTrue(result is ThermalShiftResult.Confirmed)
+    }
+
+    @Test
+    fun `disparate readings across months do not confirm thermal shift`() {
+        val observations = (0..8).map { index ->
+            val celsius = if (index < 6) 36.30 + (index * 0.02) else 36.70 + ((index - 6) * 0.05)
+            observation(start.plusDays(index * 15L), celsius)
+        }
+        val result = ThermalShiftCalculator.evaluateCycle(start, observations)
+        assertEquals(ThermalShiftResult.None, result)
     }
 
     private fun temperatures(vararg values: Double): List<BiomarkerObservation> =

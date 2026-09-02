@@ -25,6 +25,17 @@ class CurrentCyclePhaseCalculatorTest {
     }
 
     @Test
+    fun `active bleeding on cycle day 8 in todayEntry returns menstrual phase`() {
+        val today = start.plusDays(8)
+        assertPhase(
+            today,
+            CyclePhase.MENSTRUAL,
+            PhaseCertainty.RECORDED,
+            entry = DailyEntry(today, bleedingIntensity = BleedingIntensity.MEDIUM)
+        )
+    }
+
+    @Test
     fun `missing early bleeding detail stays indeterminate`() {
         assertReason(
             start.plusDays(3),
@@ -119,6 +130,32 @@ class CurrentCyclePhaseCalculatorTest {
             LocalDate.parse("2026-07-26"),
             CyclePhase.LUTEAL,
             PhaseCertainty.ESTIMATED
+        )
+    }
+
+    @Test
+    fun `wide next period radius still allows reachable luteal phase before earliest date`() {
+        val centralDate = LocalDate.parse("2026-07-30")
+        val estimateResult = CycleEstimateResult.Available(
+            CycleEstimate(
+                earliestDate = centralDate.minusDays(8),
+                centralDate = centralDate,
+                latestDate = centralDate.plusDays(8),
+                cycleCount = 3,
+                variabilityDays = 16
+            )
+        )
+        val today = LocalDate.parse("2026-07-21")
+        val actual = CurrentCyclePhaseCalculator.evaluate(
+            today = today,
+            currentCycle = cycle,
+            todayEntry = null,
+            estimateResult = estimateResult
+        )
+
+        assertEquals(
+            CurrentCyclePhase.Available(CyclePhase.LUTEAL, PhaseCertainty.ESTIMATED),
+            actual
         )
     }
 

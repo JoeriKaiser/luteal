@@ -85,4 +85,67 @@ class LongitudinalCycleStatsCalculatorTest {
         assertTrue(cycle2Item.hasStrawSwing)
         assertFalse(cycle1Item.hasStrawSwing)
     }
+
+    @Test
+    fun excludedFiftyDayCycleFollowedByTwentyEightDayCycleDoesNotTriggerStrawSwing() {
+        val cycles = listOf(
+            Cycle(
+                id = "1",
+                startDate = LocalDate.of(2026, 1, 1),
+                endDate = LocalDate.of(2026, 2, 19), // 50d
+                isExcludedFromEstimates = true,
+                exclusionReason = CycleExclusionReason.MEDICAL_TREATMENT
+            ),
+            Cycle(
+                id = "2",
+                startDate = LocalDate.of(2026, 2, 20),
+                endDate = LocalDate.of(2026, 3, 19) // 28d
+            ),
+            Cycle(
+                id = "3",
+                startDate = LocalDate.of(2026, 3, 20),
+                endDate = null
+            )
+        )
+
+        val stats = LongitudinalCycleStatsCalculator.calculate(cycles)
+        val cycle2Item = stats.items.first { it.cycleId == "2" }
+
+        assertEquals(28, cycle2Item.lengthDays)
+        assertFalse(cycle2Item.hasStrawSwing)
+    }
+
+    @Test
+    fun excludedLongCycleBetweenNormalCyclesDoesNotTriggerStrawSwingOnSubsequentCycle() {
+        val cycles = listOf(
+            Cycle(
+                id = "1",
+                startDate = LocalDate.of(2026, 1, 1),
+                endDate = LocalDate.of(2026, 1, 28) // 28d
+            ),
+            Cycle(
+                id = "2",
+                startDate = LocalDate.of(2026, 1, 29),
+                endDate = LocalDate.of(2026, 3, 19), // 50d
+                isExcludedFromEstimates = true,
+                exclusionReason = CycleExclusionReason.ILLNESS
+            ),
+            Cycle(
+                id = "3",
+                startDate = LocalDate.of(2026, 3, 20),
+                endDate = LocalDate.of(2026, 4, 16) // 28d
+            ),
+            Cycle(
+                id = "4",
+                startDate = LocalDate.of(2026, 4, 17),
+                endDate = null
+            )
+        )
+
+        val stats = LongitudinalCycleStatsCalculator.calculate(cycles)
+        val cycle3Item = stats.items.first { it.cycleId == "3" }
+
+        assertEquals(28, cycle3Item.lengthDays)
+        assertFalse(cycle3Item.hasStrawSwing)
+    }
 }
