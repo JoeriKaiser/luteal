@@ -42,13 +42,12 @@ class MainActivity : FragmentActivity() {
     lateinit var userPreferencesDataStore: UserPreferencesDataStore
 
     private var widgetDestination by mutableStateOf<String?>(null)
-    private var pendingImportJson by mutableStateOf<String?>(null)
+    private var bufferedImportJson by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         widgetDestination = intent.widgetDestination()
-        pendingImportJson = intent.importBackupJson()
-        intent.removeExtra(EXTRA_IMPORT_JSON)
+        handleBackupImport(intent)
         enableEdgeToEdge()
 
         lifecycle.addObserver(appLockManager)
@@ -90,8 +89,8 @@ class MainActivity : FragmentActivity() {
                         LutealMainScaffold(
                             widgetDestination = widgetDestination,
                             onWidgetDestinationConsumed = { widgetDestination = null },
-                            pendingImportJson = pendingImportJson,
-                            onPendingImportConsumed = { pendingImportJson = null }
+                            pendingImportJson = if (!barrierUp) bufferedImportJson else null,
+                            onPendingImportConsumed = { bufferedImportJson = null }
                         )
                     }
                     if (lockState is AppLockState.Resolving) {
@@ -116,8 +115,7 @@ class MainActivity : FragmentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         widgetDestination = intent.widgetDestination()
-        pendingImportJson = intent.importBackupJson()
-        intent.removeExtra(EXTRA_IMPORT_JSON)
+        handleBackupImport(intent)
     }
 
     private fun showBiometricPrompt() {
@@ -143,10 +141,12 @@ class MainActivity : FragmentActivity() {
         takeIf { action == ACTION_OPEN_WIDGET_DESTINATION }
             ?.getStringExtra(EXTRA_WIDGET_DESTINATION)
 
-    private fun Intent.importBackupJson(): String? =
-        takeIf { action == ACTION_IMPORT_BACKUP }
-            ?.getStringExtra(EXTRA_IMPORT_JSON)
-
+    private fun handleBackupImport(intent: Intent) {
+        if (intent.action == ACTION_IMPORT_BACKUP && !intent.hasExtra(EXTRA_IMPORT_JSON)) {
+            bufferedImportJson = PendingBackupStore.consume()
+        }
+        intent.removeExtra(EXTRA_IMPORT_JSON)
+    }
     companion object {
         const val ACTION_OPEN_WIDGET_DESTINATION = "fr.luteal.app.action.OPEN_WIDGET_DESTINATION"
         const val ACTION_IMPORT_BACKUP = "fr.luteal.app.action.IMPORT_BACKUP"

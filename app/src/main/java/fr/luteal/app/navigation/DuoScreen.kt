@@ -1,5 +1,8 @@
 package fr.luteal.app.navigation
 
+import android.content.Context
+import android.os.Build
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -37,12 +40,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.text.AnnotatedString
 import androidx.hilt.navigation.compose.hiltViewModel
 import fr.luteal.app.R
 import fr.luteal.core.common.LocalizedDateFormatter
@@ -287,8 +289,8 @@ private fun InvitationPendingSection(
     pairingCode: String?,
     onCancel: () -> Unit
 ) {
+    val context = LocalContext.current
     var copied by remember { mutableStateOf(false) }
-    val clipboard = LocalClipboardManager.current
 
     LutealCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
@@ -320,7 +322,20 @@ private fun InvitationPendingSection(
                         if (copied) R.string.duo_code_copied else R.string.duo_code_copy
                     ),
                     onClick = {
-                        clipboard.setText(AnnotatedString(code))
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                        if (clipboard != null) {
+                            val clip = android.content.ClipData.newPlainText(
+                                context.getString(R.string.duo_code_label),
+                                code
+                            ).apply {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    description.extras = android.os.PersistableBundle().apply {
+                                        putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true)
+                                    }
+                                }
+                            }
+                            clipboard.setPrimaryClip(clip)
+                        }
                         copied = true
                     },
                     modifier = Modifier.fillMaxWidth()

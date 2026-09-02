@@ -14,6 +14,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import android.os.SystemClock
+import org.robolectric.shadows.ShadowPausedSystemClock
 @RunWith(RobolectricTestRunner::class)
 class AppLockManagerTest {
 
@@ -133,6 +134,37 @@ class AppLockManagerTest {
         val result = appLockManager.verifyAndUnlockPin("1234")
 
         assertTrue(result is PinVerificationResult.LockedOut)
+    }
+
+    @Test
+    fun rebootDuringLockoutDoesNotTriggerExcessiveLockout() = runTest {
+        pinCryptoManager.setPin("1234")
+        userPreferencesDataStore.setAppLockEnabled(true)
+
+        // Simulate device reboot: elapsedRealtime resets near zero, simulated here as 5,000 ms.
+        ShadowPausedSystemClock.reset()
+        SystemClock.setCurrentTimeMillis(5_000L)
+        assertEquals(5_000L, SystemClock.elapsedRealtime())
+
+        // Device was locked out before reboot with a pre-reboot elapsedRealtime deadline (100,000,000 ms)
+        // and a wall-clock deadline having 30 seconds remaining.
+        val remainingWallClockSeconds = 30
+        userPreferencesDataStore.setLockoutUntilEpochMillis(
+            System.currentTimeMillis() + remainingWallClockSeconds * 1000L
+        )
+        userPreferencesDataStore.setLockoutUntilElapsedRealtimeMillis(100_000_000L)
+
+        val result = appLockManager.verifyAndUnlockPin("1234")
+
+        val lockoutSeconds = (result as PinVerificationResult.LockedOut).remainingSeconds
+        assertTrue(
+            "Lockout remaining seconds ($lockoutSeconds) must not exceed remaining wall-clock seconds ($remainingWallClockSeconds)",
+            lockoutSeconds <= remainingWallClockSeconds
+        )
+        assertTrue(
+            "Lockout remaining seconds ($lockoutSeconds) must not cause a multi-hour lockout",
+            lockoutSeconds <= 300
+        )
     }
 
     @Test
