@@ -137,7 +137,7 @@
     <string name="phase_tip_luteal_sleep_routine">La hausse de progestérone peut fragmenter le sommeil. Une chambre fraîche et un rituel de coucher calme aident à préserver la qualité de vos nuits.</string>
     <string name="phase_tip_luteal_endo_pelvic_tension">Des tiraillements pelviens peuvent survenir en fin de phase lutéale. Des bains tièdes et une respiration abdominale lente aident à détendre le bas-ventre.</string>
     <string name="phase_tip_luteal_perimeno_sleep">En cas de sueurs nocturnes ou de sommeil agité avant les règles, privilégiez des vêtements respirants en plusieurs couches et aérez la chambre.</string>
-    <string name="phase_tip_luteal_nausea_progesterone">Des nausées ou variations digestives sont parfois rapportées durant la phase lutéale, sous l\'effet des variations de progestérone sur la motilité digestive. Si ces symptômes persistent ou sont invalidants, parlez-en à un professionnel de santé.</string>
+    <string name="phase_tip_luteal_digestive_comfort">En cas de sensibilité digestive ou de légères nausées avant les règles, fractionner les repas et boire régulièrement de l\'eau peut aider à préserver le confort digestif.</string>
 
     <string name="journal_title">Journal</string>
     <string name="journal_subtitle">Retrouvez les faits que vous avez enregistrés, jour après jour.</string>
