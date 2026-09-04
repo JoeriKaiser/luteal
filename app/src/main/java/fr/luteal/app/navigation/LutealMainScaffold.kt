@@ -234,6 +234,7 @@ fun LutealMainScaffold(
         DailyEntrySheet(
             date = req.date,
             existingEntry = uiState.entries.firstOrNull { it.date == req.date },
+            previousDayEntry = uiState.entries.firstOrNull { it.date == req.date.minusDays(1) },
             existingBiomarker = uiState.biomarkers.firstOrNull { it.date == req.date },
             temperatureUnit = TemperatureUnit.entries.firstOrNull {
                 it.name == uiState.preferences.temperatureUnit

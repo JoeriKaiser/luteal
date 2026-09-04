@@ -710,6 +710,7 @@ private fun phaseTipText(id: String): String? = when (id) {
     "luteal_hydration" -> stringResource(R.string.phase_tip_luteal_hydration)
     "luteal_sodium_bloating" -> stringResource(R.string.phase_tip_luteal_sodium_bloating)
     "luteal_complex_carbs" -> stringResource(R.string.phase_tip_luteal_complex_carbs)
+    "luteal_nausea_progesterone" -> stringResource(R.string.phase_tip_luteal_nausea_progesterone)
     "luteal_pmdd_neuro_validation" -> stringResource(R.string.phase_tip_luteal_pmdd_neuro_validation)
     "luteal_pmdd_pacing" -> stringResource(R.string.phase_tip_luteal_pmdd_pacing)
     "luteal_sleep_routine" -> stringResource(R.string.phase_tip_luteal_sleep_routine)

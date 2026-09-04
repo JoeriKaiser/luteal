@@ -113,6 +113,13 @@ object PhaseTips {
             url = ClinicalSources.ACOG_PMS_URL
         ),
         PhaseTip(
+            "luteal_nausea_progesterone",
+            CyclePhase.LUTEAL,
+            targetSymptoms = setOf("nausea", "digestive_changes"),
+            source = ClinicalSources.ACOG_PMS,
+            url = ClinicalSources.ACOG_PMS_URL
+        ),
+        PhaseTip(
             "luteal_pmdd_neuro_validation",
             CyclePhase.LUTEAL,
             targetContext = TrackingContext.PMDD,

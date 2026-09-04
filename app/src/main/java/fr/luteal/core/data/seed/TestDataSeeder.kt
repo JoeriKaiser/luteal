@@ -155,6 +155,16 @@ class TestDataSeederImpl @Inject constructor(
                 updatedAtEpochMillis = nowEpoch
             ),
             DailyEntryEntity(
+                date = cycle1Start.plusDays(22).toString(),
+                bleedingIntensity = null,
+                painLevel = 1,
+                moodLevel = 3,
+                energyLevel = 3,
+                symptomIdsJson = JSONArray(listOf("nausea", "bloating")).toString(),
+                notes = "Phase lutéale, nausée et ballonnements",
+                updatedAtEpochMillis = nowEpoch
+            ),
+            DailyEntryEntity(
                 date = cycle2Start.toString(),
                 bleedingIntensity = BleedingIntensity.HEAVY.name,
                 painLevel = 4,
@@ -175,6 +185,16 @@ class TestDataSeederImpl @Inject constructor(
                 updatedAtEpochMillis = nowEpoch
             ),
             DailyEntryEntity(
+                date = cycle2Start.plusDays(19).toString(),
+                bleedingIntensity = null,
+                painLevel = 2,
+                moodLevel = 2,
+                energyLevel = 2,
+                symptomIdsJson = JSONArray(listOf("nausea", "fatigue")).toString(),
+                notes = "Fatigue et nausée en phase lutéale",
+                updatedAtEpochMillis = nowEpoch
+            ),
+            DailyEntryEntity(
                 date = cycle3Start.toString(),
                 bleedingIntensity = BleedingIntensity.HEAVY.name,
                 painLevel = 3,
@@ -182,6 +202,16 @@ class TestDataSeederImpl @Inject constructor(
                 energyLevel = 2,
                 symptomIdsJson = JSONArray(listOf("cramps")).toString(),
                 notes = "Règles actuelles",
+                updatedAtEpochMillis = nowEpoch
+            ),
+            DailyEntryEntity(
+                date = anchorDate.minusDays(1).toString(),
+                bleedingIntensity = BleedingIntensity.LIGHT.name,
+                painLevel = 2,
+                moodLevel = 3,
+                energyLevel = 2,
+                symptomIdsJson = JSONArray(listOf("cramps", "fatigue", "nausea")).toString(),
+                notes = "Observations de la veille",
                 updatedAtEpochMillis = nowEpoch
             ),
             DailyEntryEntity(
@@ -225,7 +255,31 @@ class TestDataSeederImpl @Inject constructor(
                 symptomId = "headache",
                 severity = 1,
                 notes = "Léger mal de tête"
-            )
+            ),
+            SymptomLogEntity(
+                id = UUID.randomUUID().toString(),
+                date = cycle1Start.plusDays(22).toString(),
+                timestampEpochMillis = nowEpoch,
+                symptomId = "nausea",
+                severity = 2,
+                notes = "Nausée lutéale C1"
+            ),
+            SymptomLogEntity(
+                id = UUID.randomUUID().toString(),
+                date = cycle2Start.plusDays(19).toString(),
+                timestampEpochMillis = nowEpoch,
+                symptomId = "nausea",
+                severity = 2,
+                notes = "Nausée lutéale C2"
+            ),
+            SymptomLogEntity(
+                id = UUID.randomUUID().toString(),
+                date = anchorDate.minusDays(1).toString(),
+                timestampEpochMillis = nowEpoch,
+                symptomId = "nausea",
+                severity = 2,
+                notes = "Nausée hier"
+            ),
         )
 
         for (log in symptomLogs) {

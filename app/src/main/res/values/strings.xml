@@ -143,6 +143,7 @@
     <string name="phase_tip_luteal_sleep_routine">Rising progesterone can disrupt sleep quality in the late cycle. A cooler bedroom and a quiet evening routine help support deeper rest.</string>
     <string name="phase_tip_luteal_endo_pelvic_tension">Non-menstrual pelvic discomfort can flare in the late luteal phase. Warm baths and slow diaphragmatic breathing can help ease pelvic tension.</string>
     <string name="phase_tip_luteal_perimeno_sleep">If night sweats or restless sleep occur before your period, breathable layered bedding and an airy room can reduce awakenings.</string>
+    <string name="phase_tip_luteal_nausea_progesterone">Nausea or digestive variations are sometimes reported during the luteal phase, associated with progesterone shifts influencing gastric motility. If symptoms persist or cause distress, consult a healthcare provider.</string>
 
     <string name="journal_title">Journal</string>
     <string name="journal_subtitle">Look back at what you recorded, day by day.</string>
@@ -196,6 +197,7 @@
     <string name="editor_optional_show">Add more observations or a note</string>
     <string name="editor_optional_hide">Hide optional details</string>
     <string name="editor_symptoms">Other observations</string>
+    <string name="editor_symptoms_copy_yesterday">Copy yesterday\'s observations (%1$d)</string>
     <string name="symptom_cramps">Cramps</string>
     <string name="symptom_headache">Headache</string>
     <string name="symptom_abdominal_pain">Abdominal pain</string>
@@ -716,6 +718,14 @@
     <string name="hcg_positive">Positive</string>
     <string name="hcg_faint_uncertain">Faint / uncertain</string>
     <string name="journal_view_thermal">Thermal</string>
+    <string name="journal_view_patterns">Patterns</string>
+    <string name="journal_patterns_title">Observation patterns</string>
+    <string name="journal_patterns_subtitle">Frequency of recorded observations across cycle phases. Purely descriptive, does not diagnose or predict.</string>
+    <string name="journal_patterns_empty_title">No observations yet</string>
+    <string name="journal_patterns_empty_body">Observation patterns will appear here as you log symptoms across your cycles.</string>
+    <string name="journal_patterns_total_occurrences">%1$d occurrences across %2$d cycles</string>
+    <string name="journal_patterns_phase_breakdown">Menstrual: %1$d · Follicular: %2$d · Ovulatory: %3$d · Luteal: %4$d</string>
+    <string name="journal_patterns_most_frequent_phase">Most reported in %1$s phase (%2$d)</string>
     <string name="thermal_chart_title">Thermal chart</string>
     <string name="thermal_chart_subtitle">Recorded temperatures for the current cycle. A confirmed shift is retrospective, not a fertility prediction.</string>
     <string name="thermal_chart_cd">Basal temperature chart for the current cycle</string>
