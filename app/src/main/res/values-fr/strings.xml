@@ -94,7 +94,7 @@
     <string name="phase_follicular">Folliculaire</string>
     <string name="phase_ovulatory">Transition ovulatoire</string>
     <string name="phase_luteal">Lutéale</string>
-    <string name="phase_indeterminate">Indéterminée</string>
+    <string name="phase_indeterminate">Fenêtre de transition</string>
     <string name="phase_support_recorded">Établie à partir du début de cycle ou des saignements que vous avez enregistrés.</string>
     <string name="phase_support_estimated">Déduite de la plage estimée de vos prochaines règles. La transition peut varier.</string>
     <string name="phase_support_ovulatory_estimated">Date centrale estimée avec une confiance faible. Le calendrier seul ne confirme pas l’ovulation.</string>
@@ -477,7 +477,7 @@
     <string name="calendar_title">Calendrier</string>
     <string name="calendar_subtitle">Vue mensuelle de vos cycles et observations</string>
     <string name="calendar_view_calendar">Calendrier</string>
-    <string name="calendar_view_list">Journal</string>
+    <string name="calendar_view_list">Historique</string>
     <string name="calendar_previous_month">Mois précédent</string>
     <string name="calendar_next_month">Mois suivant</string>
     <string name="calendar_today_button">Aujourd’hui</string>
@@ -597,6 +597,8 @@
     <string name="variability_excluded_badge">Exclu</string>
     <string name="variability_straw_swing_badge">Écart ≥ 7j</string>
     <string name="variability_reference_band">Zone de référence (21 à 35 jours)</string>
+    <string name="variability_ref_min">21 j</string>
+    <string name="variability_ref_max">35 j</string>
     <string name="variability_action_manage_exclusion">Gérer l’exclusion</string>
     <string name="variability_bleeding_days">%1$d j de saignements</string>
     <string name="variability_cycle_days">%1$d jours</string>

@@ -100,7 +100,7 @@
     <string name="phase_follicular">Follicular</string>
     <string name="phase_ovulatory">Ovulatory transition</string>
     <string name="phase_luteal">Luteal</string>
-    <string name="phase_indeterminate">Indeterminate</string>
+    <string name="phase_indeterminate">Transition window</string>
     <string name="phase_support_recorded">Established from the cycle start or bleeding you recorded.</string>
     <string name="phase_support_estimated">Derived from the estimated range of your next period. The transition can vary.</string>
     <string name="phase_support_ovulatory_estimated">Central date estimated with low confidence. Calendar dates alone do not confirm ovulation.</string>
@@ -479,7 +479,7 @@
     <string name="calendar_title">Calendar</string>
     <string name="calendar_subtitle">Monthly view of your cycles and observations</string>
     <string name="calendar_view_calendar">Calendar</string>
-    <string name="calendar_view_list">Journal</string>
+    <string name="calendar_view_list">Timeline</string>
     <string name="calendar_previous_month">Previous month</string>
     <string name="calendar_next_month">Next month</string>
     <string name="calendar_today_button">Today</string>
@@ -599,6 +599,8 @@
     <string name="variability_excluded_badge">Excluded</string>
     <string name="variability_straw_swing_badge">Shift ≥ 7d</string>
     <string name="variability_reference_band">Reference zone (21 to 35 days)</string>
+    <string name="variability_ref_min">21 d</string>
+    <string name="variability_ref_max">35 d</string>
     <string name="variability_action_manage_exclusion">Manage exclusion</string>
     <string name="variability_bleeding_days">%1$d d of bleeding</string>
     <string name="variability_cycle_days">%1$d days</string>

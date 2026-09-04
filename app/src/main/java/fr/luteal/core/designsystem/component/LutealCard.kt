@@ -45,15 +45,13 @@ fun LutealCard(
         LutealCardEmphasis.QUIET -> scheme.surfaceVariant
     }
     val border = when (emphasis) {
-        // A full-strength outline, not outlineVariant: the hero card has to
-        // hold its own against the quieter surfaces stacked below it.
-        LutealCardEmphasis.HERO -> BorderStroke(1.dp, scheme.outline)
+        LutealCardEmphasis.HERO -> BorderStroke(1.dp, scheme.outlineVariant)
         LutealCardEmphasis.STANDARD -> BorderStroke(1.dp, scheme.outlineVariant)
         LutealCardEmphasis.QUIET -> null
     }
     val contentPadding: Dp = when (emphasis) {
-        LutealCardEmphasis.HERO -> LutealSpacing.xl
-        LutealCardEmphasis.STANDARD, LutealCardEmphasis.QUIET -> LutealSpacing.lg
+        LutealCardEmphasis.HERO -> 20.dp
+        LutealCardEmphasis.STANDARD, LutealCardEmphasis.QUIET -> 16.dp
     }
     val colors = CardDefaults.cardColors(containerColor = containerColor)
 

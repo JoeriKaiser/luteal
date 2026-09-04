@@ -5,6 +5,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -153,10 +158,38 @@ fun CycleVariabilityVisualizer(
             }
         }
 
-        // Cycle Range Bars
+        // Cycle Range Bars with visual reference zone
         LutealCard(modifier = Modifier.fillMaxWidth()) {
+            val refColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+            val guideColor = MaterialTheme.colorScheme.outlineVariant
+            val dashEffect = remember { PathEffect.dashPathEffect(floatArrayOf(6f, 6f)) }
+
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .drawBehind {
+                        val x21 = size.width * (21f / maxDays.toFloat()).coerceIn(0f, 1f)
+                        val x35 = size.width * (35f / maxDays.toFloat()).coerceIn(0f, 1f)
+                        drawRect(
+                            color = refColor,
+                            topLeft = Offset(x21, 0f),
+                            size = Size((x35 - x21).coerceAtLeast(0f), size.height)
+                        )
+                        drawLine(
+                            color = guideColor,
+                            start = Offset(x21, 0f),
+                            end = Offset(x21, size.height),
+                            strokeWidth = 1.dp.toPx(),
+                            pathEffect = dashEffect
+                        )
+                        drawLine(
+                            color = guideColor,
+                            start = Offset(x35, 0f),
+                            end = Offset(x35, size.height),
+                            strokeWidth = 1.dp.toPx(),
+                            pathEffect = dashEffect
+                        )
+                    },
                 verticalArrangement = Arrangement.spacedBy(LutealSpacing.md)
             ) {
                 stats.items.forEach { item ->
@@ -166,6 +199,30 @@ fun CycleVariabilityVisualizer(
                         onClick = { selectedCycleItem = item }
                     )
                 }
+            }
+
+            Spacer(Modifier.height(LutealSpacing.xs))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.variability_ref_min),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = stringResource(R.string.variability_reference_band),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = stringResource(R.string.variability_ref_max),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -248,49 +305,73 @@ private fun CycleBarRow(
 
         Spacer(Modifier.height(4.dp))
 
-        // Range Bar Graphic
-        val fraction = (item.lengthDays.toFloat() / maxDays.toFloat()).coerceIn(0.15f, 1f)
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(fraction)
-                .height(28.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(
-                    when {
-                        item.isExcluded -> MaterialTheme.colorScheme.surfaceVariant
-                        item.isCurrent -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                        else -> MaterialTheme.colorScheme.primaryContainer
-                    }
-                )
-                .border(
-                    width = if (item.isCurrent) 1.5.dp else 1.dp,
-                    color = when {
-                        item.isExcluded -> MaterialTheme.colorScheme.outline
-                        item.isCurrent -> MaterialTheme.colorScheme.primary
-                        else -> MaterialTheme.colorScheme.outlineVariant
-                    },
-                    shape = RoundedCornerShape(8.dp)
-                )
-                .padding(horizontal = LutealSpacing.xs),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Text(
-                text = stringResource(
-                    R.string.variability_bar_label,
-                    item.lengthDays,
-                    item.bleedingDaysCount
-                ),
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                color = when {
-                    item.isExcluded -> MaterialTheme.colorScheme.onSurfaceVariant
-                    item.isCurrent -> MaterialTheme.colorScheme.primary
-                    else -> MaterialTheme.colorScheme.onPrimaryContainer
-                },
-                fontWeight = FontWeight.Medium
-            )
+        // Range Bar Graphic with adaptive label placement
+        val barFraction = (item.lengthDays.toFloat() / maxDays.toFloat()).coerceIn(0.04f, 1f)
+        val showTextInside = barFraction >= 0.40f
+        val labelText = stringResource(
+            R.string.variability_bar_label,
+            item.lengthDays,
+            item.bleedingDaysCount
+        )
+        val contentColor = when {
+            item.isExcluded -> MaterialTheme.colorScheme.onSurfaceVariant
+            item.isCurrent -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.onPrimaryContainer
         }
-    }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(barFraction)
+                    .height(28.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        when {
+                            item.isExcluded -> MaterialTheme.colorScheme.surfaceVariant
+                            item.isCurrent -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                            else -> MaterialTheme.colorScheme.primaryContainer
+                        }
+                    )
+                    .border(
+                        width = if (item.isCurrent) 1.5.dp else 1.dp,
+                        color = when {
+                            item.isExcluded -> MaterialTheme.colorScheme.outline
+                            item.isCurrent -> MaterialTheme.colorScheme.primary
+                            else -> MaterialTheme.colorScheme.outlineVariant
+                        },
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(horizontal = LutealSpacing.xs),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                if (showTextInside) {
+                    Text(
+                        text = labelText,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                        color = contentColor,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
+            }
+
+            if (!showTextInside) {
+                Text(
+                    text = labelText,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
+        }
+}
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

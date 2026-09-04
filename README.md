@@ -26,7 +26,7 @@ default, with optional end-to-end encrypted sync.
 
 ## Building
 
-Requires JDK 21 and the Android SDK (compileSdk 35, minSdk 26).
+Requires JDK 21 and the Android SDK (compileSdk 37, minSdk 26).
 
 ```sh
 ./gradlew assembleDebug          # debug build

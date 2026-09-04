@@ -3,7 +3,6 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
@@ -13,7 +12,7 @@ plugins {
 
 android {
     namespace = "fr.luteal.app"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "fr.luteal.app"
@@ -32,9 +31,7 @@ android {
         // back to English. AndroidX and Material would bring translations for
         // 84 locales (most of resources.arsc); keep this in step with
         // res/xml/locales_config.xml and the values-* folders.
-        @Suppress("DEPRECATION")
-        resourceConfigurations += listOf("fr", "en")
-
+        androidResources.localeFilters += listOf("fr", "en")
         // Default folicular base URL for online sync. The debug/dev build
         // targets the local trial server (emulator loopback); the release
         // build overrides this with the production API (see buildTypes).
@@ -98,7 +95,7 @@ android {
         // set: MigrationTestHelper finds them in local unit tests, and
         // release builds ship no schemas.
         getByName("debug") {
-            assets.srcDir("$projectDir/schemas")
+            assets.directories.add("$projectDir/schemas")
         }
     }
     packaging {
@@ -118,7 +115,7 @@ android {
     // -Pfolicular.spec=... to build against an upstream working copy.
     sourceSets {
         getByName("main") {
-            kotlin.srcDir(layout.buildDirectory.dir("generated/openapi/src/main/kotlin"))
+            kotlin.directories.add("$projectDir/build/generated/openapi/src/main/kotlin")
         }
     }
 }
