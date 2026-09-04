@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Settings
@@ -264,7 +265,7 @@ private enum class LutealDestination(
     val icon: ImageVector
 ) {
     TODAY(R.string.nav_today, Icons.Rounded.Today),
-    JOURNAL(R.string.nav_journal, Icons.Rounded.CalendarToday),
+    JOURNAL(R.string.nav_journal, Icons.AutoMirrored.Rounded.MenuBook),
     DUO(R.string.nav_duo, Icons.Rounded.FavoriteBorder),
     SETTINGS(R.string.nav_settings, Icons.Rounded.Settings)
 }

@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import fr.luteal.core.designsystem.theme.LocalPhaseColors
 import androidx.compose.ui.unit.dp
 
 enum class StatusTone {
@@ -85,10 +86,11 @@ fun ObservationPill(
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
+    val phaseColors = LocalPhaseColors.current
     val treatment = when (tone) {
         ObservationTone.BLEEDING -> PillTreatment(
-            content = colors.onPrimaryContainer,
-            container = colors.primaryContainer,
+            content = phaseColors.menstrual.content,
+            container = phaseColors.menstrual.container,
             icon = Icons.Rounded.WaterDrop
         )
         ObservationTone.PAIN -> PillTreatment(

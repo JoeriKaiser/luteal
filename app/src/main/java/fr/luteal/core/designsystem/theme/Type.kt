@@ -32,8 +32,9 @@ val LutealTypography = Typography(
     headlineSmall = TextStyle(
         fontFamily = LutealFontFamily,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 20.sp,
-        lineHeight = 26.sp
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
+        letterSpacing = (-0.1).sp
     ),
     titleLarge = TextStyle(
         fontFamily = LutealFontFamily,

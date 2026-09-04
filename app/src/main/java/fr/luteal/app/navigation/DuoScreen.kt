@@ -21,7 +21,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material.icons.rounded.Undo
+import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -194,7 +194,7 @@ private fun NoAccountSection(onOpenSettings: () -> Unit) {
                     text = stringResource(R.string.duo_explainer_sharing)
                 )
                 DuoExplainerRow(
-                    icon = Icons.Rounded.Undo,
+                    icon = Icons.AutoMirrored.Rounded.Undo,
                     text = stringResource(R.string.duo_explainer_reversible)
                 )
                 DuoExplainerRow(

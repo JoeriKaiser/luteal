@@ -20,9 +20,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -50,6 +49,7 @@ import fr.luteal.core.designsystem.component.CycleDayRing
 import fr.luteal.core.designsystem.component.LutealCard
 import fr.luteal.core.designsystem.component.LutealCardEmphasis
 import fr.luteal.core.designsystem.component.LutealPrimaryButton
+import fr.luteal.core.designsystem.component.LutealSecondaryButton
 import fr.luteal.core.designsystem.component.ObservationPill
 import fr.luteal.core.designsystem.component.ObservationTone
 import fr.luteal.core.designsystem.component.StatusPill
@@ -81,7 +81,7 @@ fun TodayScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = LutealSpacing.md, vertical = LutealSpacing.md),
+            .padding(horizontal = LutealSpacing.md, vertical = LutealSpacing.lg),
         verticalArrangement = Arrangement.spacedBy(LutealSpacing.md)
     ) {
         ScreenHeader(
@@ -91,14 +91,14 @@ fun TodayScreen(
 
         CycleHeroCard(state)
 
-        LutealPrimaryButton(
+        TodayObservationCard(state = state, onEditToday = onEditToday)
+
+        LutealSecondaryButton(
             text = stringResource(R.string.action_start_period_short),
             onClick = onStartPeriod,
             icon = Icons.Rounded.WaterDrop,
             modifier = Modifier.fillMaxWidth()
         )
-
-        TodayObservationCard(state = state, onEditToday = onEditToday)
         when (val phase = state.currentPhase) {
             is CurrentCyclePhase.Available -> {
                 val declaredContexts = state.preferences.declaredContexts
@@ -259,7 +259,7 @@ private fun CurrentPhaseSummary(result: CurrentCyclePhase) {
             is CurrentCyclePhase.Indeterminate -> {
                 Text(
                     text = stringResource(R.string.phase_indeterminate),
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleMedium
                 )
                 Text(
                     text = phaseIndeterminateSupport(result.reason),
@@ -292,9 +292,9 @@ private fun TodayObservationCard(
                 style = MaterialTheme.typography.titleMedium
             )
             Icon(
-                imageVector = if (entry == null) Icons.Rounded.Add else Icons.Rounded.Edit,
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
@@ -305,12 +305,6 @@ private fun TodayObservationCard(
                 text = stringResource(R.string.today_summary_empty_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(LutealSpacing.xs))
-            Text(
-                text = stringResource(R.string.today_summary_open_hint),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
             )
         } else {
             FlowRow(
