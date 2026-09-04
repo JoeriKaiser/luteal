@@ -4,6 +4,8 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import dagger.hilt.android.AndroidEntryPoint
@@ -90,7 +92,9 @@ class NotificationAlarmReceiver : BroadcastReceiver() {
                     NotificationType.LATE_CYCLE -> 2003
                 }
 
-                NotificationManagerCompat.from(context).notify(notificationId, notification)
+                if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                    NotificationManagerCompat.from(context).notify(notificationId, notification)
+                }
 
                 // Reschedule next occurrence
                 notificationScheduler.reconcileAllSchedules()

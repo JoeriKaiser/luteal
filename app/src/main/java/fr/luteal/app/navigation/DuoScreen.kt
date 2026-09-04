@@ -319,6 +319,7 @@ private fun InvitationPendingSection(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                val duoCodeLabel = stringResource(R.string.duo_code_label)
                 LutealSecondaryButton(
                     text = stringResource(
                         if (copied) R.string.duo_code_copied else R.string.duo_code_copy
@@ -327,7 +328,7 @@ private fun InvitationPendingSection(
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
                         if (clipboard != null) {
                             val clip = android.content.ClipData.newPlainText(
-                                context.getString(R.string.duo_code_label),
+                                duoCodeLabel,
                                 code
                             ).apply {
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
