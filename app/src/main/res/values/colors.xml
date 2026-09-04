@@ -1,21 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <!--
-      Cold-start colours. These must track the Compose theme in
-      core/designsystem/theme/Color.kt: the window and splash background are
-      what the user sees before the first frame, so a mismatch reads as a
-      flash. Night values live in values-night/colors.xml.
-    -->
+    
     <color name="luteal_window_background">#F1EDE1</color>
     <color name="luteal_splash_background">#F1EDE1</color>
-    <!-- Evergreen40. Legible on the linen splash background. -->
+    
     <color name="luteal_splash_mark">#235B4E</color>
 
-    <!-- Resource-backed Glance palette, kept in step with Color.kt. -->
+    
     <color name="widget_surface">#FCFAF5</color>
     <color name="widget_text_primary">#252B27</color>
     <color name="widget_text_supporting">#555D58</color>
     <color name="widget_accent">#235B4E</color>
-    <color name="widget_estimate">#755B45</color>
     <color name="widget_outline">#D6D2C8</color>
 </resources>

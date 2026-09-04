@@ -8,6 +8,7 @@ import fr.luteal.app.widget.WidgetDataObserver
 import fr.luteal.app.widget.WidgetWorkScheduler
 import fr.luteal.app.notification.NotificationChannelManager
 import dagger.hilt.android.HiltAndroidApp
+import org.acra.ReportField
 import org.acra.config.dialog
 import org.acra.config.mailSender
 import org.acra.data.StringFormat
@@ -35,6 +36,19 @@ class LutealApp : Application(), Configuration.Provider {
         initAcra {
             buildConfigClass = BuildConfig::class.java
             reportFormat = StringFormat.JSON
+            reportContent = listOf(
+                ReportField.REPORT_ID,
+                ReportField.APP_VERSION_CODE,
+                ReportField.APP_VERSION_NAME,
+                ReportField.PACKAGE_NAME,
+                ReportField.ANDROID_VERSION,
+                ReportField.PHONE_MODEL,
+                ReportField.BRAND,
+                ReportField.PRODUCT,
+                ReportField.STACK_TRACE,
+                ReportField.USER_COMMENT,
+                ReportField.USER_CRASH_DATE
+            )
             dialog {
                 text = getString(R.string.crash_dialog_text)
                 title = getString(R.string.crash_dialog_title)

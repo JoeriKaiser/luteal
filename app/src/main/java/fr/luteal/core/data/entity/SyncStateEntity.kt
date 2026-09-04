@@ -1,6 +1,7 @@
 package fr.luteal.core.data.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
@@ -10,7 +11,12 @@ import androidx.room.PrimaryKey
  *
  * Replaces the former cycle-only `cycle_sync_state` table (v3).
  */
-@Entity(tableName = "sync_state")
+@Entity(
+    tableName = "sync_state",
+    indices = [
+        Index(value = ["dirty", "entityType"])
+    ]
+)
 data class SyncStateEntity(
     @PrimaryKey val entityId: String,
     val entityType: String,

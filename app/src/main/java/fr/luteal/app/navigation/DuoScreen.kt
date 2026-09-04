@@ -293,6 +293,7 @@ private fun InvitationPendingSection(
 ) {
     val context = LocalContext.current
     var copied by remember { mutableStateOf(false) }
+    val duoCodeLabel = stringResource(R.string.duo_code_label)
 
     LutealCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {

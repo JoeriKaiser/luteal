@@ -1,11 +1,13 @@
 package fr.luteal.app.notification
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.content.ContextCompat
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import dagger.hilt.android.AndroidEntryPoint
@@ -92,8 +94,14 @@ class NotificationAlarmReceiver : BroadcastReceiver() {
                     NotificationType.LATE_CYCLE -> 2003
                 }
 
-                if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-                    NotificationManagerCompat.from(context).notify(notificationId, notification)
+                val hasPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                if (hasPermission) {
+                    try {
+                        NotificationManagerCompat.from(context).notify(notificationId, notification)
+                    } catch (_: SecurityException) {
+                        // Suppressed if runtime notification permission was concurrently revoked
+                    }
                 }
 
                 // Reschedule next occurrence

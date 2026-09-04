@@ -28,18 +28,91 @@ class RoomSchemaHarnessTest {
 
     @Test
     fun latestSchemaCreatesAndValidates() {
-        // Creating at version 7 validates the freshly created file against the
-        // exported 7.json: any entity/annotation drift fails here.
-        helper.createDatabase(TEST_DB, 7).use { db ->
+        helper.createDatabase(TEST_DB, 8).use { db ->
             db.query("SELECT count(*) FROM sqlite_master WHERE type='table'").use { cursor ->
                 assertTrue(cursor.moveToFirst())
                 assertTrue(cursor.getInt(0) > 0)
             }
         }
+        helper.runMigrationsAndValidate(TEST_DB, 8, true).close()
+    }
 
-        // Re-opening validates the on-disk file again through the full
-        // configuration path (tables, indices, foreign keys).
-        helper.runMigrationsAndValidate(TEST_DB, 7, true).close()
+    @Test
+    fun migrate1To2() {
+        helper.createDatabase(TEST_DB, 1).close()
+        helper.runMigrationsAndValidate(TEST_DB, 2, true, LutealDatabase.MIGRATION_1_2).close()
+    }
+
+    @Test
+    fun migrate2To3() {
+        helper.createDatabase(TEST_DB, 2).close()
+        helper.runMigrationsAndValidate(TEST_DB, 3, true, LutealDatabase.MIGRATION_2_3).close()
+    }
+
+    @Test
+    fun migrate3To4() {
+        helper.createDatabase(TEST_DB, 3).use { db ->
+            db.execSQL(
+                "INSERT INTO cycle_sync_state (cycleId, clientRev, createdAtEpochMillis, updatedAtEpochMillis, dirty) " +
+                    "VALUES ('c1', 'rev1', 1000, 2000, 1)"
+            )
+        }
+        helper.runMigrationsAndValidate(TEST_DB, 4, true, LutealDatabase.MIGRATION_3_4).use { db ->
+            db.query("SELECT * FROM sync_state WHERE entityId = 'c1'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+            }
+        }
+    }
+
+    @Test
+    fun migrate4To5() {
+        helper.createDatabase(TEST_DB, 4).close()
+        helper.runMigrationsAndValidate(TEST_DB, 5, true, LutealDatabase.MIGRATION_4_5).close()
+    }
+
+    @Test
+    fun migrate5To6() {
+        helper.createDatabase(TEST_DB, 5).use { db ->
+            db.execSQL(
+                "INSERT INTO cycles (id, startDate, periodDaysJson, averageLengthDays, lutealPhaseLengthDays, isSynced) " +
+                    "VALUES ('c1', '2026-08-01', '[]', 28, 14, 0)"
+            )
+        }
+        helper.runMigrationsAndValidate(TEST_DB, 6, true, LutealDatabase.MIGRATION_5_6).use { db ->
+            db.query("SELECT isExcludedFromEstimates, exclusionReason FROM cycles WHERE id = 'c1'").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                org.junit.Assert.assertEquals(0, cursor.getInt(0))
+            }
+        }
+    }
+
+    @Test
+    fun migrate6To7() {
+        helper.createDatabase(TEST_DB, 6).close()
+        helper.runMigrationsAndValidate(TEST_DB, 7, true, LutealDatabase.MIGRATION_6_7).close()
+    }
+
+    @Test
+    fun migrate7To8() {
+        helper.createDatabase(TEST_DB, 7).close()
+        helper.runMigrationsAndValidate(TEST_DB, 8, true, LutealDatabase.MIGRATION_7_8).close()
+    }
+
+    @Test
+    fun migrateAll_1To8() {
+        helper.createDatabase(TEST_DB, 1).close()
+        helper.runMigrationsAndValidate(
+            TEST_DB,
+            8,
+            true,
+            LutealDatabase.MIGRATION_1_2,
+            LutealDatabase.MIGRATION_2_3,
+            LutealDatabase.MIGRATION_3_4,
+            LutealDatabase.MIGRATION_4_5,
+            LutealDatabase.MIGRATION_5_6,
+            LutealDatabase.MIGRATION_6_7,
+            LutealDatabase.MIGRATION_7_8
+        ).close()
     }
 
     companion object {

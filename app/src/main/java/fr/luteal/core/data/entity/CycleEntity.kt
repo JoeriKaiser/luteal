@@ -1,9 +1,16 @@
 package fr.luteal.core.data.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "cycles")
+@Entity(
+    tableName = "cycles",
+    indices = [
+        Index(value = ["startDate"]),
+        Index(value = ["endDate"])
+    ]
+)
 data class CycleEntity(
     @PrimaryKey val id: String,
     val startDate: String,

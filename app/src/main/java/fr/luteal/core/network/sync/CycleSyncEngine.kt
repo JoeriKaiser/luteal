@@ -1,5 +1,7 @@
 package fr.luteal.core.network.sync
 
+import androidx.room.withTransaction
+import fr.luteal.core.data.local.LutealDatabase
 import fr.luteal.core.data.entity.SyncStateEntity
 import fr.luteal.core.data.local.BiomarkerDao
 import fr.luteal.core.data.local.DailyEntryDao
@@ -126,7 +128,8 @@ class CycleSyncEngine(
     private val credentialStore: SyncCredentialStore,
     private val apiClientFactory: FolicularApiClientFactory,
     private val cursorStore: SyncCursorStore,
-    private val recordSealer: RecordSealer
+    private val recordSealer: RecordSealer,
+    private val database: LutealDatabase? = null
 ) {
 
     suspend fun sync(): SyncReport {
@@ -522,6 +525,14 @@ class CycleSyncEngine(
     private data class PageOutcome(val recordsApplied: Int, val tombstonesApplied: Int)
 
     private suspend fun applyPage(changes: List<PullChangeWire>): PageOutcome {
+        return if (database != null) {
+            database.withTransaction { applyPageInternal(changes) }
+        } else {
+            applyPageInternal(changes)
+        }
+    }
+
+    private suspend fun applyPageInternal(changes: List<PullChangeWire>): PageOutcome {
         val localCyclesById = cycleRepository.getCyclesOnce().associateBy { it.id }
 
         // Decode live bleeding observations for cycle period-day association.

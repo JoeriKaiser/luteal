@@ -225,6 +225,7 @@ fun JournalScreen(
         }
 
         item {
+            @Suppress("DEPRECATION")
             ScrollableTabRow(
                 selectedTabIndex = viewMode.ordinal,
                 containerColor = MaterialTheme.colorScheme.surface,
@@ -645,9 +646,9 @@ private fun SelectedDayInspectionCard(
 
             if (hasObservations) {
                 val levels = listOfNotNull(
-                    entry?.painLevel?.let { stringResource(R.string.level_label_pain) to it },
-                    entry?.moodLevel?.let { stringResource(R.string.level_label_mood) to it },
-                    entry?.energyLevel?.let { stringResource(R.string.level_label_energy) to it }
+                    entry.painLevel?.let { stringResource(R.string.level_label_pain) to it },
+                    entry.moodLevel?.let { stringResource(R.string.level_label_mood) to it },
+                    entry.energyLevel?.let { stringResource(R.string.level_label_energy) to it }
                 )
                 if (levels.isNotEmpty()) {
                     FlowRow(
@@ -660,7 +661,7 @@ private fun SelectedDayInspectionCard(
                     }
                 }
 
-                val trailing = entry?.let { journalEntryTrailingSummary(it) }.orEmpty()
+                val trailing = journalEntryTrailingSummary(entry)
                 if (trailing.isNotEmpty()) {
                     Text(
                         text = trailing,
@@ -669,9 +670,9 @@ private fun SelectedDayInspectionCard(
                     )
                 }
 
-                if (!entry?.notes.isNullOrBlank()) {
+                if (entry.notes.isNotBlank()) {
                     Text(
-                        text = entry?.notes.orEmpty(),
+                        text = entry.notes,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

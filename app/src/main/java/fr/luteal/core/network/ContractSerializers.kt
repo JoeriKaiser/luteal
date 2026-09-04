@@ -1,5 +1,6 @@
 package fr.luteal.core.network
 
+import fr.luteal.core.network.contract.models.EntityType
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -51,6 +52,20 @@ object OffsetDateTimeSerializer : KSerializer<OffsetDateTime> {
 
     override fun deserialize(decoder: Decoder): OffsetDateTime =
         OffsetDateTime.parse(decoder.decodeString(), DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+}
+
+object SafeEntityTypeSerializer : KSerializer<EntityType?> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("fr.luteal.core.network.SafeEntityType", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: EntityType?) {
+        encoder.encodeString(value?.value ?: "unknown")
+    }
+
+    override fun deserialize(decoder: Decoder): EntityType? {
+        val raw = decoder.decodeString()
+        return EntityType.entries.firstOrNull { it.value == raw }
+    }
 }
 
 val ContractSerializersModule: SerializersModule = SerializersModule {

@@ -62,8 +62,8 @@ import fr.luteal.core.model.LongitudinalCycleStats
 fun CycleVariabilityVisualizer(
     stats: LongitudinalCycleStats,
     onManageExclusion: (String) -> Unit,
-    onStartPeriod: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onStartPeriod: () -> Unit = {}
 ) {
     var selectedCycleItem by remember { mutableStateOf<LongitudinalCycleItem?>(null) }
 

@@ -25,7 +25,7 @@ import fr.luteal.core.data.entity.UserProfileEntity
         DuoWidgetCacheEntity::class,
         BiomarkerObservationEntity::class
     ],
-    version = 7,
+    version = 8,
     // Exported to app/schemas (room.schemaLocation) so MigrationTestHelper
     // can validate future migrations against the real schema history.
     exportSchema = true
@@ -152,6 +152,15 @@ abstract class LutealDatabase : RoomDatabase() {
                     )
                     """.trimIndent()
                 )
+            }
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_symptom_logs_date` ON `symptom_logs` (`date`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_sync_state_dirty_entityType` ON `sync_state` (`dirty`, `entityType`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_cycles_startDate` ON `cycles` (`startDate`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_cycles_endDate` ON `cycles` (`endDate`)")
             }
         }
     }

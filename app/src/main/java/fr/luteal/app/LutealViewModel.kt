@@ -152,8 +152,10 @@ class LutealViewModel @Inject constructor(
                         } else {
                             HtmlReportBuilder.writeHtmlToStream(data, stream)
                         }
-                    }
+                    } ?: throw IllegalStateException("Cannot open output stream for URI")
                 }
+            }.onFailure {
+                operationState.update { it.copy(failed = true) }
             }
         }
     }

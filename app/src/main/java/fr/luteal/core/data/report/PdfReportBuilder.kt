@@ -67,16 +67,62 @@ object PdfReportBuilder {
             style = Paint.Style.FILL
         }
 
-        val pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 1).create()
-        val page = document.startPage(pageInfo)
-        val canvas: Canvas = page.canvas
+        val title = if (isFr) "Récapitulatif de consultation médicale" else "Clinical Consultation Summary Report"
+        val footerY = PAGE_HEIGHT - MARGIN - 15f
+        val disclaimerText = if (isFr) {
+            "Document purement descriptif établi à partir des observations saisies par la personne. Ne constitue pas un diagnostic médical."
+        } else {
+            "Descriptive document generated from user observations. Does not constitute a clinical diagnosis or interpretation."
+        }
+
+        var pageNumber = 1
+        var page = document.startPage(PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNumber).create())
+        var canvas: Canvas = page.canvas
 
         var y = MARGIN + 10f
+
+        fun drawFooter(c: Canvas, num: Int) {
+            c.drawLine(MARGIN, footerY - 5f, MARGIN + CONTENT_WIDTH, footerY - 5f, linePaint)
+            c.drawText(disclaimerText, MARGIN, footerY + 8f, secondaryPaint)
+            c.drawText("$num", MARGIN + CONTENT_WIDTH - 15f, footerY + 8f, secondaryPaint)
+        }
+
+        fun drawTableHeader(c: Canvas, atY: Float) {
+            c.drawRect(MARGIN, atY - 10f, MARGIN + CONTENT_WIDTH, atY + 4f, boxPaint)
+            c.drawText(if (isFr) "Symptôme" else "Symptom", MARGIN + 6f, atY, boldPaint)
+            c.drawText(if (isFr) "Total" else "Total", MARGIN + 220f, atY, boldPaint)
+            c.drawText(if (isFr) "Règles" else "Menses", MARGIN + 310f, atY, boldPaint)
+            c.drawText(if (isFr) "Hors règles" else "Non-menses", MARGIN + 400f, atY, boldPaint)
+        }
+
+        fun newPage(isTableContinuation: Boolean = false) {
+            drawFooter(canvas, pageNumber)
+            document.finishPage(page)
+            pageNumber++
+            page = document.startPage(PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNumber).create())
+            canvas = page.canvas
+            y = MARGIN + 10f
+            canvas.drawText("LUTEAL", MARGIN, y, secondaryPaint)
+            y += 14f
+            canvas.drawText(title, MARGIN, y, headerPaint)
+            y += 10f
+            canvas.drawLine(MARGIN, y, MARGIN + CONTENT_WIDTH, y, linePaint)
+            y += 16f
+            if (isTableContinuation) {
+                drawTableHeader(canvas, y)
+                y += 15f
+            }
+        }
+
+        fun ensureSpace(needed: Float, isTableContinuation: Boolean = false) {
+            if (y + needed > footerY - 12f) {
+                newPage(isTableContinuation)
+            }
+        }
 
         // Brand & Header
         canvas.drawText("LUTEAL", MARGIN, y, secondaryPaint)
         y += 18f
-        val title = if (isFr) "Récapitulatif de consultation médicale" else "Clinical Consultation Summary Report"
         canvas.drawText(title, MARGIN, y, titlePaint)
         y += 14f
 
@@ -92,6 +138,7 @@ object PdfReportBuilder {
         y += 20f
 
         // Section 1: Cycle Statistics
+        ensureSpace(60f)
         canvas.drawText(if (isFr) "1. Synthèse des cycles" else "1. Cycle Overview", MARGIN, y, headerPaint)
         y += 14f
 
@@ -117,6 +164,7 @@ object PdfReportBuilder {
         y += (metrics.size / 3 * 16f) + 16f
 
         // Section 2: Bleeding & Pain summary
+        ensureSpace(80f)
         canvas.drawText(if (isFr) "2. Saignements et Douleurs" else "2. Bleeding & Pain Dynamics", MARGIN, y, headerPaint)
         y += 14f
 
@@ -130,6 +178,7 @@ object PdfReportBuilder {
         )
 
         for (metric in healthMetrics) {
+            ensureSpace(14f)
             canvas.drawText("• $metric", MARGIN + 4f, y, textPaint)
             y += 14f
         }
@@ -137,19 +186,15 @@ object PdfReportBuilder {
 
         // Section 3: Symptom Frequency Matrix
         if (data.symptomFrequencies.isNotEmpty()) {
+            ensureSpace(40f)
             canvas.drawText(if (isFr) "3. Fréquence des symptômes" else "3. Symptom Frequencies", MARGIN, y, headerPaint)
             y += 14f
 
-            // Table header
-            canvas.drawRect(MARGIN, y - 10f, MARGIN + CONTENT_WIDTH, y + 4f, boxPaint)
-            canvas.drawText(if (isFr) "Symptôme" else "Symptom", MARGIN + 6f, y, boldPaint)
-            canvas.drawText(if (isFr) "Total" else "Total", MARGIN + 220f, y, boldPaint)
-            canvas.drawText(if (isFr) "Règles" else "Menses", MARGIN + 310f, y, boldPaint)
-            canvas.drawText(if (isFr) "Hors règles" else "Non-menses", MARGIN + 400f, y, boldPaint)
+            drawTableHeader(canvas, y)
             y += 15f
 
-            val displaySymptoms = data.symptomFrequencies.take(8)
-            for (sym in displaySymptoms) {
+            for (sym in data.symptomFrequencies) {
+                ensureSpace(14f, isTableContinuation = true)
                 val name = if (isFr) sym.symptomNameFr else sym.symptomNameEn
                 canvas.drawText(name, MARGIN + 6f, y, textPaint)
                 canvas.drawText("${sym.totalOccurrences} j", MARGIN + 220f, y, textPaint)
@@ -162,11 +207,12 @@ object PdfReportBuilder {
 
         // Section 4: Notes (if included)
         if (data.notes.isNotEmpty()) {
+            ensureSpace(30f)
             canvas.drawText(if (isFr) "4. Notes et observations" else "4. Notes & Observations", MARGIN, y, headerPaint)
             y += 14f
 
-            val displayNotes = data.notes.take(5)
-            for (note in displayNotes) {
+            for (note in data.notes) {
+                ensureSpace(14f)
                 val truncatedNote = if (note.notes.length > 70) note.notes.take(67) + "…" else note.notes
                 canvas.drawText("${note.date} : $truncatedNote", MARGIN + 4f, y, textPaint)
                 y += 12f
@@ -174,16 +220,7 @@ object PdfReportBuilder {
             y += 10f
         }
 
-        // Disclaimer at footer
-        val footerY = PAGE_HEIGHT - MARGIN - 15f
-        canvas.drawLine(MARGIN, footerY - 5f, MARGIN + CONTENT_WIDTH, footerY - 5f, linePaint)
-        val disclaimerText = if (isFr) {
-            "Document purement descriptif établi à partir des observations saisies par la personne. Ne constitue pas un diagnostic médical."
-        } else {
-            "Descriptive document generated from user observations. Does not constitute a clinical diagnosis or interpretation."
-        }
-        canvas.drawText(disclaimerText, MARGIN, footerY + 8f, secondaryPaint)
-
+        drawFooter(canvas, pageNumber)
         document.finishPage(page)
         document.writeTo(outputStream)
         document.close()
