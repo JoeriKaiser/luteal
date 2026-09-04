@@ -50,7 +50,7 @@ class OkHttpFolicularApiClient(
             .build()
         val response = httpClient.newCall(request).execute()
         response.use { resp ->
-            val text = resp.body?.string().orEmpty()
+            val text = resp.body.string()
             if (!resp.isSuccessful) throw resp.toApiException(text)
             ContractJson.decodeFromString(Register201Response.serializer(), text)
         }
@@ -67,7 +67,7 @@ class OkHttpFolicularApiClient(
                 .post(body.toRequestBody(jsonMediaType))
                 .build()
             httpClient.newCall(request).execute().use { resp ->
-                val text = resp.body?.string().orEmpty()
+                val text = resp.body.string()
                 if (!resp.isSuccessful) throw resp.toApiException(text)
                 val parsed = ContractJson.decodeFromString(AddDeviceResponseWire.serializer(), text)
                 AddDeviceResult(
@@ -87,7 +87,7 @@ class OkHttpFolicularApiClient(
                 .build()
             val response = httpClient.newCall(request).execute()
             response.use { resp ->
-                val text = resp.body?.string().orEmpty()
+                val text = resp.body.string()
                 if (!resp.isSuccessful) throw resp.toApiException(text)
                 text.toPushResultWire()
             }
@@ -102,7 +102,7 @@ class OkHttpFolicularApiClient(
                 .build()
             val response = httpClient.newCall(request).execute()
             response.use { resp ->
-                val text = resp.body?.string().orEmpty()
+                val text = resp.body.string()
                 if (!resp.isSuccessful) throw resp.toApiException(text)
                 text.toPullResultWire()
             }
@@ -118,7 +118,7 @@ class OkHttpFolicularApiClient(
                 .post(EMPTY_BODY)
                 .build()
             httpClient.newCall(request).execute().use { resp ->
-                val text = resp.body?.string().orEmpty()
+                val text = resp.body.string()
                 if (!resp.isSuccessful) throw resp.toApiException(text)
                 ContractJson.decodeFromString(Invitation.serializer(), text)
             }
@@ -135,7 +135,7 @@ class OkHttpFolicularApiClient(
                 .post(body.toRequestBody(jsonMediaType))
                 .build()
             httpClient.newCall(request).execute().use { resp ->
-                val text = resp.body?.string().orEmpty()
+                val text = resp.body.string()
                 if (!resp.isSuccessful) throw resp.toApiException(text)
                 ContractJson.decodeFromString(AcceptLink201Response.serializer(), text)
             }
@@ -149,7 +149,7 @@ class OkHttpFolicularApiClient(
                 .get()
                 .build()
             httpClient.newCall(request).execute().use { resp ->
-                val text = resp.body?.string().orEmpty()
+                val text = resp.body.string()
                 if (!resp.isSuccessful) throw resp.toApiException(text)
                 ContractJson.decodeFromString(ListLinks200Response.serializer(), text)
             }
@@ -167,7 +167,7 @@ class OkHttpFolicularApiClient(
             .patch(body.toRequestBody(jsonMediaType))
             .build()
         httpClient.newCall(request).execute().use { resp ->
-            val text = resp.body?.string().orEmpty()
+            val text = resp.body.string()
             if (!resp.isSuccessful) throw resp.toApiException(text)
         }
     }
@@ -180,7 +180,7 @@ class OkHttpFolicularApiClient(
                 .delete()
                 .build()
             httpClient.newCall(request).execute().use { resp ->
-                val text = resp.body?.string().orEmpty()
+                val text = resp.body.string()
                 if (!resp.isSuccessful) throw resp.toApiException(text)
             }
         }
@@ -192,7 +192,7 @@ class OkHttpFolicularApiClient(
                 .get()
                 .build()
             httpClient.newCall(request).execute().use { resp ->
-                val text = resp.body?.string().orEmpty()
+                val text = resp.body.string()
                 if (!resp.isSuccessful) throw resp.toApiException(text)
                 // The generated DuoView cannot decode the base64 payload and
                 // message ciphertexts (see DuoWire.kt); go through the wire
@@ -212,7 +212,7 @@ class OkHttpFolicularApiClient(
                 .put(body.toRequestBody(jsonMediaType))
                 .build()
             httpClient.newCall(request).execute().use { resp ->
-                if (!resp.isSuccessful) throw resp.toApiException(resp.body?.string().orEmpty())
+                if (!resp.isSuccessful) throw resp.toApiException(resp.body.string())
             }
         }
     override suspend fun createSupportRequest(
@@ -228,7 +228,7 @@ class OkHttpFolicularApiClient(
             .post(body.toRequestBody(jsonMediaType))
             .build()
         httpClient.newCall(request).execute().use { resp ->
-            val text = resp.body?.string().orEmpty()
+            val text = resp.body.string()
             if (!resp.isSuccessful) throw resp.toApiException(text)
             ContractJson.decodeFromString(SupportRequestWire.serializer(), text).toModel()
         }
@@ -241,9 +241,9 @@ class OkHttpFolicularApiClient(
                 .header("Authorization", "Bearer $deviceToken")
                 .patch(EMPTY_BODY)
                 .build()
-            httpClient.newCall(request).execute().use { resp ->
-                val text = resp.body?.string().orEmpty()
-                if (!resp.isSuccessful) throw resp.toApiException(text)
+        httpClient.newCall(request).execute().use { resp ->
+            val text = resp.body.string()
+            if (!resp.isSuccessful) throw resp.toApiException(text)
             }
         }
 
