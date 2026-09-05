@@ -86,13 +86,12 @@ fun AppLockScreen(
 ) {
     BackHandler(enabled = true) { }
     var enteredPin by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var incorrectAttemptsRemaining by remember { mutableStateOf<Int?>(null) }
     var currentLockoutSeconds by remember(remainingLockoutSeconds) { mutableIntStateOf(remainingLockoutSeconds) }
 
     val shakeOffset = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
-    val context = LocalContext.current
 
     // Handle lockout countdown timer
     LaunchedEffect(currentLockoutSeconds) {
@@ -101,7 +100,7 @@ fun AppLockScreen(
                 delay(1000L)
                 currentLockoutSeconds -= 1
             }
-            errorMessage = null
+            incorrectAttemptsRemaining = null
         }
     }
 
@@ -140,17 +139,14 @@ fun AppLockScreen(
             val result = onVerifyPin(pin)
             when (result) {
                 is PinVerificationResult.Success -> {
-                    errorMessage = null
+                    incorrectAttemptsRemaining = null
                     enteredPin = ""
                 }
                 is PinVerificationResult.Incorrect -> {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     triggerShake()
                     enteredPin = ""
-                    errorMessage = context.getString(
-                        R.string.lock_incorrect_pin,
-                        result.remainingAttemptsBeforeLockout
-                    )
+                    incorrectAttemptsRemaining = result.remainingAttemptsBeforeLockout
                 }
                 is PinVerificationResult.LockedOut -> {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -176,8 +172,7 @@ fun AppLockScreen(
     fun onBackspacePress() {
         if (isLockedOut || enteredPin.isEmpty()) return
         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        enteredPin = enteredPin.dropLast(1)
-        errorMessage = null
+        incorrectAttemptsRemaining = null
     }
 
     Surface(
@@ -272,9 +267,9 @@ fun AppLockScreen(
                         textAlign = TextAlign.Center,
                         fontWeight = FontWeight.SemiBold
                     )
-                } else if (errorMessage != null) {
+                } else if (incorrectAttemptsRemaining != null) {
                     Text(
-                        text = errorMessage.orEmpty(),
+                        text = stringResource(R.string.lock_incorrect_pin, incorrectAttemptsRemaining ?: 0),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error,
                         textAlign = TextAlign.Center

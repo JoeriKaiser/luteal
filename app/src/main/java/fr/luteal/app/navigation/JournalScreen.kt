@@ -38,10 +38,13 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeviceThermostat
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
+import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.Today
 import androidx.compose.material.icons.rounded.WaterDrop
 import fr.luteal.core.model.Cycle
+import fr.luteal.core.model.CyclePhase
+import fr.luteal.core.model.SymptomPatternCalculator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -99,7 +102,8 @@ enum class JournalViewMode {
     CALENDAR,
     TIMELINE,
     VARIABILITY,
-    THERMAL
+    THERMAL,
+    PATTERNS
 }
 
 @Composable
@@ -292,6 +296,22 @@ fun JournalScreen(
                         )
                     }
                 )
+                Tab(
+                    selected = viewMode == JournalViewMode.PATTERNS,
+                    onClick = { viewMode = JournalViewMode.PATTERNS },
+                    text = {
+                        Text(
+                            text = stringResource(R.string.journal_view_patterns),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Rounded.Insights,
+                            contentDescription = null
+                        )
+                    }
+                )
             }
         }
 
@@ -422,9 +442,13 @@ fun JournalScreen(
                     onStartPeriod = onStartPeriod
                 )
             }
-        } else {
+        } else if (viewMode == JournalViewMode.THERMAL) {
             item {
                 ThermalHistoryCard(state = state)
+            }
+        } else {
+            item {
+                ObservationPatternsCard(state = state)
             }
         }
     }
@@ -1017,3 +1041,124 @@ private fun JournalDatePickerDialog(
         DatePicker(state = state)
     }
 }
+
+@Composable
+private fun ObservationPatternsCard(state: LutealUiState) {
+    val patterns = remember(state.cycles, state.entries) {
+        SymptomPatternCalculator.calculate(state.cycles, state.entries)
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.md)) {
+        LutealCard(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
+                Text(
+                    text = stringResource(R.string.journal_patterns_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = stringResource(R.string.journal_patterns_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        if (patterns.isEmpty()) {
+            LutealCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
+                    Text(
+                        text = stringResource(R.string.journal_patterns_empty_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = stringResource(R.string.journal_patterns_empty_body),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            patterns.forEach { pattern ->
+                val label = symptomDisplayName(pattern.symptomId)
+                LutealCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Text(
+                                text = stringResource(
+                                    R.string.journal_patterns_total_occurrences,
+                                    pattern.totalOccurrences,
+                                    pattern.cycleCount
+                                ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Text(
+                            text = stringResource(
+                                R.string.journal_patterns_phase_breakdown,
+                                pattern.phaseBreakdown[CyclePhase.MENSTRUAL] ?: 0,
+                                pattern.phaseBreakdown[CyclePhase.FOLLICULAR] ?: 0,
+                                pattern.phaseBreakdown[CyclePhase.OVULATORY] ?: 0,
+                                pattern.phaseBreakdown[CyclePhase.LUTEAL] ?: 0
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        pattern.mostFrequentPhase?.let { topPhase ->
+                            Text(
+                                text = stringResource(
+                                    R.string.journal_patterns_most_frequent_phase,
+                                    journalPhaseLabel(topPhase),
+                                    pattern.phaseBreakdown[topPhase] ?: 0
+                                ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun symptomDisplayName(id: String): String = when (id) {
+    "cramps" -> stringResource(R.string.symptom_cramps)
+    "headache" -> stringResource(R.string.symptom_headache)
+    "abdominal_pain" -> stringResource(R.string.symptom_abdominal_pain)
+    "backache" -> stringResource(R.string.symptom_backache)
+    "muscle_aches" -> stringResource(R.string.symptom_muscle_aches)
+    "fatigue" -> stringResource(R.string.symptom_fatigue)
+    "sleep_issue" -> stringResource(R.string.symptom_sleep_issue)
+    "bloating" -> stringResource(R.string.symptom_bloating)
+    "nausea" -> stringResource(R.string.symptom_nausea)
+    "digestive_changes" -> stringResource(R.string.symptom_digestive_changes)
+    "breast_tenderness" -> stringResource(R.string.symptom_breast_tenderness)
+    "mood_changes" -> stringResource(R.string.symptom_mood_changes)
+    "anxiety" -> stringResource(R.string.symptom_anxiety)
+    "acne" -> stringResource(R.string.symptom_acne)
+    "pelvic_pain_outside_period" -> stringResource(R.string.symptom_pelvic_pain_outside_period)
+    else -> id
+}
+
+@Composable
+private fun journalPhaseLabel(phase: CyclePhase): String = stringResource(
+    when (phase) {
+        CyclePhase.MENSTRUAL -> R.string.phase_menstrual
+        CyclePhase.FOLLICULAR -> R.string.phase_follicular
+        CyclePhase.OVULATORY -> R.string.phase_ovulatory
+        CyclePhase.LUTEAL -> R.string.phase_luteal
+    }
+)

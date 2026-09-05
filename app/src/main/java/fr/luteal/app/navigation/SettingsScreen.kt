@@ -533,12 +533,14 @@ private fun SetPinDialog(
             }
         },
         confirmButton = {
+            val pinLengthError = stringResource(R.string.dialog_set_pin_error_length)
+            val pinMatchError = stringResource(R.string.dialog_set_pin_error_match)
             TextButton(
                 onClick = {
                     if (pin.length < 4) {
-                        error = context.getString(R.string.dialog_set_pin_error_length)
+                        error = pinLengthError
                     } else if (pin != confirmPin) {
-                        error = context.getString(R.string.dialog_set_pin_error_match)
+                        error = pinMatchError
                     } else {
                         onConfirm(pin)
                     }
@@ -795,6 +797,9 @@ private fun ChangePinDialog(
             }
         },
         confirmButton = {
+        val currentPinError = stringResource(R.string.dialog_change_pin_error_current)
+        val pinLengthError = stringResource(R.string.dialog_set_pin_error_length)
+        val pinMatchError = stringResource(R.string.dialog_set_pin_error_match)
         TextButton(
             enabled = !verifying,
             onClick = {
@@ -804,11 +809,11 @@ private fun ChangePinDialog(
                     val currentOk = onVerifyCurrent(currentPin)
                     when {
                         !currentOk ->
-                            error = context.getString(R.string.dialog_change_pin_error_current)
+                            error = currentPinError
                         newPin.length < 4 ->
-                            error = context.getString(R.string.dialog_set_pin_error_length)
+                            error = pinLengthError
                         newPin != confirmNewPin ->
-                            error = context.getString(R.string.dialog_set_pin_error_match)
+                            error = pinMatchError
                         else -> {
                             verifying = false
                             onConfirmNew(newPin)
@@ -872,25 +877,26 @@ private fun DisableLockDialog(
             }
         },
         confirmButton = {
-        TextButton(
-            enabled = !verifying,
-            onClick = {
-                if (verifying) return@TextButton
-                verifying = true
-                scope.launch {
-                    val success = onConfirm(pin)
-                    verifying = false
-                    if (!success) {
-                        error = context.getString(R.string.dialog_disable_lock_error)
+            val disableLockError = stringResource(R.string.dialog_disable_lock_error)
+            TextButton(
+                enabled = !verifying,
+                onClick = {
+                    if (verifying) return@TextButton
+                    verifying = true
+                    scope.launch {
+                        val success = onConfirm(pin)
+                        verifying = false
+                        if (!success) {
+                            error = disableLockError
+                        }
                     }
-                }
-            },
-            colors = ButtonDefaults.textButtonColors(
-                contentColor = MaterialTheme.colorScheme.error
-            )
-        ) {
-            Text(stringResource(R.string.dialog_disable_lock_action), fontWeight = FontWeight.Bold)
-        }
+                },
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Text(stringResource(R.string.dialog_disable_lock_action), fontWeight = FontWeight.Bold)
+            }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
@@ -1615,6 +1621,7 @@ private fun AccountCodeSection(state: SettingsSyncUiState, getAccountCode: () ->
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(vertical = LutealSpacing.xxs)
             )
+            val accountCodeTitle = stringResource(R.string.settings_sync_account_code_title)
             LutealSecondaryButton(
                 text = if (copied) stringResource(R.string.settings_sync_account_code_copied)
                 else stringResource(R.string.settings_sync_account_code_copy),
@@ -1622,7 +1629,7 @@ private fun AccountCodeSection(state: SettingsSyncUiState, getAccountCode: () ->
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
                     if (clipboard != null) {
                         val clip = android.content.ClipData.newPlainText(
-                            context.getString(R.string.settings_sync_account_code_title),
+                            accountCodeTitle,
                             accountCode
                         ).apply {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

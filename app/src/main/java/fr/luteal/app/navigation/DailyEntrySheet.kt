@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Remove
@@ -27,6 +28,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -79,6 +81,7 @@ import java.util.Locale
 fun DailyEntrySheet(
     date: LocalDate,
     existingEntry: DailyEntry?,
+    previousDayEntry: DailyEntry? = null,
     existingBiomarker: BiomarkerObservation? = null,
     temperatureUnit: TemperatureUnit = TemperatureUnit.CELSIUS,
     currentCycle: Cycle?,
@@ -145,6 +148,9 @@ fun DailyEntrySheet(
 
     val bleeding = bleedingName?.let(BleedingIntensity::valueOf)
     val selectedSymptoms = symptomIds.toSet()
+    val previousDaySymptoms = remember(previousDayEntry) {
+        previousDayEntry?.symptomIds.orEmpty()
+    }
     val currentBiomarker = remember(
         date, bbtHundredths, bbtTime, disturbanceNames, sensationName, textureName, lhName, hcgName, temperatureUnit
     ) {
@@ -361,6 +367,10 @@ fun DailyEntrySheet(
                         SymptomSelector(
                             selected = selectedSymptoms,
                             offeredSymptomIds = offeredSymptomIds,
+                            previousDaySymptoms = previousDaySymptoms,
+                            onCopyPreviousDay = {
+                                symptomIds = (selectedSymptoms + previousDaySymptoms).sorted()
+                            },
                             onToggle = { symptom ->
                                 symptomIds = if (symptom in selectedSymptoms) {
                                     (selectedSymptoms - symptom).sorted()
@@ -641,6 +651,8 @@ private enum class SymptomGroup(
 private fun SymptomSelector(
     selected: Set<String>,
     offeredSymptomIds: List<String>,
+    previousDaySymptoms: Set<String> = emptySet(),
+    onCopyPreviousDay: () -> Unit = {},
     onToggle: (String) -> Unit
 ) {
     val groups = remember(offeredSymptomIds) {
@@ -652,6 +664,28 @@ private fun SymptomSelector(
             text = stringResource(R.string.editor_symptoms),
             style = MaterialTheme.typography.titleSmall
         )
+        if (previousDaySymptoms.isNotEmpty() && !selected.containsAll(previousDaySymptoms)) {
+            FilterChip(
+                selected = false,
+                onClick = onCopyPreviousDay,
+                label = {
+                    Text(
+                        stringResource(
+                            R.string.editor_symptoms_copy_yesterday,
+                            previousDaySymptoms.size
+                        )
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Rounded.ContentCopy,
+                        contentDescription = null,
+                        modifier = Modifier.size(FilterChipDefaults.IconSize)
+                    )
+                },
+                shape = MaterialTheme.shapes.small
+            )
+        }
         groups.forEach { (group, ids) ->
             val symptomsInGroup = ids.mapNotNull { id ->
                 symptomLabel(id)?.let { id to it }

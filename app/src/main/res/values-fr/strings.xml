@@ -137,6 +137,7 @@
     <string name="phase_tip_luteal_sleep_routine">La hausse de progestérone peut fragmenter le sommeil. Une chambre fraîche et un rituel de coucher calme aident à préserver la qualité de vos nuits.</string>
     <string name="phase_tip_luteal_endo_pelvic_tension">Des tiraillements pelviens peuvent survenir en fin de phase lutéale. Des bains tièdes et une respiration abdominale lente aident à détendre le bas-ventre.</string>
     <string name="phase_tip_luteal_perimeno_sleep">En cas de sueurs nocturnes ou de sommeil agité avant les règles, privilégiez des vêtements respirants en plusieurs couches et aérez la chambre.</string>
+    <string name="phase_tip_luteal_digestive_comfort">En cas de sensibilité digestive ou de légères nausées avant les règles, fractionner les repas et boire régulièrement de l\'eau peut aider à préserver le confort digestif.</string>
 
     <string name="journal_title">Journal</string>
     <string name="journal_subtitle">Retrouvez les faits que vous avez enregistrés, jour après jour.</string>
@@ -192,6 +193,7 @@
     <string name="editor_optional_show">Ajouter d’autres observations ou une note</string>
     <string name="editor_optional_hide">Masquer les informations facultatives</string>
     <string name="editor_symptoms">Autres observations</string>
+    <string name="editor_symptoms_copy_yesterday">Reprendre les observations d\'hier (%1$d)</string>
     <string name="symptom_cramps">Crampes</string>
     <string name="symptom_headache">Mal de tête</string>
     <string name="symptom_abdominal_pain">Douleurs abdominales</string>
@@ -716,6 +718,14 @@
     <string name="hcg_positive">Positif</string>
     <string name="hcg_faint_uncertain">Douteux</string>
     <string name="journal_view_thermal">Thermique</string>
+    <string name="journal_view_patterns">Tendances</string>
+    <string name="journal_patterns_title">Tendances des observations</string>
+    <string name="journal_patterns_subtitle">Fréquence des symptômes enregistrés par phase du cycle. Purement descriptif, ne constitue ni un diagnostic ni une prédiction.</string>
+    <string name="journal_patterns_empty_title">Aucune observation enregistrée</string>
+    <string name="journal_patterns_empty_body">Les tendances apparaîtront ici au fur et à mesure de vos observations au fil des cycles.</string>
+    <string name="journal_patterns_total_occurrences">%1$d occurrences sur %2$d cycles</string>
+    <string name="journal_patterns_phase_breakdown">Règles : %1$d · Folliculaire : %2$d · Ovulatoire : %3$d · Lutéale : %4$d</string>
+    <string name="journal_patterns_most_frequent_phase">Majoritairement observé en phase %1$s (%2$d)</string>
     <string name="thermal_chart_title">Graphique thermique</string>
     <string name="thermal_chart_subtitle">Températures enregistrées pour le cycle en cours. Un décalage confirmé est rétrospectif, pas une prédiction de fertilité.</string>
     <string name="thermal_chart_cd">Graphique de température basale pour le cycle en cours</string>

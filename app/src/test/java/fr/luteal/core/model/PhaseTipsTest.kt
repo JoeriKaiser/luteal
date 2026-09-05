@@ -96,6 +96,18 @@ class PhaseTipsTest {
     }
 
     @Test
+    fun `recent nausea or digestive changes in luteal phase boosts digestive comfort tip`() {
+        val date = LocalDate.parse("2026-07-26")
+
+        val tip = PhaseTips.forDate(
+            phase = CyclePhase.LUTEAL,
+            date = date,
+            recentSymptomIds = setOf("nausea")
+        )
+        assertEquals("luteal_digestive_comfort", tip.id)
+    }
+
+    @Test
     fun `empty contexts never select condition-specific tips`() {
         val baseDate = LocalDate.parse("2026-07-01")
         (0..60).forEach { dayOffset ->
