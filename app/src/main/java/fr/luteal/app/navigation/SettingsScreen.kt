@@ -490,7 +490,8 @@ private fun SetPinDialog(
     var pin by remember { mutableStateOf("") }
     var confirmPin by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
-    val context = LocalContext.current
+    val errorLength = stringResource(R.string.dialog_set_pin_error_length)
+    val errorMatch = stringResource(R.string.dialog_set_pin_error_match)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -750,7 +751,9 @@ private fun ChangePinDialog(
     var confirmNewPin by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var verifying by remember { mutableStateOf(false) }
-    val context = LocalContext.current
+    val errorCurrent = stringResource(R.string.dialog_change_pin_error_current)
+    val errorLength = stringResource(R.string.dialog_set_pin_error_length)
+    val errorMatch = stringResource(R.string.dialog_set_pin_error_match)
     val scope = rememberCoroutineScope()
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -843,7 +846,7 @@ private fun DisableLockDialog(
     var pin by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var verifying by remember { mutableStateOf(false) }
-    val context = LocalContext.current
+    val errorDisable = stringResource(R.string.dialog_disable_lock_error)
     val scope = rememberCoroutineScope()
 
     AlertDialog(
@@ -1597,6 +1600,7 @@ private fun AccountCodeSection(state: SettingsSyncUiState, getAccountCode: () ->
     }
     val context = LocalContext.current
     var copied by remember { mutableStateOf(false) }
+    val accountCodeTitle = stringResource(R.string.settings_sync_account_code_title)
 
     Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
         Text(

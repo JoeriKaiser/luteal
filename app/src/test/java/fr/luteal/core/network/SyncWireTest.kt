@@ -167,4 +167,29 @@ class SyncWireTest {
         assertEquals(true, tombstone.deleted)
         assertNull(tombstone.openPayload(sealer))
     }
+
+    @Test
+    fun `pull result gracefully skips unknown entity type from newer backend`() {
+        val json = """
+            {
+              "changes": [
+                {
+                  "seq": 10,
+                  "entity_type": "future_unknown_entity_type",
+                  "entity_id": "019832e0-6c14-7000-8000-000000000001",
+                  "client_rev": "019832e0-6c14-7000-8000-000000000002",
+                  "deleted": false,
+                  "updated_at": "2026-07-01T08:00:00Z"
+                }
+              ],
+              "cursor": 500,
+              "has_more": false
+            }
+        """.trimIndent()
+
+        val result = json.toPullResultWire()
+        assertEquals(1, result.changes.size)
+        assertNull(result.changes[0].entityType)
+        assertNull(result.changes[0].openPayload(sealer))
+    }
 }

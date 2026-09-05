@@ -93,6 +93,7 @@ fun AppLockScreen(
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
 
+
     // Handle lockout countdown timer
     LaunchedEffect(currentLockoutSeconds) {
         if (currentLockoutSeconds > 0) {

@@ -58,7 +58,7 @@ data class PushRequestWire(
 
 @Serializable
 data class ConflictWire(
-    @SerialName("entity_type") val entityType: EntityType,
+    @Serializable(with = SafeEntityTypeSerializer::class) @SerialName("entity_type") val entityType: EntityType? = null,
     @Contextual @SerialName("entity_id") val entityId: UUID,
     @SerialName("reason") val reason: String,
     @Contextual @SerialName("current_client_rev") val currentClientRev: UUID,
@@ -80,7 +80,7 @@ data class PushResultWire(
 @Serializable
 data class PullChangeWire(
     @SerialName("seq") val seq: Long,
-    @SerialName("entity_type") val entityType: EntityType,
+    @Serializable(with = SafeEntityTypeSerializer::class) @SerialName("entity_type") val entityType: EntityType? = null,
     @Contextual @SerialName("entity_id") val entityId: UUID,
     @Contextual @SerialName("client_rev") val clientRev: UUID,
     @SerialName("deleted") val deleted: Boolean,
@@ -207,13 +207,15 @@ fun fr.luteal.core.network.mapping.BiomarkerObservationPayload.toPushChange(
 /** Opens a pulled change, or returns null for a tombstone. */
 fun PullChangeWire.openPayload(sealer: RecordSealer): JsonElement? {
     val sealed = ciphertext ?: return null
-    return sealer.open(entityType.value, entityId.toString(), clientRev.toString(), sealed)
+    val type = entityType ?: return null
+    return sealer.open(type.value, entityId.toString(), clientRev.toString(), sealed)
 }
 
 /** Opens the server's current state from a conflict, or null for a tombstone. */
 fun ConflictWire.openCurrent(sealer: RecordSealer): JsonElement? {
     val sealed = currentCiphertext ?: return null
+    val type = entityType ?: return null
     return sealer.open(
-        entityType.value, entityId.toString(), currentClientRev.toString(), sealed
+        type.value, entityId.toString(), currentClientRev.toString(), sealed
     )
 }

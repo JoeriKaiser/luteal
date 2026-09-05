@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">Luteal</string>
 
@@ -62,16 +62,10 @@
     <string name="nav_settings">Réglages</string>
 
     <string name="today_title">Aujourd’hui</string>
-    <string name="today_greeting">Votre suivi, en toute simplicité</string>
     <string name="cycle_day">Jour %1$d du cycle</string>
     <string name="cycle_day_caption">Jour du cycle</string>
-    <string name="cycle_started_on">Cycle commencé le %1$s</string>
     <string name="cycle_no_history_title">Commencez quand vous le souhaitez</string>
     <string name="cycle_no_history_body">Enregistrez le premier jour de vos règles pour démarrer votre historique. Vous pourrez ensuite le compléter jour après jour.</string>
-    <string name="action_start_period">Enregistrer le début des règles</string>
-    <string name="today_entry_title">Observations du jour</string>
-    <string name="today_entry_empty">Aucune observation enregistrée aujourd’hui.</string>
-    <string name="today_entry_complete">Vos observations sont enregistrées sur cet appareil.</string>
     <string name="action_log_today">Noter aujourd’hui</string>
     <string name="action_edit_today">Modifier les observations</string>
     <string name="estimate_title">Prochaines règles</string>
@@ -81,7 +75,6 @@
         <item quantity="many">Plage estimée à partir de %1$d intervalles de cycle enregistrés.</item>
         <item quantity="other">Plage estimée à partir de %1$d intervalles de cycle enregistrés.</item>
     </plurals>
-    <string name="estimate_unavailable">Une plage estimée apparaîtra après au moins deux débuts de cycle enregistrés.</string>
     <string name="estimate_disclaimer">Cette estimation repose uniquement sur votre historique enregistré et peut évoluer.</string>
     <string name="estimate_window_a11y">Fenêtre estimée de %1$d jours</string>
     <string name="recorded_label">Enregistré</string>
@@ -144,19 +137,10 @@
     <string name="journal_empty_title">Votre journal est encore vide</string>
     <string name="journal_empty_body">Ajoutez une première observation pour construire un historique personnel.</string>
     <string name="journal_today">Aujourd’hui</string>
-    <plurals name="journal_observation_count">
-        <item quantity="one">%1$d observation</item>
-        <item quantity="many">%1$d observations</item>
-        <item quantity="other">%1$d observations</item>
-    </plurals>
     <string name="journal_no_observation">Aucune observation</string>
     <string name="action_add_observation">Ajouter une observation</string>
     <string name="journal_choose_date">Choisir une date</string>
     <string name="journal_open_date">Ouvrir cette date</string>
-    <string name="journal_summary_bleeding">Saignements</string>
-    <string name="journal_summary_pain">Douleur %1$d/5</string>
-    <string name="journal_summary_mood">Humeur %1$d/5</string>
-    <string name="journal_summary_energy">Énergie %1$d/5</string>
     <plurals name="journal_summary_other_count">
         <item quantity="one">%1$d autre observation</item>
         <item quantity="many">%1$d autres observations</item>
@@ -183,7 +167,6 @@
     <string name="editor_pain">Douleur</string>
     <string name="editor_mood">Humeur</string>
     <string name="editor_energy">Énergie</string>
-    <string name="editor_scale_hint">1 signifie faible, 5 signifie élevé.</string>
     <string name="editor_pain_scale_support">1 : aucune, 5 : très forte</string>
     <string name="editor_mood_scale_support">1 : très difficile, 5 : très agréable</string>
     <string name="editor_energy_scale_support">1 : très basse, 5 : très élevée</string>
@@ -225,11 +208,8 @@
     <string name="editor_discard_body">Les modifications saisies pour cette date seront perdues.</string>
     <string name="editor_discard_confirm">Quitter sans enregistrer</string>
     <string name="editor_keep_editing">Continuer la saisie</string>
-    <string name="action_retry">Réessayer</string>
-
     <string name="duo_title">Duo</string>
     <string name="duo_subtitle">Préparez ce que vous souhaiterez partager, avant toute connexion.</string>
-    <string name="duo_local_status">Configuration locale</string>
     <string name="duo_not_connected_title">Aucun partenaire connecté</string>
     <string name="duo_not_connected_body">Créez une invitation ou saisissez le code de votre partenaire pour établir un lien. Vous choisirez ensuite ce que vous partagez, catégorie par catégorie, et vous pourrez le révoquer à tout moment.</string>
     <string name="duo_sharing_title">Ce que vous autorisez</string>
@@ -249,14 +229,6 @@
     <string name="duo_share_support_desc">Permettre le partage de demandes que vous formulez vous-même.</string>
     <string name="duo_preview_title">Aperçu partenaire</string>
     <string name="duo_preview_body">Cet aperçu montre seulement les catégories autorisées. Aucune donnée n’est transmise.</string>
-    <string name="duo_preview_hidden">Aucune donnée de suivi n’est visible avec les autorisations actuelles.</string>
-    <string name="duo_preview_cycle_day">Jour du cycle partagé : %1$d</string>
-    <string name="duo_preview_no_cycle">Aucun jour de cycle à partager</string>
-    <string name="duo_preview_estimate">Plage partagée : %1$s au %2$s</string>
-    <string name="duo_preview_mood">Humeur partagée : %1$d sur 5</string>
-    <string name="duo_preview_energy">Énergie partagée : %1$d sur 5</string>
-    <string name="duo_preview_support_ready">Demandes de soutien que vous formulez</string>
-    <string name="duo_preview_local_label">Aperçu local</string>
     <string name="duo_error_invalid_pairing_link">Lien de partage incomplet : utilisez le lien complet fourni par votre partenaire.</string>
     <string name="duo_private_notes_never_shared">Les notes privées ne sont jamais incluses dans le partage Duo.</string>
 
@@ -269,13 +241,11 @@
     <string name="settings_backup_body">Les données sensibles de Luteal ne sont pas incluses dans la sauvegarde cloud Android.</string>
     <string name="settings_sync_title">Synchronisation</string>
     <string name="settings_sync_body">Activez la synchronisation pour retrouver vos données sur vos appareils. Vos observations restent enregistrées sur cet appareil ; la synchronisation s’effectue en arrière-plan et ne bloque jamais l’application. Aucune connexion n’est établie sans votre activation.</string>
-    <string name="settings_sync_trial_body">Reliez cet appareil à un serveur folicular local pour tester la synchronisation des cycles. Vos données restent enregistrées sur cet appareil ; la synchronisation s’effectue en arrière-plan et ne bloque jamais l’application. Aucune connexion n’est établie sans votre activation.</string>
     <string name="sync_transport_notice">Vos observations sont chiffrées de bout en bout sur cet appareil avant tout envoi : le serveur ne conserve que des données illisibles pour lui. Il voit malgré tout la date de vos synchronisations et le nombre d’enregistrements. Votre code de compte est la seule clé : sans lui, personne ne peut déchiffrer vos données, y compris nous.</string>
     <string name="settings_sync_online_title">Mode en ligne</string>
     <string name="settings_sync_online_body">Active la synchronisation avec le serveur Luteal. Désactivée par défaut.</string>
     <string name="settings_sync_server_body">Par défaut, la synchronisation utilise le serveur officiel Luteal. Vous pouvez également renseigner l’adresse de votre propre instance folicular auto-hébergée.</string>
     <string name="settings_sync_base_url_label">Adresse du serveur</string>
-    <string name="settings_sync_base_url_default">http://10.0.2.2:8080</string>
     <string name="settings_sync_save">Enregistrer</string>
     <string name="settings_sync_now">Synchroniser maintenant</string>
     <string name="settings_sync_in_progress">Synchronisation en cours…</string>
@@ -292,10 +262,9 @@
     <string name="settings_recovery_action">Restaurer ce compte</string>
     <string name="settings_recovery_in_progress">Restauration en cours…</string>
     <string name="settings_recovery_success">Compte restauré. La synchronisation va récupérer votre historique.</string>
-    <string name="settings_recovery_error_already_linked">Cet appareil est déjà relié à un compte. Effacez les données locales avant de restaurer un autre compte.</string>
     <string name="settings_recovery_error_failed">La restauration a échoué. Vérifiez le code de compte et votre connexion.</string>
     <string name="settings_sync_last_success">Dernière synchronisation : %1$s</string>
-    <string name="sync_error_auth_rejected">Le serveur ne reconnaît plus cet appareil. Reconnectez le compte depuis Réglages > Synchronisation avec votre code de compte.</string>
+    <string name="sync_error_auth_rejected">Le serveur ne reconnaît plus cet appareil. Reconnectez le compte depuis Réglages &gt; Synchronisation avec votre code de compte.</string>
     <string name="settings_sync_last_error">Échec de la synchronisation : %1$s</string>
     <string name="settings_appearance_title">Apparence</string>
     <string name="settings_appearance_body">Le thème clair ou sombre suit le réglage de votre appareil.</string>
@@ -315,15 +284,8 @@
 
     <string name="backfill_title">Ajouter un cycle passé</string>
     <string name="backfill_body">Renseignez les dates de début de vos derniers cycles pour obtenir des estimations plus rapidement. Vous pouvez ajouter jusqu’à 3 mois d’historique.</string>
-    <string name="backfill_date_label">Date de début des règles</string>
     <string name="backfill_confirm">Ajouter ce cycle</string>
     <string name="backfill_action">Ajouter un cycle passé</string>
-    <string name="backfill_already_exists">Un cycle existe déjà à cette date.</string>
-
-
-    <string name="content_description_previous_day">Jour précédent</string>
-    <string name="content_description_next_day">Jour suivant</string>
-    <string name="content_description_selected_tab">Section sélectionnée : %1$s</string>
     <string name="onboarding_title">Bienvenue dans Luteal</string>
     <string name="onboarding_subtitle">Un suivi de cycle privé, hors-ligne et respectueux de vos données.</string>
     <string name="onboarding_welcome_step_title">Vos données restent sur cet appareil</string>
@@ -393,12 +355,7 @@
     <string name="onboarding_button_back">Retour</string>
     <string name="onboarding_button_start">Démarrer</string>
     <string name="onboarding_button_skip">Passer l’introduction</string>
-    <string name="action_start_period_today">Déclarer mes règles aujourd’hui</string>
-    <string name="action_start_period_today_desc">Démarre un nouveau cycle à la date d’aujourd’hui.</string>
-    <string name="action_log_daily_entry">Noter la journée</string>
-    <string name="action_edit_daily_entry">Modifier mes notes du jour</string>
     <string name="today_summary_title">Observations d’aujourd’hui</string>
-    <string name="today_summary_empty_title">Aucune observation enregistrée</string>
     <string name="today_summary_empty_body">Prenez un instant pour noter votre flux, vos ressentis ou votre niveau d’énergie.</string>
     <string name="today_bleeding_label">Flux : %1$s</string>
     <string name="today_pain_label">Douleur : %1$d/5</string>
@@ -416,9 +373,6 @@
     </plurals>
     <string name="estimate_in_progress">Plage des règles estimée en cours</string>
     <string name="action_start_period_short">Début des règles</string>
-    <string name="action_log_entry_short">Noter la journée</string>
-    <string name="today_summary_empty_short">Aucune observation saisie</string>
-    <string name="today_summary_open_hint">Ouvrir pour ajouter une observation</string>
     <string name="estimate_unavailable_short">En attente d’historique (2 cycles)</string>
     <string name="estimate_unavailable_hint">Enregistrez vos cycles au fur et à mesure, ou ajoutez vos derniers cycles passés pour obtenir une estimation.</string>
     <string name="estimate_out_of_range_short">Estimation indisponible pour vos cycles</string>
@@ -428,7 +382,6 @@
         <item quantity="many">Plage dépassée depuis %1$d jours</item>
         <item quantity="other">Plage dépassée depuis %1$d jours</item>
     </plurals>
-    <string name="cycle_no_history_short">Aucun cycle en cours</string>
     <string name="crash_dialog_title">Luteal a rencontré un problème</string>
     <string name="crash_dialog_text">L’application s’est arrêtée de manière inattendue. Vous pouvez envoyer un rapport anonyme pour nous aider à corriger ce problème. Aucune donnée de suivi n’est incluse.</string>
     <string name="crash_dialog_comment">Décrivez ce que vous faisiez (facultatif)</string>
@@ -473,9 +426,7 @@
     <string name="duo_support_kind_space">Espace</string>
     <string name="duo_refresh">Actualiser</string>
 
-    <!-- Calendar Screen & Grid -->
-    <string name="calendar_title">Calendrier</string>
-    <string name="calendar_subtitle">Vue mensuelle de vos cycles et observations</string>
+    
     <string name="calendar_view_calendar">Calendrier</string>
     <string name="calendar_view_list">Historique</string>
     <string name="calendar_previous_month">Mois précédent</string>
@@ -486,15 +437,9 @@
     <string name="calendar_legend_estimated_period">Plage estimée</string>
     <string name="calendar_legend_observation">Observations (douleur, humeur, etc.)</string>
     <string name="calendar_day_cd_recorded">%1$s, règles (%2$s)</string>
-    <string name="calendar_day_cd_estimated">%1$s, plage estimée de règles</string>
-    <string name="calendar_day_cd_observations">%1$s, %2$d observation(s)</string>
     <string name="calendar_day_empty_inspection">Aucune observation enregistrée pour cette journée.</string>
-    <string name="calendar_day_inspection_title">Détails de la journée</string>
-
-    <!-- Cycle Management -->
     <string name="cycle_action_edit">Modifier le début du cycle</string>
     <string name="cycle_action_delete">Supprimer le cycle</string>
-    <string name="cycle_edit_title">Modifier la date de début</string>
     <string name="cycle_edit_body">Choisissez la date de début de ce cycle. Les durées des cycles adjacents seront automatiquement ajustées.</string>
     <string name="cycle_edit_confirm">Enregistrer la date</string>
     <string name="cycle_edit_collision_error">Un autre cycle commence déjà à cette date.</string>
@@ -502,7 +447,7 @@
     <string name="cycle_delete_body">La date de début de ce cycle sera supprimée. Les observations de la journée restent conservées dans le journal.</string>
     <string name="cycle_delete_confirm">Supprimer</string>
     <string name="cycle_start_badge">Début de cycle</string>
-    <!-- Data Portability and Local Wipe -->
+    
     <string name="settings_data_management_title">Gestion et sauvegarde des données</string>
     <string name="settings_export_title">Exporter mes données (JSON)</string>
     <string name="settings_export_body">Créez une archive complète et lisible de vos cycles, observations quotidiennes et préférences, directement sur votre appareil.</string>
@@ -541,7 +486,7 @@
     <string name="settings_import_strategy_replace">Remplacer toutes les données</string>
     <string name="settings_import_strategy_replace_desc">Efface les données locales actuelles avant d’importer la sauvegarde.</string>
     <string name="settings_import_dialog_confirm">Restaurer</string>
-    <!-- App Lock and Security -->
+    
     <string name="lock_screen_title">Luteal est verrouillé</string>
     <string name="lock_enter_pin">Saisissez votre code PIN pour déverrouiller l’application.</string>
     <string name="lock_submit_pin">Déverrouiller</string>
@@ -583,7 +528,7 @@
     <string name="dialog_disable_lock_body">Saisissez votre code PIN actuel pour désactiver le verrouillage.</string>
     <string name="dialog_disable_lock_error">Code PIN incorrect.</string>
     <string name="dialog_disable_lock_action">Désactiver</string>
-    <!-- Longitudinal Cycle History and Exclusion -->
+    
     <string name="journal_view_variability">Variabilité</string>
     <string name="variability_title">Historique et variabilité</string>
     <string name="variability_subtitle">Visualisation longitudinale de la durée de vos cycles</string>
@@ -611,7 +556,7 @@
     <string name="cycle_exclusion_reason_contraception_change">Changement contraceptif / Urgence</string>
     <string name="cycle_exclusion_reason_stress_or_travel">Stress intense / Déplacement</string>
     <string name="cycle_exclusion_reason_other">Autre motif</string>
-    <!-- Clinical Consultation Report -->
+    
     <string name="report_dialog_title">Rapport pour consultation médicale</string>
     <string name="report_dialog_subtitle">Synthétisez vos cycles, douleurs et symptômes dans un document médical imprimable.</string>
     <string name="report_preset_label">Période à inclure</string>
@@ -633,7 +578,7 @@
     <string name="settings_report_action">Générer un rapport de consultation</string>
     <string name="settings_report_success">Rapport médical exporté avec succès.</string>
     <string name="settings_report_error">Échec de la génération du rapport.</string>
-    <!-- Privacy-Safe Local Notifications -->
+    
     <string name="notif_channel_daily_title">Suivi quotidien</string>
     <string name="notif_channel_daily_desc">Rappels quotidiens pour enregistrer vos observations</string>
     <string name="notif_channel_window_title">Fenêtre estimée des règles</string>
@@ -673,7 +618,6 @@
     <string name="settings_notif_visibility_custom_desc">Définissez votre propre titre et message.</string>
     <string name="settings_notif_custom_title_label">Titre personnalisé</string>
     <string name="settings_notif_custom_body_label">Message personnalisé</string>
-    <string name="settings_notif_permission_denied">Permission de notification désactivée dans les paramètres système.</string>
     <string name="cycle_exclusion_save">Enregistrer</string>
 
     <string name="editor_biomarkers_show">Afficher les biomarqueurs</string>
@@ -728,7 +672,6 @@
     <string name="journal_patterns_most_frequent_phase">Majoritairement observé en phase %1$s (%2$d)</string>
     <string name="thermal_chart_title">Graphique thermique</string>
     <string name="thermal_chart_subtitle">Températures enregistrées pour le cycle en cours. Un décalage confirmé est rétrospectif, pas une prédiction de fertilité.</string>
-    <string name="thermal_chart_cd">Graphique de température basale pour le cycle en cours</string>
     <string name="thermal_chart_summary">Graphique thermique : %1$d relevés, %2$d perturbés, %3$s</string>
     <string name="thermal_chart_no_shift">aucun décalage thermique confirmé</string>
     <string name="variability_bar_cd">Cycle commencé le %1$s, durée %2$d jours, %3$d jours de saignements.</string>

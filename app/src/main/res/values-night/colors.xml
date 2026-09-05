@@ -1,19 +1,14 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <!-- Mirrors DarkColorScheme.background in Color.kt. -->
+    
     <color name="luteal_window_background">#121714</color>
     <color name="luteal_splash_background">#121714</color>
-    <!--
-      Evergreen80, not Evergreen40. The dark-theme accent is the only one of
-      the two that carries against a near-black splash; the light-theme
-      evergreen would all but disappear.
-    -->
+    
     <color name="luteal_splash_mark">#8FD4BE</color>
 
     <color name="widget_surface">#181E1B</color>
     <color name="widget_text_primary">#E4EAE5</color>
     <color name="widget_text_supporting">#C2C9C4</color>
     <color name="widget_accent">#8FD4BE</color>
-    <color name="widget_estimate">#E0BFA5</color>
     <color name="widget_outline">#3D4540</color>
 </resources>

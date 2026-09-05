@@ -36,7 +36,8 @@ object DatabaseModule {
                 LutealDatabase.MIGRATION_3_4,
                 LutealDatabase.MIGRATION_4_5,
                 LutealDatabase.MIGRATION_5_6,
-                LutealDatabase.MIGRATION_6_7
+                LutealDatabase.MIGRATION_6_7,
+                LutealDatabase.MIGRATION_7_8
             ).build()
     }
 
