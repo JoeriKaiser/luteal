@@ -51,6 +51,13 @@ class DuoCycleProjectionCacheWriter @Inject constructor(
                 estimateEnd = projection?.periodEstimate?.windowEnd
                     ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
                     ?.takeIf { estimateGranted },
+                estimateCentral = projection?.periodEstimate?.centralDate
+                    ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+                    ?.takeIf { estimateGranted },
+                estimateCycleCount = projection?.periodEstimate?.cycleCount
+                    ?.takeIf { estimateGranted },
+                estimateVariabilityDays = projection?.periodEstimate?.variabilityDays
+                    ?.takeIf { estimateGranted },
                 cycleDayGranted = cycleDayGranted,
                 estimateGranted = estimateGranted,
                 status = status,
@@ -76,6 +83,13 @@ class DuoCycleProjectionCacheWriter @Inject constructor(
                     ?.takeIf { estimateGranted },
                 estimateEnd = projection.periodEstimate?.windowEnd
                     ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+                    ?.takeIf { estimateGranted },
+                estimateCentral = projection.periodEstimate?.centralDate
+                    ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+                    ?.takeIf { estimateGranted },
+                estimateCycleCount = projection.periodEstimate?.cycleCount
+                    ?.takeIf { estimateGranted },
+                estimateVariabilityDays = projection.periodEstimate?.variabilityDays
                     ?.takeIf { estimateGranted },
                 cycleDayGranted = cycleDayGranted,
                 estimateGranted = estimateGranted,

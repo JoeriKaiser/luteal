@@ -12,7 +12,7 @@ import org.robolectric.RobolectricTestRunner
  * Schema harness for LutealDatabase. Room schema JSON is exported to
  * app/schemas (exposed to unit tests as assets), so:
  *  - [latestSchemaCreatesAndValidates] fails CI when entities and the exported
- *    version-7 schema drift apart, and
+ *    schema drift apart, and
  *  - future migrations get tested by creating the old version here and running
  *    `runMigrationsAndValidate(name, newVersion, true, MIGRATION_x_y)` against
  *    real data instead of discovering typos on user devices.
@@ -28,13 +28,13 @@ class RoomSchemaHarnessTest {
 
     @Test
     fun latestSchemaCreatesAndValidates() {
-        helper.createDatabase(TEST_DB, 8).use { db ->
+        helper.createDatabase(TEST_DB, 9).use { db ->
             db.query("SELECT count(*) FROM sqlite_master WHERE type='table'").use { cursor ->
                 assertTrue(cursor.moveToFirst())
                 assertTrue(cursor.getInt(0) > 0)
             }
         }
-        helper.runMigrationsAndValidate(TEST_DB, 8, true).close()
+        helper.runMigrationsAndValidate(TEST_DB, 9, true).close()
     }
 
     @Test
@@ -99,11 +99,17 @@ class RoomSchemaHarnessTest {
     }
 
     @Test
-    fun migrateAll_1To8() {
+    fun migrate8To9() {
+        helper.createDatabase(TEST_DB, 8).close()
+        helper.runMigrationsAndValidate(TEST_DB, 9, true, LutealDatabase.MIGRATION_8_9).close()
+    }
+
+    @Test
+    fun migrateAll_1To9() {
         helper.createDatabase(TEST_DB, 1).close()
         helper.runMigrationsAndValidate(
             TEST_DB,
-            8,
+            9,
             true,
             LutealDatabase.MIGRATION_1_2,
             LutealDatabase.MIGRATION_2_3,
@@ -111,7 +117,8 @@ class RoomSchemaHarnessTest {
             LutealDatabase.MIGRATION_4_5,
             LutealDatabase.MIGRATION_5_6,
             LutealDatabase.MIGRATION_6_7,
-            LutealDatabase.MIGRATION_7_8
+            LutealDatabase.MIGRATION_7_8,
+            LutealDatabase.MIGRATION_8_9
         ).close()
     }
 

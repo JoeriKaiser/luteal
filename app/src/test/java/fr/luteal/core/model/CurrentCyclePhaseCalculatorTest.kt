@@ -6,6 +6,7 @@ import java.time.LocalDate
 
 class CurrentCyclePhaseCalculatorTest {
     private val start = LocalDate.parse("2026-07-01")
+    private val central = LocalDate.parse("2026-07-30")
     private val cycle = Cycle(id = "current", startDate = start)
 
     @Test
@@ -63,22 +64,22 @@ class CurrentCyclePhaseCalculatorTest {
     }
 
     @Test
-    fun `phase boundaries remain conservative`() {
+    fun `ovulation band is plus or minus two days around the luteal anchor`() {
         assertPhase(
-            LocalDate.parse("2026-07-12"),
+            LocalDate.parse("2026-07-14"),
             CyclePhase.FOLLICULAR,
             PhaseCertainty.ESTIMATED
         )
         assertReason(
-            LocalDate.parse("2026-07-13"),
+            LocalDate.parse("2026-07-15"),
             PhaseIndeterminateReason.PHASE_TRANSITION
         )
         assertReason(
-            LocalDate.parse("2026-07-21"),
+            LocalDate.parse("2026-07-19"),
             PhaseIndeterminateReason.PHASE_TRANSITION
         )
         assertPhase(
-            LocalDate.parse("2026-07-22"),
+            LocalDate.parse("2026-07-20"),
             CyclePhase.LUTEAL,
             PhaseCertainty.ESTIMATED
         )
@@ -94,12 +95,11 @@ class CurrentCyclePhaseCalculatorTest {
 
     @Test
     fun `stable history permits central low confidence ovulatory label`() {
-        val result = result(cycleCount = 6, variabilityDays = 4)
         val actual = CurrentCyclePhaseCalculator.evaluate(
             today = LocalDate.parse("2026-07-17"),
             currentCycle = cycle,
             todayEntry = null,
-            estimateResult = result
+            estimateResult = result(radius = 5, cycleCount = 6, variabilityDays = 4)
         )
 
         assertEquals(
@@ -110,12 +110,11 @@ class CurrentCyclePhaseCalculatorTest {
 
     @Test
     fun `high variability blocks the central ovulatory label`() {
-        val result = result(cycleCount = 6, variabilityDays = 8)
         val actual = CurrentCyclePhaseCalculator.evaluate(
             today = LocalDate.parse("2026-07-17"),
             currentCycle = cycle,
             todayEntry = null,
-            estimateResult = result
+            estimateResult = result(radius = 5, cycleCount = 6, variabilityDays = 8)
         )
 
         assertEquals(
@@ -134,40 +133,59 @@ class CurrentCyclePhaseCalculatorTest {
     }
 
     @Test
-    fun `wide next period radius still allows reachable luteal phase before earliest date`() {
-        val centralDate = LocalDate.parse("2026-07-30")
-        val estimateResult = CycleEstimateResult.Available(
-            CycleEstimate(
-                earliestDate = centralDate.minusDays(8),
-                centralDate = centralDate,
-                latestDate = centralDate.plusDays(8),
-                cycleCount = 3,
-                variabilityDays = 16
+    fun `luteal span does not depend on earliest date`() {
+        val lutealDay = LocalDate.parse("2026-07-20")
+        for (radius in listOf(4, 5, 9, 11, 22)) {
+            assertEquals(
+                "R=$radius should still name luteal on $lutealDay",
+                CurrentCyclePhase.Available(CyclePhase.LUTEAL, PhaseCertainty.ESTIMATED),
+                evaluateOn(lutealDay, radius)
             )
-        )
-        val today = LocalDate.parse("2026-07-21")
-        val actual = CurrentCyclePhaseCalculator.evaluate(
-            today = today,
-            currentCycle = cycle,
-            todayEntry = null,
-            estimateResult = estimateResult
-        )
+        }
+    }
 
+    @Test
+    fun `ten days before central date is luteal at production radius five`() {
         assertEquals(
             CurrentCyclePhase.Available(CyclePhase.LUTEAL, PhaseCertainty.ESTIMATED),
-            actual
+            evaluateOn(central.minusDays(10), radius = 5)
         )
     }
 
     @Test
-    fun `next period window and expired estimate are not called luteal`() {
+    fun `next period window starts two days before central date`() {
+        assertPhase(
+            LocalDate.parse("2026-07-27"),
+            CyclePhase.LUTEAL,
+            PhaseCertainty.ESTIMATED
+        )
         assertReason(
             LocalDate.parse("2026-07-28"),
             PhaseIndeterminateReason.NEXT_PERIOD_WINDOW
         )
         assertReason(
             LocalDate.parse("2026-08-04"),
-            PhaseIndeterminateReason.ESTIMATE_EXPIRED
+            PhaseIndeterminateReason.NEXT_PERIOD_WINDOW,
+            radius = 5
+        )
+        assertReason(
+            LocalDate.parse("2026-08-05"),
+            PhaseIndeterminateReason.ESTIMATE_EXPIRED,
+            radius = 5
+        )
+    }
+
+    @Test
+    fun `ovulatory label remains reachable when radius is eleven`() {
+        val actual = CurrentCyclePhaseCalculator.evaluate(
+            today = LocalDate.parse("2026-07-17"),
+            currentCycle = cycle,
+            todayEntry = null,
+            estimateResult = result(radius = 11, cycleCount = 6, variabilityDays = 4)
+        )
+        assertEquals(
+            CurrentCyclePhase.Available(CyclePhase.OVULATORY, PhaseCertainty.ESTIMATED),
+            actual
         )
     }
 
@@ -201,33 +219,39 @@ class CurrentCyclePhaseCalculatorTest {
         today: LocalDate,
         phase: CyclePhase,
         certainty: PhaseCertainty,
-        entry: DailyEntry? = null
+        entry: DailyEntry? = null,
+        radius: Int = 5
     ) {
         assertEquals(
             CurrentCyclePhase.Available(phase, certainty),
-            CurrentCyclePhaseCalculator.evaluate(today, cycle, entry, result())
+            CurrentCyclePhaseCalculator.evaluate(today, cycle, entry, result(radius))
         )
     }
 
     private fun assertReason(
         today: LocalDate,
         reason: PhaseIndeterminateReason,
-        entry: DailyEntry? = null
+        entry: DailyEntry? = null,
+        radius: Int = 5
     ) {
         assertEquals(
             CurrentCyclePhase.Indeterminate(reason),
-            CurrentCyclePhaseCalculator.evaluate(today, cycle, entry, result())
+            CurrentCyclePhaseCalculator.evaluate(today, cycle, entry, result(radius))
         )
     }
 
+    private fun evaluateOn(today: LocalDate, radius: Int) =
+        CurrentCyclePhaseCalculator.evaluate(today, cycle, null, result(radius))
+
     private fun result(
+        radius: Int,
         cycleCount: Int = 3,
         variabilityDays: Int = 4
     ) = CycleEstimateResult.Available(
         CycleEstimate(
-            earliestDate = LocalDate.parse("2026-07-28"),
-            centralDate = LocalDate.parse("2026-07-30"),
-            latestDate = LocalDate.parse("2026-08-01"),
+            earliestDate = central.minusDays(radius.toLong()),
+            centralDate = central,
+            latestDate = central.plusDays(radius.toLong()),
             cycleCount = cycleCount,
             variabilityDays = variabilityDays
         )

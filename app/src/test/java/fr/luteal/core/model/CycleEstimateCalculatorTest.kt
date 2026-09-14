@@ -140,11 +140,7 @@ class CycleEstimateCalculatorTest {
 
     @Test
     fun `recurring seven day swings withdraw the population prior`() {
-        // Same mean interval in both, so only the variability pattern differs.
-        // Steady: 28-day cycles with a single one-off 8-day swing, which STRAW
-        // treats as one unusual month rather than a property of the cycles.
         val oneOffSwing = intervalsToCycles(listOf(28, 28, 28, 36, 28, 28))
-        // Persistent: swings of 7 or more recurring inside the ten-cycle window.
         val recurringSwings = intervalsToCycles(listOf(28, 36, 28, 37, 29, 36))
 
         val steadyRadius =
@@ -152,6 +148,7 @@ class CycleEstimateCalculatorTest {
         val variableRadius =
             radiusOf(requireNotNull(CycleEstimateCalculator.estimateNextPeriod(recurringSwings)))
 
+        assertEquals(8, steadyRadius)
         assertTrue(
             "Recurring swings ($variableRadius) must widen versus a one-off ($steadyRadius)",
             variableRadius > steadyRadius
@@ -371,7 +368,61 @@ class CycleEstimateCalculatorTest {
         assertTrue(result is CycleEstimateResult.Available)
         val estimate = (result as CycleEstimateResult.Available).estimate
 
-        // Only interval C1->C2 (28 days) is valid and included; central date = C4 + 28 days
         assertEquals(LocalDate.parse("2026-05-10"), estimate.centralDate)
+    }
+
+    @Test
+    fun `excluding the middle of three cycles still yields an estimate`() {
+        val cycles = listOf(
+            Cycle(id = "1", startDate = LocalDate.parse("2026-01-01")),
+            Cycle(
+                id = "2",
+                startDate = LocalDate.parse("2026-01-29"),
+                isExcludedFromEstimates = true,
+                exclusionReason = CycleExclusionReason.ILLNESS
+            ),
+            Cycle(id = "3", startDate = LocalDate.parse("2026-02-26"))
+        )
+
+        val result = CycleEstimateCalculator.evaluate(cycles)
+        assertTrue(result is CycleEstimateResult.Available)
+        val estimate = (result as CycleEstimateResult.Available).estimate
+        assertEquals(1, estimate.cycleCount)
+        assertEquals(LocalDate.parse("2026-03-26"), estimate.centralDate)
+    }
+
+    @Test
+    fun `a gap above 90 days is a break not two tidy intervals`() {
+        val cycles = intervalsToCycles(listOf(28, 95, 28))
+        val estimate = requireNotNull(CycleEstimateCalculator.estimateNextPeriod(cycles))
+
+        assertEquals(1, estimate.cycleCount)
+        assertEquals(9, radiusOf(estimate))
+    }
+
+    @Test
+    fun `earliest date does not fall inside recorded bleeding`() {
+        val start = LocalDate.parse("2026-01-01")
+        val next = start.plusDays(28)
+        val cycles = listOf(
+            Cycle(id = "1", startDate = start),
+            Cycle(
+                id = "2",
+                startDate = next,
+                periodDays = (0..6).map {
+                    PeriodDay(next.plusDays(it.toLong()), BleedingIntensity.MEDIUM)
+                }
+            )
+        )
+        val estimate = requireNotNull(
+            CycleEstimateCalculator.estimateNextPeriod(cycles, AgeBand.AGE_50_PLUS)
+        )
+
+        val lastFlowPlusOne = next.plusDays(7)
+        assertTrue(
+            "earliest ${estimate.earliestDate} must be on or after $lastFlowPlusOne",
+            !estimate.earliestDate.isBefore(lastFlowPlusOne)
+        )
+        assertEquals(next.plusDays(28), estimate.centralDate)
     }
 }

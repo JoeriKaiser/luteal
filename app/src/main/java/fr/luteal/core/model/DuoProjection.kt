@@ -32,7 +32,10 @@ data class DuoProjection(
 @Serializable
 data class SharedEstimate(
     @SerialName("window_start") val windowStart: String,
-    @SerialName("window_end") val windowEnd: String
+    @SerialName("window_end") val windowEnd: String,
+    @SerialName("central_date") val centralDate: String? = null,
+    @SerialName("cycle_count") val cycleCount: Int? = null,
+    @SerialName("variability_days") val variabilityDays: Int? = null
 )
 
 @Serializable
