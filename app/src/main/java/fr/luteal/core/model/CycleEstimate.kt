@@ -70,7 +70,7 @@ object CycleEstimateCalculator {
     // than a change to the prior's weight. Lowering the weight only widens the
     // window when the user's own variance already exceeds the prior; someone
     // who declares SOPK but has recorded three regular cycles would have got a
-    // *narrower* window than someone who declared nothing, which inverts the
+    // *narrower* window than someone declaring nothing, which inverts the
     // intent. The floor also needs no per-condition standard deviation, and no
     // usable one exists: the available PCOS figure is a rate of self-reported
     // irregularity, not a dispersion.
@@ -110,6 +110,13 @@ object CycleEstimateCalculator {
     private const val MAXIMUM_RANGE_RADIUS_DAYS = 22
 
     /**
+     * Interval lengths the estimate actually uses: start-to-start, skipping
+     * excluded cycles, splitting at gaps above 90 days, last six in range.
+     */
+    fun recentIntervalLengths(cycles: List<Cycle>): List<Int> =
+        recordedIntervalLengths(cycles).takeLast(RECENT_INTERVAL_WINDOW)
+
+    /**
      * @param ageBand optional declared age band. Selects the variability prior;
      *   see [AgeBand]. Null uses [AgeBand.UNDECLARED_VARIATION_SD_DAYS].
      * @param hasTimingContext whether the user has declared any
@@ -128,17 +135,7 @@ object CycleEstimateCalculator {
 
         if (starts.size < MINIMUM_INTERVALS + 1) return CycleEstimateResult.NeedsMoreHistory
 
-        val lengths = mutableListOf<Int>()
-        for (i in 0 until sortedCycles.size - 1) {
-            val curr = sortedCycles[i]
-            val next = sortedCycles[i + 1]
-            if (!curr.isExcludedFromEstimates && !next.isExcludedFromEstimates) {
-                val days = ChronoUnit.DAYS.between(curr.startDate, next.startDate).toInt()
-                if (days in MINIMUM_CYCLE_DAYS..MAXIMUM_CYCLE_DAYS) {
-                    lengths.add(days)
-                }
-            }
-        }
+        val lengths = recordedIntervalLengths(sortedCycles)
         if (lengths.size < MINIMUM_INTERVALS) return CycleEstimateResult.IntervalsOutOfRange
 
         val recentLengths = lengths.takeLast(RECENT_INTERVAL_WINDOW)
@@ -154,11 +151,14 @@ object CycleEstimateCalculator {
             hasTimingContext = hasTimingContext,
             priorSdDays = ageBand?.variationSdDays ?: AgeBand.UNDECLARED_VARIATION_SD_DAYS
         )
-        val centralDate = starts.last().plusDays(averageLength.toLong())
+        val lastCycle = sortedCycles.last()
+        val centralDate = lastCycle.startDate.plusDays(averageLength.toLong())
+        val computedEarliest = centralDate.minusDays(rangeRadius.toLong())
+        val earliestDate = maxOf(computedEarliest, earliestFloor(lastCycle))
 
         return CycleEstimateResult.Available(
             CycleEstimate(
-                earliestDate = centralDate.minusDays(rangeRadius.toLong()),
+                earliestDate = earliestDate,
                 centralDate = centralDate,
                 latestDate = centralDate.plusDays(rangeRadius.toLong()),
                 cycleCount = recentLengths.size,
@@ -173,6 +173,37 @@ object CycleEstimateCalculator {
         hasTimingContext: Boolean = false
     ): CycleEstimate? =
         (evaluate(cycles, ageBand, hasTimingContext) as? CycleEstimateResult.Available)?.estimate
+
+    private fun recordedIntervalLengths(cycles: List<Cycle>): List<Int> {
+        val sorted = cycles.sortedBy { it.startDate }
+        val lengths = mutableListOf<Int>()
+        for (i in 0 until sorted.size - 1) {
+            val curr = sorted[i]
+            val next = sorted[i + 1]
+            val days = ChronoUnit.DAYS.between(curr.startDate, next.startDate).toInt()
+            if (days > MAXIMUM_CYCLE_DAYS) {
+                lengths.clear()
+                continue
+            }
+            if (curr.isExcludedFromEstimates) continue
+            if (days in MINIMUM_CYCLE_DAYS..MAXIMUM_CYCLE_DAYS) {
+                lengths.add(days)
+            }
+        }
+        return lengths
+    }
+
+    private fun earliestFloor(cycle: Cycle): LocalDate {
+        val afterBleeding = cycle.periodDays
+            .filter { it.bleedingIntensity.isPeriodFlow() }
+            .maxOfOrNull { it.date }
+            ?.plusDays(1)
+        return if (afterBleeding != null && afterBleeding.isAfter(cycle.startDate)) {
+            afterBleeding
+        } else {
+            cycle.startDate
+        }
+    }
 
     /**
      * Half-width of the estimated window.
@@ -205,7 +236,9 @@ object CycleEstimateCalculator {
             } else {
                 PRIOR_WEIGHT
             }
-            (n * sampleVariance + priorWeight * priorVariance) / (n + priorWeight)
+            val sampleWeight = (n - 1).toDouble()
+            (sampleWeight * sampleVariance + priorWeight * priorVariance) /
+                (sampleWeight + priorWeight)
         }
 
         // A declared timing context guarantees at least population-level
@@ -226,15 +259,30 @@ object CycleEstimateCalculator {
      * of seven days or more between consecutive cycle lengths, occurring more
      * than once inside a ten-cycle window.
      *
-     * A single seven-day swing is one unusual month. Requiring recurrence is
-     * what makes it a property of the user's cycles rather than of one event.
+     * A spike and return (+N then -N) is one unusual month, not two. Requiring
+     * two separate excursions is what makes this a property of the cycles
+     * rather than of one event.
      */
     private fun hasPersistentVariability(lengths: List<Int>): Boolean {
-        // Ten cycle lengths yield nine consecutive-pair differences.
-        val swings = lengths
+        val diffs = lengths
             .takeLast(PERSISTENCE_CYCLE_WINDOW)
-            .zipWithNext { previous, next -> abs(next - previous) }
-
-        return swings.count { it >= VARIABILITY_SWING_DAYS } >= PERSISTENCE_MIN_OCCURRENCES
+            .zipWithNext { previous, next -> next - previous }
+        var excursions = 0
+        var i = 0
+        while (i < diffs.size) {
+            if (abs(diffs[i]) >= VARIABILITY_SWING_DAYS) {
+                excursions++
+                val next = diffs.getOrNull(i + 1)
+                if (next != null &&
+                    abs(next) >= VARIABILITY_SWING_DAYS &&
+                    diffs[i] > 0 != next > 0
+                ) {
+                    i += 2
+                    continue
+                }
+            }
+            i++
+        }
+        return excursions >= PERSISTENCE_MIN_OCCURRENCES
     }
 }

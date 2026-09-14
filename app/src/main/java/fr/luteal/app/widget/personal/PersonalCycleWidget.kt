@@ -282,7 +282,7 @@ private fun estimateSummary(
                         days
                     )
                 }
-                !today.isBefore(result.estimate.earliestDate) ->
+                !today.isBefore(result.estimate.centralDate) ->
                     context.getString(R.string.widget_estimate_in_progress)
                 else -> context.getString(
                     if (shortRange) R.string.widget_estimate_range_short

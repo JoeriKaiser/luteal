@@ -2,7 +2,6 @@ package fr.luteal.core.model
 
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
-import kotlin.math.max
 
 /** Whether a phase comes from a recorded observation or a calculation. */
 enum class PhaseCertainty {
@@ -37,10 +36,13 @@ sealed interface CurrentCyclePhase {
  * next-period estimate.
  *
  * Menstruation is recorded, never inferred from an average duration. The other
- * phases are estimates and are returned only where the plausible date ranges
- * do not overlap. Calendar data cannot confirm ovulation, so the ovulatory
- * label is limited to the central low-confidence date after a strict history
- * gate; the surrounding estimate remains indeterminate.
+ * phases are estimates. `earliestDate` is an uncertainty bound on the next
+ * period, not a phase cutoff: luteal runs from after the ovulation band until
+ * two days before `centralDate`, or until recorded period flow.
+ *
+ * Calendar data cannot confirm ovulation, so the ovulatory label is limited to
+ * the central low-confidence date after a strict history gate; the surrounding
+ * estimate remains indeterminate.
  *
  * Research basis is recorded in `docs/research/SOURCE_REGISTER.md`: Mihm et al.
  * (phase physiology), Fehring et al. (phase variability), and NHS Periods.
@@ -52,8 +54,11 @@ object CurrentCyclePhaseCalculator {
     /** Canonical pre-E2EE cyclecalc anchor, based on the 12 to 14 day luteal range. */
     private const val LUTEAL_ANCHOR_DAYS = 13L
 
-    /** Fehring variability margin used by the former canonical estimate engine. */
+    /** Fehring variability margin around the ovulation anchor. */
     private const val OVULATION_EXTRA_RADIUS_DAYS = 2L
+
+    /** Estimated luteal ends this many days before `centralDate`. */
+    private const val PRE_PERIOD_LEAD_DAYS = 2L
 
     /** Former canonical moderate-confidence gate; ovulation itself remains low confidence. */
     private const val STABLE_HISTORY_INTERVALS = 6
@@ -75,7 +80,7 @@ object CurrentCyclePhaseCalculator {
         val canonicalPeriodDay = cycle.periodDays.firstOrNull { it.date == today }
         val observedFlow = canonicalPeriodDay?.bleedingIntensity ?: todayEntry?.bleedingIntensity
 
-        if (dayIndex == 0 || observedFlow.isPeriodFlow()) {
+        if (dayIndex == 0 || observedFlow?.isPeriodFlow() == true) {
             return CurrentCyclePhase.Available(CyclePhase.MENSTRUAL, PhaseCertainty.RECORDED)
         }
 
@@ -97,25 +102,25 @@ object CurrentCyclePhaseCalculator {
             is CycleEstimateResult.Available -> estimateResult.estimate
         }
 
-        if (!today.isBefore(estimate.earliestDate)) {
-            val reason = if (today.isAfter(estimate.latestDate)) {
-                PhaseIndeterminateReason.ESTIMATE_EXPIRED
-            } else {
-                PhaseIndeterminateReason.NEXT_PERIOD_WINDOW
-            }
-            return CurrentCyclePhase.Indeterminate(reason)
+        if (today.isAfter(estimate.latestDate)) {
+            return CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.ESTIMATE_EXPIRED)
         }
 
-        val nextPeriodRadius = max(
-            ChronoUnit.DAYS.between(estimate.earliestDate, estimate.centralDate),
-            ChronoUnit.DAYS.between(estimate.centralDate, estimate.latestDate)
-        )
+        val periodWindowStart = estimate.centralDate.minusDays(PRE_PERIOD_LEAD_DAYS)
+        if (!today.isBefore(periodWindowStart)) {
+            return CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.NEXT_PERIOD_WINDOW)
+        }
+
+        val follicularOpensOn = cycle.startDate.plusDays(EARLY_CYCLE_DAYS.toLong())
         val ovulationCentral = estimate.centralDate.minusDays(LUTEAL_ANCHOR_DAYS)
-        val daysUntilEarliestPeriod = ChronoUnit.DAYS.between(ovulationCentral, estimate.earliestDate)
-        val maxOvulationRadius = maxOf(1L, daysUntilEarliestPeriod - 2)
-        val ovulationRadius = minOf(nextPeriodRadius + OVULATION_EXTRA_RADIUS_DAYS, maxOvulationRadius)
-        val ovulationEarliest = ovulationCentral.minusDays(ovulationRadius.toLong())
-        val ovulationLatest = ovulationCentral.plusDays(ovulationRadius.toLong())
+        val ovulationEarliest = maxOf(
+            ovulationCentral.minusDays(OVULATION_EXTRA_RADIUS_DAYS),
+            follicularOpensOn
+        )
+        val ovulationLatest = maxOf(
+            ovulationCentral.plusDays(OVULATION_EXTRA_RADIUS_DAYS),
+            ovulationEarliest
+        )
 
         return when {
             today.isBefore(ovulationEarliest) -> CurrentCyclePhase.Available(
@@ -135,15 +140,6 @@ object CurrentCyclePhaseCalculator {
                 PhaseIndeterminateReason.PHASE_TRANSITION
             )
         }
-    }
-
-    private fun BleedingIntensity?.isPeriodFlow(): Boolean = when (this) {
-        BleedingIntensity.LIGHT,
-        BleedingIntensity.MEDIUM,
-        BleedingIntensity.HEAVY -> true
-        BleedingIntensity.NONE,
-        BleedingIntensity.SPOTTING,
-        null -> false
     }
 
     private fun CycleEstimate.hasStableHistory(): Boolean =

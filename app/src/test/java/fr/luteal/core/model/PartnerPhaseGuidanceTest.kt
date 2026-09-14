@@ -46,20 +46,85 @@ class PartnerPhaseGuidanceTest {
     @Test
     fun `resolver stays conservative and never assumes a 28-day cycle from day alone`() {
         val today = LocalDate.parse("2026-08-19")
-        val menstrual = PartnerPhaseResolver.resolve(DuoProjection(cycleDay = 3), today)
-        assertEquals(CyclePhase.MENSTRUAL, (menstrual as CurrentCyclePhase.Available).phase)
+        val early = PartnerPhaseResolver.resolve(DuoProjection(cycleDay = 3), today)
+        assertEquals(
+            PhaseIndeterminateReason.EARLY_CYCLE_WITHOUT_BLEEDING_DETAIL,
+            (early as CurrentCyclePhase.Indeterminate).reason
+        )
 
         val dayOnly = PartnerPhaseResolver.resolve(DuoProjection(cycleDay = 18), today)
         assertTrue(dayOnly is CurrentCyclePhase.Indeterminate)
 
-        val luteal = PartnerPhaseResolver.resolve(
-            DuoProjection(periodEstimate = SharedEstimate("2026-08-26", "2026-08-30")),
+        val missingCentral = PartnerPhaseResolver.resolve(
+            DuoProjection(
+                cycleDay = 22,
+                periodEstimate = SharedEstimate("2026-08-17", "2026-09-04")
+            ),
             today
         )
-        assertEquals(CyclePhase.LUTEAL, (luteal as CurrentCyclePhase.Available).phase)
+        assertTrue(missingCentral is CurrentCyclePhase.Indeterminate)
 
         val empty = PartnerPhaseResolver.resolve(null, today)
         assertTrue(empty is CurrentCyclePhase.Indeterminate)
+    }
+
+    @Test
+    fun `partner phase matches the tracker calculator`() {
+        val today = LocalDate.parse("2026-08-19")
+        val start = LocalDate.parse("2026-07-29")
+        val estimate = CycleEstimate(
+            earliestDate = LocalDate.parse("2026-08-17"),
+            centralDate = LocalDate.parse("2026-08-26"),
+            latestDate = LocalDate.parse("2026-09-04"),
+            cycleCount = 6,
+            variabilityDays = 4
+        )
+        val tracker = CurrentCyclePhaseCalculator.evaluate(
+            today = today,
+            currentCycle = Cycle(id = "current", startDate = start),
+            todayEntry = null,
+            estimateResult = CycleEstimateResult.Available(estimate)
+        )
+        val partner = PartnerPhaseResolver.resolve(
+            DuoProjection(
+                cycleDay = 22,
+                periodEstimate = SharedEstimate(
+                    windowStart = estimate.earliestDate.toString(),
+                    windowEnd = estimate.latestDate.toString(),
+                    centralDate = estimate.centralDate.toString(),
+                    cycleCount = estimate.cycleCount,
+                    variabilityDays = estimate.variabilityDays
+                )
+            ),
+            today
+        )
+        assertEquals(tracker, partner)
+        assertEquals(
+            CurrentCyclePhase.Available(CyclePhase.LUTEAL, PhaseCertainty.ESTIMATED),
+            partner
+        )
+    }
+
+    @Test
+    fun `follicular is reachable on the partner path`() {
+        val today = LocalDate.parse("2026-08-08")
+        val partner = PartnerPhaseResolver.resolve(
+            DuoProjection(
+                cycleDay = 9,
+                periodEstimate = SharedEstimate(
+                    windowStart = "2026-08-21",
+                    windowEnd = "2026-08-31",
+                    centralDate = "2026-08-26",
+                    cycleCount = 6,
+                    variabilityDays = 4
+                )
+            ),
+            today
+        )
+        assertEquals(
+            CurrentCyclePhase.Available(CyclePhase.FOLLICULAR, PhaseCertainty.ESTIMATED),
+            partner
+        )
     }
 
     @Test

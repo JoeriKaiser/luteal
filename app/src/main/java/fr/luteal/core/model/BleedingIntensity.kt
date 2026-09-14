@@ -6,5 +6,7 @@ enum class BleedingIntensity {
     SPOTTING,
     LIGHT,
     MEDIUM,
-    HEAVY
+    HEAVY;
+
+    fun isPeriodFlow(): Boolean = this == LIGHT || this == MEDIUM || this == HEAVY
 }

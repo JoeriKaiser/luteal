@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import fr.luteal.core.data.datastore.UserPreferencesDataStore
 import fr.luteal.core.data.repository.CycleRepository
 import fr.luteal.core.data.repository.DailyEntryRepository
+import fr.luteal.core.model.AgeBand
 import fr.luteal.core.model.CycleEstimateCalculator
 import fr.luteal.core.model.CycleEstimateResult
 import fr.luteal.core.model.NotificationType
@@ -58,7 +59,11 @@ class NotificationScheduler @Inject constructor(
 
             // Period Window Reminder
             val cycles = cycleRepository.getCyclesOnce()
-            val estimateResult = CycleEstimateCalculator.evaluate(cycles)
+            val estimateResult = CycleEstimateCalculator.evaluate(
+                cycles = cycles,
+                ageBand = AgeBand.fromId(prefs.ageBand),
+                hasTimingContext = prefs.hasTimingContext
+            )
 
             if (prefs.isPeriodWindowEnabled && estimateResult is CycleEstimateResult.Available) {
                 schedulePeriodWindow(estimateResult.estimate.earliestDate, prefs.periodWindowLeadDays, now)

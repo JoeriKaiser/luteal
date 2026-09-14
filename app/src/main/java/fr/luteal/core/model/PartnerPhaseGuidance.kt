@@ -1,7 +1,6 @@
 package fr.luteal.core.model
 
 import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 
 data class PartnerPhaseTip(
     val id: String,
@@ -86,40 +85,40 @@ object PartnerPhaseResolver {
             return CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.NO_CURRENT_CYCLE)
         }
         val cycleDay = projection.cycleDay
-        val earliest = projection.periodEstimate?.windowStart
-            ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-
-        if (cycleDay != null && cycleDay in 1..5) {
-            return CurrentCyclePhase.Available(
-                phase = CyclePhase.MENSTRUAL,
-                certainty = PhaseCertainty.ESTIMATED
-            )
+        if (cycleDay == null || cycleDay < 1) {
+            return CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.NO_CURRENT_CYCLE)
         }
-
-        if (earliest != null) {
-            val daysUntilWindow = ChronoUnit.DAYS.between(today, earliest)
-            return when {
-                daysUntilWindow in 1..12 -> CurrentCyclePhase.Available(
-                    phase = CyclePhase.LUTEAL,
-                    certainty = PhaseCertainty.ESTIMATED
-                )
-                daysUntilWindow in 13..16 -> CurrentCyclePhase.Indeterminate(
-                    PhaseIndeterminateReason.PHASE_TRANSITION
-                )
-                daysUntilWindow > 16 -> CurrentCyclePhase.Available(
-                    phase = CyclePhase.FOLLICULAR,
-                    certainty = PhaseCertainty.ESTIMATED
-                )
-                else -> CurrentCyclePhase.Indeterminate(
-                    PhaseIndeterminateReason.NEXT_PERIOD_WINDOW
-                )
-            }
-        }
-
-        return if (cycleDay != null) {
-            CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.NEEDS_MORE_HISTORY)
-        } else {
-            CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.NO_CURRENT_CYCLE)
-        }
+        val cycle = Cycle(
+            id = "partner",
+            startDate = today.minusDays((cycleDay - 1).toLong())
+        )
+        return CurrentCyclePhaseCalculator.evaluate(
+            today = today,
+            currentCycle = cycle,
+            todayEntry = null,
+            estimateResult = projection.toEstimateResult()
+        )
     }
+
+    private fun DuoProjection.toEstimateResult(): CycleEstimateResult {
+        val shared = periodEstimate ?: return CycleEstimateResult.NeedsMoreHistory
+        val central = shared.centralDate.toLocalDate()
+            ?: return CycleEstimateResult.NeedsMoreHistory
+        val earliest = shared.windowStart.toLocalDate()
+            ?: return CycleEstimateResult.NeedsMoreHistory
+        val latest = shared.windowEnd.toLocalDate()
+            ?: return CycleEstimateResult.NeedsMoreHistory
+        return CycleEstimateResult.Available(
+            CycleEstimate(
+                earliestDate = earliest,
+                centralDate = central,
+                latestDate = latest,
+                cycleCount = shared.cycleCount ?: 0,
+                variabilityDays = shared.variabilityDays ?: Int.MAX_VALUE
+            )
+        )
+    }
+
+    private fun String?.toLocalDate(): LocalDate? =
+        this?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
 }

@@ -394,7 +394,13 @@ class DuoViewModel @Inject constructor(
         val projection = DuoProjection(
             cycleDay = cached.cycleDay,
             periodEstimate = if (cached.estimateStart != null && cached.estimateEnd != null) {
-                SharedEstimate(cached.estimateStart.toString(), cached.estimateEnd.toString())
+                SharedEstimate(
+                    windowStart = cached.estimateStart.toString(),
+                    windowEnd = cached.estimateEnd.toString(),
+                    centralDate = cached.estimateCentral?.toString(),
+                    cycleCount = cached.estimateCycleCount,
+                    variabilityDays = cached.estimateVariabilityDays
+                )
             } else {
                 null
             }
@@ -485,7 +491,10 @@ class DuoViewModel @Inject constructor(
                     )?.let {
                         SharedEstimate(
                             windowStart = it.earliestDate.toString(),
-                            windowEnd = it.latestDate.toString()
+                            windowEnd = it.latestDate.toString(),
+                            centralDate = it.centralDate.toString(),
+                            cycleCount = it.cycleCount,
+                            variabilityDays = it.variabilityDays
                         )
                     }
                 } else null

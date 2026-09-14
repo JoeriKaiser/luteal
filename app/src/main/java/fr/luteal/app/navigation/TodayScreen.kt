@@ -68,6 +68,7 @@ import fr.luteal.core.model.PhaseIndeterminateReason
 import fr.luteal.core.model.PhaseTips
 import java.time.temporal.ChronoUnit
 import fr.luteal.core.model.TrackingContext
+import kotlin.math.roundToInt
 
 @Composable
 fun TodayScreen(
@@ -406,7 +407,9 @@ private fun EstimateSection(state: LutealUiState, onBackfillCycle: () -> Unit) {
 
             is CycleEstimateResult.Available -> {
                 val estimate = result.estimate
-                val daysUntil =
+                val daysUntilCentral =
+                    ChronoUnit.DAYS.between(state.today, estimate.centralDate).toInt()
+                val daysUntilEarliest =
                     ChronoUnit.DAYS.between(state.today, estimate.earliestDate).toInt()
                 val daysPastWindow =
                     ChronoUnit.DAYS.between(estimate.latestDate, state.today).toInt()
@@ -425,14 +428,12 @@ private fun EstimateSection(state: LutealUiState, onBackfillCycle: () -> Unit) {
                 Spacer(Modifier.height(LutealSpacing.xxs))
                 Text(
                     text = when {
-                        daysUntil > 0 ->
+                        daysUntilCentral > 0 ->
                             pluralStringResource(
                                 R.plurals.estimate_days_remaining,
-                                daysUntil,
-                                daysUntil
+                                daysUntilCentral,
+                                daysUntilCentral
                             )
-                        // Past the whole window: the estimate did not hold, and
-                        // saying "in progress" indefinitely would be misleading.
                         daysPastWindow > 0 ->
                             pluralStringResource(
                                 R.plurals.estimate_past_window,
@@ -445,12 +446,10 @@ private fun EstimateSection(state: LutealUiState, onBackfillCycle: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // Only worth drawing while the window is still ahead. Once it
-                // has opened there is no wait left to scale the band against.
-                if (daysUntil > 0) {
+                if (daysUntilEarliest > 0) {
                     Spacer(Modifier.height(LutealSpacing.md))
                     EstimateWindowTrack(
-                        leadDays = daysUntil,
+                        leadDays = daysUntilEarliest,
                         windowDays = windowDays,
                         latestLabel = LocalizedDateFormatter.formatShortDate(estimate.latestDate, locale)
                     )
@@ -538,12 +537,7 @@ private fun EstimateWindowTrack(
 
 @Composable
 private fun CycleStatsSection(state: LutealUiState) {
-    // Same plausibility filter the estimator applies, so the average shown
-    // here cannot contradict the estimate rendered directly above it.
-    val completedLengths = state.cycles
-        .filterNot { it.isCurrent }
-        .map { it.lengthInDays }
-        .filter { it in CycleEstimateCalculator.plausibleCycleDays }
+    val completedLengths = CycleEstimateCalculator.recentIntervalLengths(state.cycles)
     if (completedLengths.isEmpty()) return
 
     Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
@@ -559,7 +553,7 @@ private fun CycleStatsSection(state: LutealUiState) {
             Text(
                 text = stringResource(
                     R.string.cycle_stats_avg_length,
-                    completedLengths.average().toInt()
+                    completedLengths.average().roundToInt()
                 ),
                 style = MaterialTheme.typography.bodyMedium
             )
