@@ -1,0 +1,6 @@
+- Luteal days show again on typical cycles. The next-period window no longer swallows that stretch.
+- Today, Duo, and notifications now share the same phase estimate.
+- Copy yesterday's observations into today in one tap.
+- Journal has a Patterns tab for how often observations show up by phase.
+- Clearer observation scales, chart labels, and calendar touch targets.
+- Period start is a secondary action. Daily observations come first.
