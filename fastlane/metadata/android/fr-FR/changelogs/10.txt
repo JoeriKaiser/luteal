@@ -1,0 +1,6 @@
+- Les jours lutéaux réapparaissent sur les cycles types. La fenêtre des prochaines règles ne les absorbe plus.
+- Aujourd'hui, Duo et les notifications partagent la même estimation de phase.
+- Reprise des observations d'hier en un geste.
+- L'onglet Tendances montre la fréquence des observations par phase.
+- Échelles d'observation, légendes de graphiques et cibles du calendrier plus lisibles.
+- Le début de règles passe en action secondaire. Les observations quotidiennes d'abord.
