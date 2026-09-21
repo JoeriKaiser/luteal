@@ -18,6 +18,7 @@ import fr.luteal.core.model.RapidTestLogs
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
+import fr.luteal.core.network.sync.SyncRevisionClock
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -31,7 +32,8 @@ class BiomarkerRepositoryImpl @Inject constructor(
     private val database: LutealDatabase,
     private val biomarkerDao: BiomarkerDao,
     private val syncStateDao: SyncStateDao,
-    private val clock: Clock
+    private val clock: Clock,
+    private val revisionClock: SyncRevisionClock
 ) : BiomarkerRepository {
     override fun observeObservations(): Flow<List<BiomarkerObservation>> =
         biomarkerDao.observeObservations().map { rows -> rows.map { it.toDomain() } }
@@ -132,16 +134,17 @@ class BiomarkerRepositoryImpl @Inject constructor(
         val now = clock.millis()
         val entityId = SyncStateEntity.biomarkerEntityId(date)
         val existing = syncStateDao.getState(entityId)
+        val ticket = revisionClock.allocate()
         syncStateDao.upsert(
             SyncStateEntity(
                 entityId = entityId,
                 entityType = SyncStateEntity.TYPE_BIOMARKER_OBSERVATION,
-                clientRev = UUID.randomUUID().toString(),
+                clientRev = ticket.clientRev,
                 createdAtEpochMillis = existing?.createdAtEpochMillis ?: now,
-                updatedAtEpochMillis = now,
+                updatedAtEpochMillis = ticket.updatedAtEpochMillis,
                 deletedAtEpochMillis = if (deleted) now else null,
                 dirty = true,
-                lastPushError = null
+                lastPushError = if (ticket.pushable) null else SyncRevisionClock.WAITING_CLOCK
             )
         )
     }

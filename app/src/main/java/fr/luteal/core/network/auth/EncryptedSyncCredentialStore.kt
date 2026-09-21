@@ -56,4 +56,6 @@ class EncryptedSyncCredentialStore @Inject constructor(
     override fun clear() {
         store.clear()
     }
+
+    override fun clearTracked(): Boolean = store.clearCommitted()
 }

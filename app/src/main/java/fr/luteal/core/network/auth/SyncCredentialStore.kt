@@ -24,4 +24,9 @@ interface SyncCredentialStore {
     fun load(): SyncCredentials?
     fun save(credentials: SyncCredentials)
     fun clear()
+
+    fun clearTracked(): Boolean {
+        clear()
+        return true
+    }
 }

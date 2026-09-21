@@ -14,6 +14,7 @@ import fr.luteal.core.network.PushResultWire
 import fr.luteal.core.network.auth.SyncCredentials
 import fr.luteal.core.network.crypto.RecordSealer
 import fr.luteal.core.network.contract.models.AppliedChange
+import fr.luteal.core.network.contract.models.RejectedChange
 import fr.luteal.core.network.contract.models.BleedingObservationData
 import fr.luteal.core.network.contract.models.Certainty
 import fr.luteal.core.network.contract.models.CycleData
@@ -257,7 +258,7 @@ class CycleSyncEngineTest {
     }
 
     @Test
-    fun `push conflict adopts the server current record`() = runTest {
+    fun `push conflict keeps a dirty local edit`() = runTest {
         val repo = FakeCycleRepository(listOf(localCycle()))
         val stateDao = FakeSyncStateDao().apply { upsert(dirtyState()) }
         val creds = FakeCredentialStore(SyncCredentials("acct", "code", "ltok"))
@@ -281,10 +282,9 @@ class CycleSyncEngineTest {
 
         val report = engine(repo, stateDao, creds, cursor, api).sync()
 
-        assertEquals(1, report.conflictsAdopted)
-        // Server state wins: the local start date is replaced.
-        assertEquals(serverStart, repo.cycles[cycleId.toString()]!!.startDate)
-        assertFalse(stateDao.states[cycleId.toString()]!!.dirty)
+        assertEquals(0, report.conflictsAdopted)
+        assertEquals(startDate, repo.cycles[cycleId.toString()]!!.startDate)
+        assertTrue(stateDao.states[cycleId.toString()]!!.dirty)
     }
 
     @Test
@@ -734,5 +734,119 @@ class CycleSyncEngineTest {
         assertNotNull(syncState)
         assertEquals(SyncStateEntity.TYPE_BLEEDING_OBSERVATION, syncState!!.entityType)
         assertFalse(syncState.dirty)
+    }
+
+    @Test
+    fun `pull of a newer cycle keeps a dirty local edit and rebases once`() = runTest {
+        val repo = FakeCycleRepository(listOf(localCycle()))
+        val stateDao = FakeSyncStateDao()
+        val original = dirtyState()
+        stateDao.upsert(original)
+        val creds = FakeCredentialStore(SyncCredentials("acct", "code", "ltok"))
+        val cursor = FakeCursorStore(cursor = 0L)
+        val api = FakeApiClient().apply {
+            pullResults += PullResultWire(
+                changes = listOf(
+                    PullChangeWire(
+                        seq = 1L,
+                        entityType = EntityType.CYCLE,
+                        entityId = cycleId,
+                        clientRev = UUID.randomUUID(),
+                        deleted = false,
+                        updatedAt = now.plusMinutes(2),
+                        ciphertext = "not-a-payload"
+                    )
+                ),
+                cursor = 9L,
+                hasMore = false
+            )
+        }
+
+        engine(repo, stateDao, creds, cursor, api).sync()
+
+        assertEquals(startDate, repo.cycles[cycleId.toString()]!!.startDate)
+        val state = stateDao.getState(cycleId.toString())!!
+        assertTrue(state.dirty)
+        assertTrue(state.clientRev != original.clientRev)
+        assertEquals(9L, cursor.cursorValue())
+    }
+
+    @Test
+    fun `undecodable pull does not advance the cursor`() = runTest {
+        val creds = FakeCredentialStore(SyncCredentials("acct", "code", "ltok"))
+        val cursor = FakeCursorStore(cursor = 4L)
+        val api = FakeApiClient().apply {
+            pullResults += PullResultWire(
+                changes = listOf(
+                    PullChangeWire(
+                        seq = 5L,
+                        entityType = EntityType.CYCLE,
+                        entityId = cycleId,
+                        clientRev = UUID.randomUUID(),
+                        deleted = false,
+                        updatedAt = now,
+                        ciphertext = "not-a-payload"
+                    )
+                ),
+                cursor = 5L,
+                hasMore = false
+            )
+        }
+
+        val thrown = runCatching {
+            engine(FakeCycleRepository(), FakeSyncStateDao(), creds, cursor, api).sync()
+        }.exceptionOrNull()
+
+        assertTrue(thrown is SyncPageIncomplete)
+        assertEquals(4L, cursor.cursorValue())
+    }
+
+    @Test
+    fun `rejection of an older revision does not clear a newer local edit`() = runTest {
+        val repo = FakeCycleRepository(listOf(localCycle()))
+        val stateDao = FakeSyncStateDao()
+        val snapshot = dirtyState()
+        stateDao.upsert(snapshot)
+        val editedRev = UUID.randomUUID().toString()
+        val creds = FakeCredentialStore(SyncCredentials("acct", "code", "ltok"))
+        val api = FakeApiClient().apply {
+            pushResult = PushResultWire(
+                applied = emptyList(),
+                rejected = listOf(
+                    RejectedChange(
+                        entityType = EntityType.CYCLE,
+                        entityId = cycleId,
+                        detail = "no"
+                    )
+                ),
+                conflicts = emptyList(),
+                cursor = 2L
+            )
+            onPush = { stateDao.upsert(snapshot.copy(clientRev = editedRev)) }
+            pullResults += PullResultWire(emptyList(), 2L, false)
+        }
+
+        engine(repo, stateDao, creds, FakeCursorStore(), api).sync()
+
+        val state = stateDao.states[cycleId.toString()]!!
+        assertTrue(state.dirty)
+        assertEquals(editedRev, state.clientRev)
+        assertNull(state.lastPushError)
+    }
+
+    @Test
+    fun `sync does not push when the dataset is bound to another account`() = runTest {
+        val repo = FakeCycleRepository(listOf(localCycle()))
+        val stateDao = FakeSyncStateDao().apply { upsert(dirtyState()) }
+        val creds = FakeCredentialStore(SyncCredentials("account-a", "code", "ltok"))
+        val cursor = FakeCursorStore(datasetAccountId = "account-b", boundBaseUrl = "http://test.local:8080")
+        val api = FakeApiClient()
+
+        val thrown = runCatching {
+            engine(repo, stateDao, creds, cursor, api).sync()
+        }.exceptionOrNull()
+
+        assertTrue(thrown is SyncDatasetBlockedException)
+        assertTrue(api.pushCalls.isEmpty())
     }
 }

@@ -24,14 +24,15 @@ class LocalDataPurgeManager @Inject constructor(
     private val duoKeyStore: DuoKeyStore,
     private val pinCryptoManager: PinCryptoManager
 ) {
-    suspend fun purgeAllLocalData() {
+    suspend fun purgeAllLocalData(): Boolean {
         withContext(Dispatchers.IO) {
             database.clearAllTables()
         }
         userPreferencesDataStore.clear()
         syncDataStore.clear()
-        runCatching { syncCredentialStore.clear() }
-        runCatching { duoKeyStore.clear() }
-        runCatching { pinCryptoManager.clearPin() }
+        val credentialsCleared = runCatching { syncCredentialStore.clearTracked() }.getOrDefault(false)
+        val duoCleared = runCatching { duoKeyStore.clearTracked() }.getOrDefault(false)
+        val pinCleared = runCatching { pinCryptoManager.clearPinTracked() }.getOrDefault(false)
+        return credentialsCleared && duoCleared && pinCleared
     }
 }

@@ -149,10 +149,9 @@ silent loss; offline edits sync when connectivity returns.
   invite-code entry, connection status, and last-sync state ship in Settings
   in all builds; the local base-URL editor and demo-data tools stay
   debug-gated.
-- [x] **Truthful copy:** `sync_transport_notice` states end-to-end
-  encryption, names what the server still sees (sync dates, record counts),
-  and states the account-code-is-the-only-key consequence. No copy claims
-  anything the transport does not deliver.
+- [ ] **Truthful copy:** `sync_transport_notice` still says the server cannot
+  read the data. Registration mints the account code, and `addDevice` sends
+  it back. Correct the claim as listed in `docs/architecture/OPEN_WORK.md`.
 - [ ] **First-run account-code moment:** show the code with a confirmation
   step when an account is created, not only retroactively in Settings.
 
@@ -180,12 +179,15 @@ silent loss; offline edits sync when connectivity returns.
 
 Required before widening the invite rollout:
 
-- [x] Threat model and key lifecycle documented (`E2EE_DESIGN.md`; verified
-  end to end against a live server, including a no-plaintext database check).
+- [ ] Threat model and key lifecycle (`E2EE_DESIGN.md`). The live round trip
+  and the no-plaintext database check are interoperability evidence. They do
+  not show that the operator never held the account code. See
+  `docs/architecture/OPEN_WORK.md`.
 - [ ] Deterministic convergence tests beyond cycles (Milestone 1).
 - [x] Conformance fixtures shared with folicular (`contract/conformance`,
   decoded by `ConformanceFixturesTest`; the server's `internal/contract` test
   proves the same bodies).
-- [x] UI copy does not claim connectivity/encryption before runtime proof
-  (the E2EE claim in `sync_transport_notice` landed only after live
-  verification).
+- [ ] UI copy does not claim more than the transport establishes. The
+  E2EE claim in `sync_transport_notice` landed after a live round trip, and
+  it still says the server cannot read the data. See
+  `docs/architecture/OPEN_WORK.md`.

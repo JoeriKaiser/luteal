@@ -239,7 +239,7 @@
     <string name="settings_backup_body">Luteal’s sensitive data is not included in the Android cloud backup.</string>
     <string name="settings_sync_title">Sync</string>
     <string name="settings_sync_body">Turn on sync to find your data across your devices. Your observations stay saved on this device; sync runs in the background and never blocks the app. No connection is made unless you turn it on.</string>
-    <string name="sync_transport_notice">Your observations are end-to-end encrypted on this device before anything is sent: the server only ever holds data it cannot read. It does still see when you sync and how many records you have. Your account code is the only key: without it nobody can decrypt your data, including us.</string>
+    <string name="sync_transport_notice">Your observations are encrypted on this device before they are sent. The server stores that ciphertext, and it sees when you sync and how many records you have. The account code is the encryption key. The server created that code and receives it again when you add a device, so this app cannot promise the operator has never seen it. If you lose the code, synced data cannot be recovered.</string>
     <string name="settings_sync_online_title">Online mode</string>
     <string name="settings_sync_online_body">Turns on sync with the Luteal server. Off by default.</string>
     <string name="settings_sync_server_body">By default, sync connects to the official Luteal server. You can also enter the address of your own self-hosted folicular instance.</string>
@@ -249,13 +249,13 @@
     <string name="settings_sync_in_progress">Syncing…</string>
     <string name="settings_sync_idle">No sync yet.</string>
     <string name="settings_sync_account_code_title">Account code</string>
-    <string name="settings_sync_account_code_body">This code is the key that encrypts your data, and your only way to recover it on a new device. Keep it somewhere safe and outside the app. Nobody can regenerate it: if you lose it, your synced data becomes permanently unreadable.</string>
+    <string name="settings_sync_account_code_body">This code is the key that encrypts your data, and the only way to open that data on a new device. The server created it and has seen it. Keep a copy somewhere safe, outside the app. Nobody can regenerate it. If you lose it, synced data stays unreadable.</string>
     <string name="settings_sync_account_code_copy">Copy code</string>
     <string name="settings_sync_account_code_copied">Code copied</string>
     <string name="settings_sync_account_code_none">No account registered. The account will be created on the first sync.</string>
     <string name="settings_sync_unlink">Disconnect cloud sync</string>
     <string name="settings_recovery_title">Restore an existing account</string>
-    <string name="settings_recovery_body">On a new device, enter the account code you saved when you created it. This is the only way to recover your data: it is encrypted with that code, and the server cannot decrypt it without you.</string>
+    <string name="settings_recovery_body">On a new device, enter the account code you saved. That code decrypts your synced data. This device sends the code to the server to sign in. The server created the code, so this does not mean the operator has never seen it.</string>
     <string name="settings_recovery_label">Account code</string>
     <string name="settings_recovery_action">Restore this account</string>
     <string name="settings_recovery_in_progress">Restoring…</string>
@@ -263,6 +263,9 @@
     <string name="settings_recovery_error_failed">Account restoration failed. Check your account code and connection.</string>
     <string name="settings_sync_last_success">Last sync: %1$s</string>
     <string name="sync_error_auth_rejected">The server no longer accepts this device. Reconnect your account from Settings &gt; Synchronisation using your account code.</string>
+    <string name="sync_error_incomplete">Sync stopped because a record could not be read. Nothing after that record was applied. Try again after the next app update if this keeps happening.</string>
+    <string name="sync_error_dataset_blocked">This device\'s saved records belong to another account or server. Recover that account, or erase local data before using a different one.</string>
+    <string name="settings_recovery_error_foreign_account">This device already holds records for a different account. Erase local data before restoring another account.</string>
     <string name="settings_sync_last_error">Sync failed: %1$s</string>
     <string name="settings_appearance_title">Appearance</string>
     <string name="settings_appearance_body">The light or dark theme follows your device setting.</string>

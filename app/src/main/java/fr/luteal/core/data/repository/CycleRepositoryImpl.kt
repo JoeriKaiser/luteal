@@ -11,6 +11,7 @@ import fr.luteal.core.data.local.SyncStateDao
 import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.model.Cycle
 import fr.luteal.core.model.PeriodDay
+import fr.luteal.core.network.sync.SyncRevisionClock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -28,7 +29,8 @@ class CycleRepositoryImpl @Inject constructor(
     private val cycleDao: CycleDao,
     private val dailyEntryDao: DailyEntryDao,
     private val syncStateDao: SyncStateDao,
-    private val clock: Clock
+    private val clock: Clock,
+    private val revisionClock: SyncRevisionClock
 ) : CycleRepository {
 
     override fun getCycles(): Flow<List<Cycle>> {
@@ -183,16 +185,17 @@ class CycleRepositoryImpl @Inject constructor(
     private suspend fun markDirty(cycleId: String) {
         val now = clock.millis()
         val existing = syncStateDao.getState(cycleId)
+        val ticket = revisionClock.allocate()
         syncStateDao.upsert(
             SyncStateEntity(
                 entityId = cycleId,
                 entityType = SyncStateEntity.TYPE_CYCLE,
-                clientRev = UUID.randomUUID().toString(),
+                clientRev = ticket.clientRev,
                 createdAtEpochMillis = existing?.createdAtEpochMillis ?: now,
-                updatedAtEpochMillis = now,
+                updatedAtEpochMillis = ticket.updatedAtEpochMillis,
                 deletedAtEpochMillis = null,
                 dirty = true,
-                lastPushError = null
+                lastPushError = if (ticket.pushable) null else SyncRevisionClock.WAITING_CLOCK
             )
         )
     }

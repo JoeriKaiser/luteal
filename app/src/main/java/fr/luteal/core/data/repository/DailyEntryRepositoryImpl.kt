@@ -8,6 +8,7 @@ import fr.luteal.core.data.local.LutealDatabase
 import fr.luteal.core.data.local.SyncStateDao
 import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.model.DailyEntry
+import fr.luteal.core.network.sync.SyncRevisionClock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
@@ -23,7 +24,8 @@ class DailyEntryRepositoryImpl @Inject constructor(
     private val database: LutealDatabase,
     private val dailyEntryDao: DailyEntryDao,
     private val syncStateDao: SyncStateDao,
-    private val clock: Clock
+    private val clock: Clock,
+    private val revisionClock: SyncRevisionClock
 ) : DailyEntryRepository {
     override fun observeEntries(): Flow<List<DailyEntry>> =
         dailyEntryDao.observeEntries().map { entries -> entries.map { it.toDomain() } }
@@ -106,16 +108,17 @@ class DailyEntryRepositoryImpl @Inject constructor(
     private suspend fun markDirty(entityId: String) {
         val now = clock.millis()
         val existing = syncStateDao.getState(entityId)
+        val ticket = revisionClock.allocate()
         syncStateDao.upsert(
             SyncStateEntity(
                 entityId = entityId,
                 entityType = SyncStateEntity.TYPE_DAILY_ENTRY,
-                clientRev = UUID.randomUUID().toString(),
+                clientRev = ticket.clientRev,
                 createdAtEpochMillis = existing?.createdAtEpochMillis ?: now,
-                updatedAtEpochMillis = now,
+                updatedAtEpochMillis = ticket.updatedAtEpochMillis,
                 deletedAtEpochMillis = null,
                 dirty = true,
-                lastPushError = null
+                lastPushError = if (ticket.pushable) null else SyncRevisionClock.WAITING_CLOCK
             )
         )
     }

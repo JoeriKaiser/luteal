@@ -68,9 +68,11 @@ upserts rather than duplicates.
 
 ## Conflict behavior (settled for v1)
 
-Policy: entity-level last-write-wins ordered by `updated_at`, then
-`client_rev`. On a push conflict the client adopts the server's current record
-and re-derives its local cache from it. Field-level merging is future work.
+Policy: the server still orders by `updated_at`, then `client_rev`. A dirty
+local edit or tombstone is not replaced by a pull or a conflict. The client
+keeps that local row and allocates a revision that sorts after the remote
+winner, then pushes it. A clean local row adopts the server record. A page
+that cannot be decoded does not advance the cursor.
 
 Covered by deterministic tests (`CycleSyncEngineTest`): first-run
 register/push/pull, token reuse, conflict adoption, incoming tombstones,

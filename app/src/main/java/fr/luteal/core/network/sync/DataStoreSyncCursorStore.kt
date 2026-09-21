@@ -35,4 +35,18 @@ class DataStoreSyncCursorStore(
     override suspend fun clear() {
         syncDataStore.clear()
     }
+
+    override suspend fun getDatasetAccountId(): String? =
+        syncDataStore.syncPreferencesFlow.first().datasetAccountId
+
+    override suspend fun setDatasetAccountId(accountId: String?) {
+        syncDataStore.setDatasetAccountId(accountId)
+    }
+
+    override suspend fun getBoundBaseUrl(): String? =
+        syncDataStore.syncPreferencesFlow.first().boundBaseUrl
+
+    override suspend fun setBoundBaseUrl(url: String?) {
+        syncDataStore.setBoundBaseUrl(url)
+    }
 }

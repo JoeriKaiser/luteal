@@ -13,6 +13,8 @@ import fr.luteal.core.model.SyncMode
 import fr.luteal.core.network.FolicularApiException
 import fr.luteal.core.network.sync.CycleSyncEngine
 import fr.luteal.core.network.sync.SyncAuthException
+import fr.luteal.core.network.sync.SyncDatasetBlockedException
+import fr.luteal.core.network.sync.SyncPageIncomplete
 import java.io.IOException
 import java.time.Clock
 import kotlinx.coroutines.CancellationException
@@ -65,6 +67,12 @@ class SyncWorker @AssistedInject constructor(
             // a new sync is requested. Swallowing cancellation would corrupt
             // cooperative cancellation and strand the IN_PROGRESS flag.
             throw ce
+        } catch (e: SyncDatasetBlockedException) {
+            syncDataStore.recordError(appContext.getString(R.string.sync_error_dataset_blocked))
+            Result.failure()
+        } catch (e: SyncPageIncomplete) {
+            syncDataStore.recordError(appContext.getString(R.string.sync_error_incomplete))
+            Result.failure()
         } catch (e: SyncAuthException) {
             // Terminal by design: credentials stay stored (the account code
             // is the only recovery credential); the user reconnects from

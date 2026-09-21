@@ -128,8 +128,11 @@ class FakeSyncStateDao : SyncStateDao {
         states[entityId]?.let { states[entityId] = it.copy(lastPushError = detail) }
     }
 
-    override suspend fun markRejected(entityId: String, detail: String) {
-        states[entityId]?.let { states[entityId] = it.copy(dirty = false, lastPushError = detail) }
+    override suspend fun markRejectedIfRev(entityId: String, clientRev: String, detail: String): Int {
+        val current = states[entityId] ?: return 0
+        if (current.clientRev != clientRev) return 0
+        states[entityId] = current.copy(dirty = false, lastPushError = detail)
+        return 1
     }
 
     override suspend fun delete(entityId: String) {
@@ -208,8 +211,12 @@ class FakeCredentialStore(var credentials: SyncCredentials? = null) : SyncCreden
 class FakeCursorStore(
     private var cursor: Long = 0L,
     private val baseUrl: String = "http://test.local:8080",
-    private val deviceLabel: String = "test-device"
+    private val deviceLabel: String = "test-device",
+    var datasetAccountId: String? = null,
+    var boundBaseUrl: String? = null
 ) : SyncCursorStore {
+    fun cursorValue(): Long = cursor
+
     override suspend fun getCursor(): Long = cursor
     override suspend fun setCursor(cursor: Long) {
         this.cursor = cursor
@@ -217,6 +224,14 @@ class FakeCursorStore(
 
     override suspend fun getBaseUrl(): String = baseUrl
     override suspend fun getDeviceLabel(): String = deviceLabel
+    override suspend fun getDatasetAccountId(): String? = datasetAccountId
+    override suspend fun setDatasetAccountId(accountId: String?) {
+        datasetAccountId = accountId
+    }
+    override suspend fun getBoundBaseUrl(): String? = boundBaseUrl
+    override suspend fun setBoundBaseUrl(url: String?) {
+        boundBaseUrl = url
+    }
     override suspend fun clear() {
         cursor = 0L
     }

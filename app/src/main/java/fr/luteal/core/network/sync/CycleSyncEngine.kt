@@ -49,6 +49,7 @@ import fr.luteal.core.network.mapping.toEntity
 import fr.luteal.core.network.mapping.toPayload
 import fr.luteal.core.model.DailyEntry
 import fr.luteal.core.model.SymptomLog
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -77,7 +78,17 @@ interface SyncCursorStore {
      */
     suspend fun getDeviceLabel(): String
     suspend fun clear() {}
+    suspend fun getDatasetAccountId(): String? = null
+    suspend fun setDatasetAccountId(accountId: String?) {}
+    suspend fun getBoundBaseUrl(): String? = null
+    suspend fun setBoundBaseUrl(url: String?) {}
 }
+
+class SyncDatasetBlockedException :
+    Exception("Local records are bound to another account or server")
+
+class SyncPageIncomplete(message: String) :
+    Exception(message)
 
 /** Outcome of one sync pass. Contains no credentials. */
 data class SyncReport(
@@ -116,8 +127,8 @@ class SyncAuthException :
  *  4. advance and persist the cursor.
  *
  * Local writes never go through this class; they land in Room directly and are
- * reconciled here in the background. The server is the source of truth: on
- * conflict we adopt its record, never silently drop.
+ * reconciled here in the background. A dirty local edit is not replaced by a
+ * pull or a conflict. A clean row adopts the server record.
  */
 class CycleSyncEngine(
     private val cycleRepository: CycleRepository,
@@ -129,7 +140,11 @@ class CycleSyncEngine(
     private val apiClientFactory: FolicularApiClientFactory,
     private val cursorStore: SyncCursorStore,
     private val recordSealer: RecordSealer,
-    private val database: LutealDatabase? = null
+    private val database: LutealDatabase? = null,
+    private val revisionClock: SyncRevisionClock = SyncRevisionClock(
+        MemoryRevisionWatermarkStore(),
+        Clock.systemUTC()
+    )
 ) {
 
     suspend fun sync(): SyncReport {
@@ -160,7 +175,15 @@ class CycleSyncEngine(
     // --- 1. Register if needed ---------------------------------------------
 
     private suspend fun ensureRegistered(client: FolicularApiClient): Pair<SyncCredentials, Boolean> {
-        credentialStore.load()?.let { return it to false }
+        credentialStore.load()?.let { existing ->
+            if (cursorStore.getDatasetAccountId() == null) {
+                cursorStore.setDatasetAccountId(existing.accountId)
+                cursorStore.setBoundBaseUrl(cursorStore.getBaseUrl())
+            }
+            guardDataset(existing.accountId)
+            return existing to false
+        }
+        if (cursorStore.getDatasetAccountId() != null) throw SyncDatasetBlockedException()
         val response = client.register(cursorStore.getDeviceLabel())
         val credentials = SyncCredentials(
             accountId = response.account.id.toString(),
@@ -168,7 +191,16 @@ class CycleSyncEngine(
             deviceToken = response.device.token
         )
         credentialStore.save(credentials)
+        cursorStore.setDatasetAccountId(credentials.accountId)
+        cursorStore.setBoundBaseUrl(cursorStore.getBaseUrl())
         return credentials to true
+    }
+
+    private suspend fun guardDataset(accountId: String) {
+        val boundAccount = cursorStore.getDatasetAccountId()
+        if (boundAccount != null && boundAccount != accountId) throw SyncDatasetBlockedException()
+        val boundUrl = cursorStore.getBoundBaseUrl()
+        if (boundUrl != null && boundUrl != cursorStore.getBaseUrl()) throw SyncDatasetBlockedException()
     }
 
     // --- 2. Push all dirty records -----------------------------------------
@@ -193,6 +225,7 @@ class CycleSyncEngine(
         val cyclesById = cycleRepository.getCyclesOnce().associateBy { it.id }
 
         for (state in dirtyStates) {
+            if (state.lastPushError == SyncRevisionClock.WAITING_CLOCK) continue
             val meta = state.toSyncMeta()
             when (state.entityType) {
                 SyncStateEntity.TYPE_CYCLE -> {
@@ -258,14 +291,26 @@ class CycleSyncEngine(
 
             for (rejected in result.rejected) {
                 val wireId = rejected.entityId
-                val localId = wireId?.let { localIdByWireId[it] ?: it.toString() }
-                if (localId != null) {
-                    syncStateDao.markRejected(localId, rejected.detail)
+                val localId = localIdByWireId[wireId] ?: wireId.toString()
+                val pushedRev = pushedRevByWireId[wireId]
+                if (pushedRev != null) {
+                    syncStateDao.markRejectedIfRev(localId, pushedRev, rejected.detail)
                 }
                 rejectedDetails += "${rejected.entityType.value}: ${rejected.detail}"
             }
 
             for (conflict in result.conflicts) {
+                val conflictType = conflict.entityType ?: continue
+                val conflictLocalId = localIdFor(conflictType, conflict.entityId)
+                    ?: conflict.entityId.toString()
+                if (retainDirty(
+                        conflictLocalId,
+                        conflict.currentUpdatedAt.toInstant().toEpochMilli(),
+                        conflict.currentClientRev.toString()
+                    )
+                ) {
+                    continue
+                }
                 when (conflict.entityType) {
                     EntityType.CYCLE -> {
                         if (conflict.currentDeleted) {
@@ -361,7 +406,7 @@ class CycleSyncEngine(
     ) {
         val cycleId = runCatching { UUID.fromString(cycle.id) }.getOrNull()
         if (cycleId == null) {
-            syncStateDao.markRejected(state.entityId, "identifiant de cycle invalide")
+            syncStateDao.markRejectedIfRev(state.entityId, state.clientRev, "identifiant de cycle invalide")
             return
         }
         val cycleData = cycle.toCycleData(meta)
@@ -538,15 +583,25 @@ class CycleSyncEngine(
         // Decode live bleeding observations for cycle period-day association.
         val bleeding = changes
             .filter { it.entityType == EntityType.BLEEDING_OBSERVATION && !it.deleted }
-            .mapNotNull {
-                runCatching { it.openPayload(recordSealer)?.toBleedingObservationData() }.getOrNull()
+            .map { change ->
+                openOrIncomplete(change).toBleedingObservationData()
             }
 
         var recordsApplied = 0
         var tombstones = 0
 
         for (change in changes) {
-            when (change.entityType) {
+            val type = change.entityType ?: throw SyncPageIncomplete("unsupported record")
+            val localId = localIdFor(type, change.entityId)
+            if (localId != null && retainDirty(
+                    localId,
+                    change.updatedAt.toInstant().toEpochMilli(),
+                    change.clientRev.toString()
+                )
+            ) {
+                continue
+            }
+            when (type) {
                 EntityType.CYCLE -> {
                     val cycleId = change.entityId.toString()
                     if (change.deleted) {
@@ -554,9 +609,7 @@ class CycleSyncEngine(
                         syncStateDao.delete(cycleId)
                         tombstones++
                     } else {
-                        val cycleData = runCatching {
-                            change.openPayload(recordSealer)?.toCycleData()
-                        }.getOrNull() ?: continue
+                        val cycleData = openOrIncomplete(change).toCycleData()
                         val periodDays = associatePeriodDays(
                             startDate = cycleData.startDate,
                             endDate = cycleData.endDate,
@@ -572,9 +625,7 @@ class CycleSyncEngine(
                         adoptDailyEntryTombstone(change.entityId)
                         tombstones++
                     } else {
-                        val entryData = runCatching {
-                            change.openPayload(recordSealer)?.toDailyEntryData()
-                        }.getOrNull() ?: continue
+                        val entryData = openOrIncomplete(change).toDailyEntryData()
                         adoptDailyEntry(entryData)
                         recordsApplied++
                     }
@@ -586,9 +637,7 @@ class CycleSyncEngine(
                         syncStateDao.delete(logId)
                         tombstones++
                     } else {
-                        val logData = runCatching {
-                            change.openPayload(recordSealer)?.toSymptomLogData()
-                        }.getOrNull() ?: continue
+                        val logData = openOrIncomplete(change).toSymptomLogData()
                         adoptSymptomLog(logData)
                         recordsApplied++
                     }
@@ -598,9 +647,7 @@ class CycleSyncEngine(
                         adoptBiomarkerTombstone(change.entityId)
                         tombstones++
                     } else {
-                        val payload = runCatching {
-                            change.openPayload(recordSealer)?.toBiomarkerObservationPayload()
-                        }.getOrNull() ?: continue
+                        val payload = openOrIncomplete(change).toBiomarkerObservationPayload()
                         adoptBiomarker(payload)
                         recordsApplied++
                     }
@@ -610,16 +657,12 @@ class CycleSyncEngine(
                         adoptBleedingObservationTombstone(change.entityId)
                         tombstones++
                     } else {
-                        val observation = runCatching {
-                            change.openPayload(recordSealer)?.toBleedingObservationData()
-                        }.getOrNull() ?: continue
+                        val observation = openOrIncomplete(change).toBleedingObservationData()
                         adoptBleedingObservation(observation)
                         recordsApplied++
                     }
                 }
-                else -> {
-                    // Unknown or unsupported types are skipped.
-                }
+                else -> throw SyncPageIncomplete("unsupported record")
             }
         }
         return PageOutcome(recordsApplied, tombstones)
@@ -849,5 +892,68 @@ class CycleSyncEngine(
      */
     private fun Long.toCoarseUtc(): OffsetDateTime =
         toUtcOffsetDateTime().truncatedTo(ChronoUnit.MINUTES)
+
+    private fun openOrIncomplete(change: PullChangeWire): kotlinx.serialization.json.JsonElement {
+        if (change.deleted) throw SyncPageIncomplete("live record expected")
+        return try {
+            change.openPayload(recordSealer) ?: throw SyncPageIncomplete("missing ciphertext")
+        } catch (e: SyncPageIncomplete) {
+            throw e
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            throw SyncPageIncomplete("record could not be read")
+        }
+    }
+
+    private suspend fun localIdFor(type: EntityType, wireId: UUID): String? = when (type) {
+        EntityType.CYCLE, EntityType.SYMPTOM_LOG, EntityType.BLEEDING_OBSERVATION -> wireId.toString()
+        EntityType.DAILY_ENTRY -> syncStateDao.getAllStates()
+            .firstOrNull { it.entityType == SyncStateEntity.TYPE_DAILY_ENTRY && wireIdFor(it) == wireId }
+            ?.entityId
+        EntityType.BIOMARKER_OBSERVATION -> syncStateDao.getAllStates()
+            .firstOrNull {
+                it.entityType == SyncStateEntity.TYPE_BIOMARKER_OBSERVATION && wireIdFor(it) == wireId
+            }
+            ?.entityId
+        else -> null
+    }
+
+    /**
+     * Keeps a dirty local row. Returns true when the caller must not adopt the
+     * remote body. If the remote tuple sorts after the local one, the local
+     * revision is moved above it once so the next push carries the unsent edit.
+     */
+    private suspend fun retainDirty(
+        localId: String,
+        remoteUpdatedAtEpochMillis: Long,
+        remoteRev: String
+    ): Boolean {
+        val local = syncStateDao.getState(localId) ?: return false
+        if (!local.dirty) return false
+        if (!SyncRevisionClock.remoteOrdersAfter(
+                remoteUpdatedAtEpochMillis,
+                remoteRev,
+                local.updatedAtEpochMillis,
+                local.clientRev
+            )
+        ) {
+            return true
+        }
+        val ticket = revisionClock.allocate(remoteUpdatedAtEpochMillis, remoteRev)
+        if (!ticket.pushable) {
+            syncStateDao.upsert(local.copy(lastPushError = SyncRevisionClock.WAITING_CLOCK))
+            return true
+        }
+        syncStateDao.upsert(
+            local.copy(
+                clientRev = ticket.clientRev,
+                updatedAtEpochMillis = ticket.updatedAtEpochMillis,
+                dirty = true,
+                lastPushError = null
+            )
+        )
+        return true
+    }
 
 }
