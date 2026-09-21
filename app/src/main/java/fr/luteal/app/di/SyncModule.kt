@@ -19,9 +19,12 @@ import fr.luteal.core.network.auth.EncryptedSyncCredentialStore
 import fr.luteal.core.network.auth.SyncCredentialStore
 import fr.luteal.core.network.crypto.RecordSealer
 import fr.luteal.core.network.sync.CycleSyncEngine
+import fr.luteal.core.network.sync.DataStoreRevisionWatermarkStore
 import fr.luteal.core.network.sync.DataStoreSyncCursorStore
 import fr.luteal.core.network.sync.FolicularApiClientFactory
+import fr.luteal.core.network.sync.RevisionWatermarkStore
 import fr.luteal.core.network.sync.SyncCursorStore
+import fr.luteal.core.network.sync.SyncRevisionClock
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 import okhttp3.OkHttpClient
@@ -69,6 +72,11 @@ abstract class SyncModule {
 
         @Provides
         @Singleton
+        fun provideRevisionWatermarkStore(syncDataStore: SyncDataStore): RevisionWatermarkStore =
+            DataStoreRevisionWatermarkStore(syncDataStore)
+
+        @Provides
+        @Singleton
         fun provideCycleSyncEngine(
             cycleRepository: CycleRepository,
             syncStateDao: SyncStateDao,
@@ -79,7 +87,8 @@ abstract class SyncModule {
             apiClientFactory: FolicularApiClientFactory,
             cursorStore: SyncCursorStore,
             recordSealer: RecordSealer,
-            database: LutealDatabase
+            database: LutealDatabase,
+            revisionClock: SyncRevisionClock
         ): CycleSyncEngine = CycleSyncEngine(
             cycleRepository = cycleRepository,
             syncStateDao = syncStateDao,
@@ -90,7 +99,8 @@ abstract class SyncModule {
             apiClientFactory = apiClientFactory,
             cursorStore = cursorStore,
             recordSealer = recordSealer,
-            database = database
+            database = database,
+            revisionClock = revisionClock
         )
     }
 }

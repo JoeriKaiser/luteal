@@ -73,6 +73,10 @@ class PinCryptoManager @Inject constructor(
         secretStore.clear()
     }
 
+    suspend fun clearPinTracked(): Boolean = withContext(Dispatchers.Default) {
+        secretStore.clearTracked()
+    }
+
 
     private fun derivePbkdf2Hash(chars: CharArray, salt: ByteArray): ByteArray {
         val spec = PBEKeySpec(chars, salt, PBKDF2_ITERATIONS, KEY_LENGTH_BITS)

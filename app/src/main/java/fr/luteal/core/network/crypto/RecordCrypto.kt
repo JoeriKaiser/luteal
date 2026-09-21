@@ -12,7 +12,8 @@ import javax.crypto.spec.SecretKeySpec
  * ## Key hierarchy
  *
  * ```
- * account code (100 bits, user-held, shown once, never re-transmitted)
+ * account code (100 bits). The server mints it at registration and the client
+ * sends it again on addDevice. It is not a secret the server has never seen.
  *   |
  *   +-- SHA-256(code)                     -> auth hash, stored server-side
  *   |

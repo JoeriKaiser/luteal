@@ -10,6 +10,10 @@ interface PinSecretStore {
     fun get(key: String): String?
     fun put(key: String, value: String)
     fun clear()
+    fun clearTracked(): Boolean {
+        clear()
+        return true
+    }
 }
 
 @Singleton
@@ -25,6 +29,7 @@ class KeystorePinSecretStore @Inject constructor(
     override fun get(key: String): String? = store.get(key)
     override fun put(key: String, value: String) = store.put(key, value)
     override fun clear() = store.clear()
+    override fun clearTracked(): Boolean = store.clearCommitted()
 }
 
 class InMemoryPinSecretStore : PinSecretStore {

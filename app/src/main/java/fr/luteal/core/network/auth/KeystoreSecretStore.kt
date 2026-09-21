@@ -143,12 +143,18 @@ class KeystoreSecretStore(
     fun keys(): Set<String> = prefs.all.keys
 
     fun clear() {
-        prefs.edit().clear().apply()
-        runCatching {
+        clearCommitted()
+    }
+
+    fun clearCommitted(): Boolean {
+        val prefsCleared = prefs.edit().clear().commit()
+        val aliasGone = runCatching {
             val keyStore = KeyStore.getInstance(KEYSTORE).apply { load(null) }
             if (keyStore.containsAlias(keyAlias)) {
                 keyStore.deleteEntry(keyAlias)
             }
-        }
+            !keyStore.containsAlias(keyAlias)
+        }.getOrDefault(false)
+        return prefsCleared && aliasGone
     }
 }

@@ -43,8 +43,8 @@ interface SyncStateDao {
     @Query("UPDATE sync_state SET lastPushError = :detail WHERE entityId = :entityId")
     suspend fun markPushError(entityId: String, detail: String)
 
-    @Query("UPDATE sync_state SET dirty = 0, lastPushError = :detail WHERE entityId = :entityId")
-    suspend fun markRejected(entityId: String, detail: String)
+    @Query("UPDATE sync_state SET dirty = 0, lastPushError = :detail WHERE entityId = :entityId AND clientRev = :clientRev")
+    suspend fun markRejectedIfRev(entityId: String, clientRev: String, detail: String): Int
 
     @Query("DELETE FROM sync_state WHERE entityId = :entityId")
     suspend fun delete(entityId: String)

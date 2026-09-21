@@ -43,4 +43,6 @@ open class DuoKeyStore @Inject constructor(
     open fun clear() {
         store.clear()
     }
+
+    open fun clearTracked(): Boolean = store.clearCommitted()
 }

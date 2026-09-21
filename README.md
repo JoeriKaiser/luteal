@@ -21,8 +21,11 @@ default, with optional end-to-end encrypted sync.
 - No advertising, no analytics, no Google Play Services, no Firebase.
 - Crash reporting is ACRA with a consent dialog: nothing is sent unless the user
   reads it and chooses to send. Tracking data is not included.
-- When sync is on, records are encrypted on-device before upload; the server
-  stores only ciphertext. See [docs/architecture/E2EE_DESIGN.md](docs/architecture/E2EE_DESIGN.md).
+- When sync is on, records are encrypted on this device before upload. The
+  server stores ciphertext and routing metadata. It also issued the account
+  code and receives that code again when a device is added, so the app does
+  not claim the operator has never seen the key. See
+  [docs/architecture/E2EE_DESIGN.md](docs/architecture/E2EE_DESIGN.md).
 
 ## Building
 

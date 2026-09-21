@@ -27,10 +27,10 @@ interface FolicularApiClient {
     suspend fun register(deviceName: String, inviteCode: String? = null): Register201Response
 
     /**
-     * POST /v1/auth/devices - attach this device to an EXISTING account using
-     * its account code. This is the only recovery path: the account code is the
-     * root of the key hierarchy, so without it a reinstall cannot decrypt
-     * anything the server holds.
+     * POST /v1/auth/devices - attach this device to an existing account by
+     * posting the account code. The code decrypts record content. The server
+     * issued that code, so this call does not establish that the operator has
+     * never seen it. Without the code a reinstall cannot decrypt synced data.
      *
      * Returns the account id (needed to derive the keys) and the new device
      * token.

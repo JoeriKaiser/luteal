@@ -11,6 +11,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 import javax.inject.Inject
@@ -30,7 +31,9 @@ data class SyncPreferences(
     val deviceLabel: String? = null,
     val lastSyncedEpochMillis: Long? = null,
     val lastError: String? = null,
-    val inProgress: Boolean = false
+    val inProgress: Boolean = false,
+    val datasetAccountId: String? = null,
+    val boundBaseUrl: String? = null
 )
 
 @Singleton
@@ -44,6 +47,10 @@ class SyncDataStore @Inject constructor(
         val LAST_SYNCED = longPreferencesKey("sync_last_synced_epoch_millis")
         val LAST_ERROR = stringPreferencesKey("sync_last_error")
         val IN_PROGRESS = stringPreferencesKey("sync_in_progress")
+        val DATASET_ACCOUNT_ID = stringPreferencesKey("sync_dataset_account_id")
+        val BOUND_BASE_URL = stringPreferencesKey("sync_bound_base_url")
+        val REVISION_MINUTE = longPreferencesKey("sync_revision_minute")
+        val REVISION_COUNTER = longPreferencesKey("sync_revision_counter")
     }
 
     val syncPreferencesFlow: Flow<SyncPreferences> = context.syncDataStore.data
@@ -57,7 +64,9 @@ class SyncDataStore @Inject constructor(
                 deviceLabel = preferences[DEVICE_LABEL],
                 lastSyncedEpochMillis = preferences[LAST_SYNCED],
                 lastError = preferences[LAST_ERROR],
-                inProgress = preferences[IN_PROGRESS]?.toBoolean() ?: false
+                inProgress = preferences[IN_PROGRESS]?.toBoolean() ?: false,
+                datasetAccountId = preferences[DATASET_ACCOUNT_ID],
+                boundBaseUrl = preferences[BOUND_BASE_URL]
             )
         }
 
@@ -86,6 +95,29 @@ class SyncDataStore @Inject constructor(
     suspend fun recordError(message: String): Unit = edit { preferences ->
         preferences[LAST_ERROR] = message
         preferences[IN_PROGRESS] = false.toString()
+    }
+
+    suspend fun setDatasetAccountId(accountId: String?): Unit = edit { preferences ->
+        if (accountId.isNullOrBlank()) preferences.remove(DATASET_ACCOUNT_ID)
+        else preferences[DATASET_ACCOUNT_ID] = accountId
+    }
+
+    suspend fun setBoundBaseUrl(baseUrl: String?): Unit = edit { preferences ->
+        if (baseUrl.isNullOrBlank()) preferences.remove(BOUND_BASE_URL)
+        else preferences[BOUND_BASE_URL] = baseUrl
+    }
+
+    suspend fun updateRevisionWatermark(block: (minuteEpochMillis: Long, counter: Int) -> Pair<Long, Int>): Pair<Long, Int> {
+        var written = 0L to 0
+        edit { preferences ->
+            val currentMinute = preferences[REVISION_MINUTE] ?: 0L
+            val currentCounter = (preferences[REVISION_COUNTER] ?: 0L).toInt()
+            val next = block(currentMinute, currentCounter)
+            preferences[REVISION_MINUTE] = next.first
+            preferences[REVISION_COUNTER] = next.second.toLong()
+            written = next
+        }
+        return written
     }
 
     suspend fun clear(): Unit = edit { it.clear() }

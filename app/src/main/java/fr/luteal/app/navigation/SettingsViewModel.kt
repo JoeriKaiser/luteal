@@ -201,7 +201,13 @@ class SettingsViewModel @Inject constructor(
     fun saveSyncSettings() {
         val base = baseUrlDraft.value.trim()
         viewModelScope.launch {
+            val previous = cursorStore.getBaseUrl()
             syncDataStore.setBaseUrl(base.ifBlank { null })
+            val next = cursorStore.getBaseUrl()
+            if (cursorStore.getDatasetAccountId() != null && previous != next) {
+                syncDataStore.setCursor(0)
+                syncScheduler.cancelAndJoin()
+            }
         }
     }
 
@@ -249,8 +255,9 @@ class SettingsViewModel @Inject constructor(
 
     fun unlinkSync() {
         viewModelScope.launch {
+            syncScheduler.cancelAndJoin()
             credentialStore.clear()
-            syncCursorStore.clear()
+            syncDataStore.setCursor(0)
             _syncUiState.update { it.copy(isLinked = false, accountCode = null, deviceToken = null) }
         }
     }
@@ -266,12 +273,12 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
-     * Attaches this device to an existing account using its account code.
+     * Attaches this device to an existing account by sending the account code.
      *
-     * This is the only way to read data written by another device: the account
-     * code is the root of the key hierarchy, and the server holds no key that
-     * could substitute for it. On success the credentials are stored and the
-     * next sync pulls and decrypts the account's history.
+     * The code decrypts synced records. The server issued it, so this is not a
+     * claim that the operator has never seen it. On success the credentials are
+     * stored and the next sync pulls the account history. A device that already
+     * holds another account's records is refused.
      */
     fun recoverAccount(accountCode: String) {
         val code = accountCode.trim()
@@ -281,6 +288,10 @@ class SettingsViewModel @Inject constructor(
             runCatching {
                 val client = apiClientFactory.create(cursorStore.getBaseUrl())
                 val result = client.addDevice(code, cursorStore.getDeviceLabel())
+                val bound = cursorStore.getDatasetAccountId()
+                if (bound != null && bound != result.accountId) {
+                    throw ForeignAccountRestore()
+                }
                 credentialStore.clear()
                 credentialStore.save(
                     SyncCredentials(
@@ -292,6 +303,8 @@ class SettingsViewModel @Inject constructor(
                 // A restored device starts from cursor zero so it pulls the
                 // whole history rather than resuming someone else's position.
                 syncDataStore.setCursor(0L)
+                cursorStore.setDatasetAccountId(result.accountId)
+                cursorStore.setBoundBaseUrl(cursorStore.getBaseUrl())
                 result
             }.onSuccess { result ->
                 recoveryState.value = RecoveryState.Success
@@ -305,10 +318,16 @@ class SettingsViewModel @Inject constructor(
                 }
                 syncScheduler.syncNow()
             }.onFailure { err ->
-                recoveryState.value = RecoveryState.Error(
-                    message = err.message,
-                    messageResId = if (err.message.isNullOrBlank()) R.string.settings_recovery_error_failed else null
-                )
+                recoveryState.value = if (err is ForeignAccountRestore) {
+                    RecoveryState.Error(
+                        messageResId = R.string.settings_recovery_error_foreign_account
+                    )
+                } else {
+                    RecoveryState.Error(
+                        message = err.message,
+                        messageResId = if (err.message.isNullOrBlank()) R.string.settings_recovery_error_failed else null
+                    )
+                }
             }
         }
     }
@@ -338,7 +357,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             wipeState.value = DataWipeState.Loading
             runCatching {
-                localDataPurgeManager.purgeAllLocalData()
+                syncScheduler.cancelAndJoin()
+                if (!localDataPurgeManager.purgeAllLocalData()) {
+                    error("local erase did not clear every secret")
+                }
             }.onSuccess {
                 wipeState.value = DataWipeState.Success
                 notificationScheduler.reconcileAllSchedules()
@@ -684,3 +706,5 @@ sealed interface TestDataActionState {
     data object SuccessCleared : TestDataActionState
     data class Error(val message: String? = null, @param:StringRes val messageResId: Int? = null) : TestDataActionState
 }
+
+private class ForeignAccountRestore : Exception()

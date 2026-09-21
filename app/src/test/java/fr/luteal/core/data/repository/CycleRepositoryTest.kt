@@ -44,7 +44,17 @@ class CycleRepositoryTest {
         database = Room.inMemoryDatabaseBuilder(context, LutealDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repo = CycleRepositoryImpl(database, database.cycleDao(), database.dailyEntryDao(), database.syncStateDao(), clock)
+        repo = CycleRepositoryImpl(
+            database,
+            database.cycleDao(),
+            database.dailyEntryDao(),
+            database.syncStateDao(),
+            clock,
+            fr.luteal.core.network.sync.SyncRevisionClock(
+                fr.luteal.core.network.sync.MemoryRevisionWatermarkStore(),
+                clock
+            )
+        )
     }
 
     @After

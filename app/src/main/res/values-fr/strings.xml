@@ -241,7 +241,7 @@
     <string name="settings_backup_body">Les données sensibles de Luteal ne sont pas incluses dans la sauvegarde cloud Android.</string>
     <string name="settings_sync_title">Synchronisation</string>
     <string name="settings_sync_body">Activez la synchronisation pour retrouver vos données sur vos appareils. Vos observations restent enregistrées sur cet appareil ; la synchronisation s’effectue en arrière-plan et ne bloque jamais l’application. Aucune connexion n’est établie sans votre activation.</string>
-    <string name="sync_transport_notice">Vos observations sont chiffrées de bout en bout sur cet appareil avant tout envoi : le serveur ne conserve que des données illisibles pour lui. Il voit malgré tout la date de vos synchronisations et le nombre d’enregistrements. Votre code de compte est la seule clé : sans lui, personne ne peut déchiffrer vos données, y compris nous.</string>
+    <string name="sync_transport_notice">Vos observations sont chiffrées sur cet appareil avant l\'envoi. Le serveur conserve ce texte chiffré, et il voit la date de vos synchronisations ainsi que le nombre d\'enregistrements. Le code de compte est la clé de chiffrement. Le serveur a créé ce code et le reçoit à nouveau quand vous ajoutez un appareil, donc cette application ne peut pas promettre que l\'opérateur ne l\'a jamais vu. Si vous perdez le code, les données synchronisées ne peuvent pas être récupérées.</string>
     <string name="settings_sync_online_title">Mode en ligne</string>
     <string name="settings_sync_online_body">Active la synchronisation avec le serveur Luteal. Désactivée par défaut.</string>
     <string name="settings_sync_server_body">Par défaut, la synchronisation utilise le serveur officiel Luteal. Vous pouvez également renseigner l’adresse de votre propre instance folicular auto-hébergée.</string>
@@ -251,13 +251,13 @@
     <string name="settings_sync_in_progress">Synchronisation en cours…</string>
     <string name="settings_sync_idle">Aucune synchronisation pour le moment.</string>
     <string name="settings_sync_account_code_title">Code de compte</string>
-    <string name="settings_sync_account_code_body">Ce code est la clé qui chiffre vos données, et votre seul moyen de les retrouver sur un nouvel appareil. Conservez-le en lieu sûr et hors de l’application. Personne ne peut le régénérer : si vous le perdez, vos données synchronisées deviennent définitivement illisibles.</string>
+    <string name="settings_sync_account_code_body">Ce code est la clé qui chiffre vos données, et le seul moyen de les ouvrir sur un nouvel appareil. Le serveur l\'a créé et l\'a vu. Conservez-en une copie en lieu sûr, hors de l\'application. Personne ne peut le régénérer. Si vous le perdez, les données synchronisées restent illisibles.</string>
     <string name="settings_sync_account_code_copy">Copier le code</string>
     <string name="settings_sync_account_code_copied">Code copié</string>
     <string name="settings_sync_account_code_none">Aucun compte enregistré. Le compte sera créé lors de la première synchronisation.</string>
     <string name="settings_sync_unlink">Déconnecter la synchronisation</string>
     <string name="settings_recovery_title">Restaurer un compte existant</string>
-    <string name="settings_recovery_body">Sur un nouvel appareil, saisissez le code de compte conservé lors de la création. C’est le seul moyen de retrouver vos données : elles sont chiffrées avec ce code, et le serveur ne peut pas les déchiffrer sans lui.</string>
+    <string name="settings_recovery_body">Sur un nouvel appareil, saisissez le code de compte que vous avez conservé. Ce code déchiffre vos données synchronisées. Cet appareil envoie le code au serveur pour se connecter. Le serveur a créé ce code, donc ceci ne signifie pas que l\'opérateur ne l\'a jamais vu.</string>
     <string name="settings_recovery_label">Code de compte</string>
     <string name="settings_recovery_action">Restaurer ce compte</string>
     <string name="settings_recovery_in_progress">Restauration en cours…</string>
@@ -265,6 +265,9 @@
     <string name="settings_recovery_error_failed">La restauration a échoué. Vérifiez le code de compte et votre connexion.</string>
     <string name="settings_sync_last_success">Dernière synchronisation : %1$s</string>
     <string name="sync_error_auth_rejected">Le serveur ne reconnaît plus cet appareil. Reconnectez le compte depuis Réglages &gt; Synchronisation avec votre code de compte.</string>
+    <string name="sync_error_incomplete">La synchronisation s\'est arrêtée parce qu\'un enregistrement n\'a pas pu être lu. Rien après cet enregistrement n\'a été appliqué. Réessayez après la prochaine mise à jour si cela continue.</string>
+    <string name="sync_error_dataset_blocked">Les enregistrements de cet appareil appartiennent à un autre compte ou serveur. Restaurez ce compte, ou effacez les données locales avant d\'en utiliser un autre.</string>
+    <string name="settings_recovery_error_foreign_account">Cet appareil contient déjà des enregistrements d\'un autre compte. Effacez les données locales avant de restaurer un autre compte.</string>
     <string name="settings_sync_last_error">Échec de la synchronisation : %1$s</string>
     <string name="settings_appearance_title">Apparence</string>
     <string name="settings_appearance_body">Le thème clair ou sombre suit le réglage de votre appareil.</string>

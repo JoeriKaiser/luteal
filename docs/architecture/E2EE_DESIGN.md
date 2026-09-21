@@ -1,8 +1,15 @@
 # End-to-End Encryption Design
 
-Status: **implemented, verified end to end, and live in the app.** Key
-hierarchy, record sealing, the folicular schema and handler migration, client
-sync integration, Duo key agreement, and account-code recovery are all in
+Status: sealing is implemented and live. Operator blindness is not.
+
+Registration returns a server-minted account code, and adding a device sends
+that code to the server. A ciphertext-only database file does not prove the
+operator never held the key. Sentences below that say the server cannot
+decrypt are not current. The correction list is
+`docs/architecture/OPEN_WORK.md`.
+
+Key hierarchy, record sealing, the folicular schema and handler migration,
+client sync integration, Duo key agreement, and account-code recovery are in
 place, covered by tests, and shipping behind `SyncMode.ONLINE_CLOUD`.
 
 Verified against a live server on 2026-07-25 (`E2eRoundTripTest`, opt-in via
@@ -12,7 +19,8 @@ device's record. Inspecting the resulting SQLite file directly found **no
 plaintext at all**, no notes, dates, or enum values, only the `0x01` version
 byte and ciphertext. The Compose app itself has since run against a real
 server on a device (see `BACKEND_INTEGRATION.md`, current state), and
-`sync_transport_notice` now states end-to-end encryption truthfully.
+`sync_transport_notice` still claims the server cannot read the data. That
+sentence is not established. See `docs/architecture/OPEN_WORK.md`.
 
 This document is the single design reference for both repositories. The Android
 client is `luteal`; the Go backend is
@@ -109,7 +117,7 @@ Implemented in `core/network/crypto/RecordCrypto.kt`, verified by
 Appendix A published vectors.
 
 ```
-account code  (100 bits, Crockford base32, shown once, never re-transmitted)
+account code  (100 bits, Crockford base32, issued by the server, sent again on addDevice)
   |
   +-- SHA-256(normalised)                     -> auth hash, stored server-side
   |
@@ -217,10 +225,10 @@ server flag.
 
 ## 7. Backend authority is inverted
 
-`luteal/AGENTS.md` §4 now records this split: the backend owns the transport
-contract and routing; content authority lives client-side. **A server that
-cannot read payloads cannot validate or compute them.** This is the central
-architectural consequence of E2EE; both `AGENTS.md` files reflect it.
+`luteal/AGENTS.md` §4 records this split: the backend owns the transport
+contract and routing; content validation and estimates live on the client.
+The server stores ciphertext, but it has seen the account code, so this is
+not operator-blind encryption. See `docs/architecture/OPEN_WORK.md`.
 
 | Concern | Before | After |
 |---|---|---|

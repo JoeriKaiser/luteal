@@ -42,7 +42,16 @@ class DailyEntryRepositoryTest {
         database = Room.inMemoryDatabaseBuilder(context, LutealDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repo = DailyEntryRepositoryImpl(database, database.dailyEntryDao(), database.syncStateDao(), clock)
+        repo = DailyEntryRepositoryImpl(
+            database,
+            database.dailyEntryDao(),
+            database.syncStateDao(),
+            clock,
+            fr.luteal.core.network.sync.SyncRevisionClock(
+                fr.luteal.core.network.sync.MemoryRevisionWatermarkStore(),
+                clock
+            )
+        )
     }
 
     @After

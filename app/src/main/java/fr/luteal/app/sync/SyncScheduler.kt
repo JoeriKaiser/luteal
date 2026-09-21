@@ -10,6 +10,8 @@ import androidx.work.WorkManager
 import androidx.work.WorkRequest
 import java.util.concurrent.TimeUnit
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlin.coroutines.resume
+import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -40,5 +42,15 @@ class SyncScheduler @Inject constructor(
             .build()
         WorkManager.getInstance(context)
             .enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request)
+    }
+
+    suspend fun cancelAndJoin() {
+        val operation = WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+        suspendCancellableCoroutine { continuation ->
+            operation.result.addListener(
+                { if (continuation.isActive) continuation.resume(Unit) },
+                Runnable::run
+            )
+        }
     }
 }
