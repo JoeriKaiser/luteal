@@ -155,4 +155,65 @@ class MonthCalendarProjectionTest {
         val feb29 = projection.weeks.flatten().first { it.date == LocalDate.of(2028, 2, 29) }
         assertTrue(feb29.isCurrentMonth)
     }
+
+    @Test
+    fun `past dates in estimate window do not show as estimated period window`() {
+        val targetMonth = YearMonth.of(2026, 8)
+        val today = LocalDate.of(2026, 9, 5)
+
+        val estimate = CycleEstimate(
+            earliestDate = LocalDate.of(2026, 8, 26),
+            centralDate = LocalDate.of(2026, 8, 28),
+            latestDate = LocalDate.of(2026, 8, 30),
+            cycleCount = 4,
+            variabilityDays = 4
+        )
+
+        val projection = MonthCalendarProjectionCalculator.project(
+            targetMonth = targetMonth,
+            today = today,
+            cycles = emptyList(),
+            entries = emptyList(),
+            estimateResult = CycleEstimateResult.Available(estimate)
+        )
+
+        val aug27 = projection.weeks.flatten().first { it.date == LocalDate.of(2026, 8, 27) }
+        assertFalse(aug27.isEstimatedPeriodWindow)
+    }
+
+    @Test
+    fun `recorded bleeding on future estimated date suppresses isEstimatedPeriodWindow`() {
+        val targetMonth = YearMonth.of(2026, 8)
+        val today = LocalDate.of(2026, 8, 20)
+
+        val estimate = CycleEstimate(
+            earliestDate = LocalDate.of(2026, 8, 26),
+            centralDate = LocalDate.of(2026, 8, 28),
+            latestDate = LocalDate.of(2026, 8, 30),
+            cycleCount = 4,
+            variabilityDays = 4
+        )
+
+        val entries = listOf(
+            DailyEntry(
+                date = LocalDate.of(2026, 8, 27),
+                bleedingIntensity = BleedingIntensity.MEDIUM
+            )
+        )
+
+        val projection = MonthCalendarProjectionCalculator.project(
+            targetMonth = targetMonth,
+            today = today,
+            cycles = emptyList(),
+            entries = entries,
+            estimateResult = CycleEstimateResult.Available(estimate)
+        )
+
+        val aug27 = projection.weeks.flatten().first { it.date == LocalDate.of(2026, 8, 27) }
+        assertFalse(aug27.isEstimatedPeriodWindow)
+        assertTrue(aug27.hasBleeding)
+
+        val aug28 = projection.weeks.flatten().first { it.date == LocalDate.of(2026, 8, 28) }
+        assertTrue(aug28.isEstimatedPeriodWindow)
+    }
 }

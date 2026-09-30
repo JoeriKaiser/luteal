@@ -62,6 +62,16 @@ class ThermalShiftCalculatorTest {
         assertEquals(ThermalShiftResult.None, result)
     }
 
+    @Test
+    fun `third day high below 0_20 C delta above coverline remains unconfirmed`() {
+        val observations = temperatures(
+            36.30, 36.35, 36.40, 36.42, 36.38, 36.45,
+            36.50, 36.55, 36.60
+        )
+        val result = ThermalShiftCalculator.evaluateCycle(start, observations)
+        assertEquals(ThermalShiftResult.None, result)
+    }
+
     private fun temperatures(vararg values: Double): List<BiomarkerObservation> =
         values.mapIndexed { index, value -> observation(start.plusDays(index.toLong()), value) }
 

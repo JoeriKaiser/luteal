@@ -13,7 +13,11 @@ data class LongitudinalCycleItem(
     val isCurrent: Boolean,
     val isExcluded: Boolean,
     val exclusionReason: CycleExclusionReason?,
-    val hasStrawSwing: Boolean
+    /**
+     * Flags a single-cycle length difference >= 7 days for the UI badge "Shift >= 7d",
+     * distinct from multi-cycle STRAW+10 staging.
+     */
+    val hasSevenDayShift: Boolean
 )
 
 data class LongitudinalCycleStats(
@@ -26,7 +30,7 @@ data class LongitudinalCycleStats(
 )
 
 object LongitudinalCycleStatsCalculator {
-    fun calculate(cycles: List<Cycle>): LongitudinalCycleStats {
+    fun calculate(cycles: List<Cycle>, today: LocalDate = LocalDate.now()): LongitudinalCycleStats {
         val sorted = cycles.sortedBy { it.startDate }
         val items = mutableListOf<LongitudinalCycleItem>()
         val completedLengths = mutableListOf<Int>()
@@ -42,16 +46,15 @@ object LongitudinalCycleStatsCalculator {
             } else if (cycle.endDate != null) {
                 ChronoUnit.DAYS.between(cycle.startDate, cycle.endDate).toInt() + 1
             } else {
-                ChronoUnit.DAYS.between(cycle.startDate, LocalDate.now()).toInt() + 1
+                ChronoUnit.DAYS.between(cycle.startDate, today).toInt() + 1
             }
 
             val bleedingDays = cycle.periodDays.count { it.bleedingIntensity != BleedingIntensity.NONE }
-            val hasStrawSwing = if (!isCurrent && prevCompletedLength != null) {
+            val hasSevenDayShift = if (!isCurrent && prevCompletedLength != null) {
                 abs(length - prevCompletedLength) >= 7
             } else {
                 false
             }
-
             if (!isCurrent) {
                 if (!cycle.isExcludedFromEstimates) {
                     prevCompletedLength = length
@@ -71,7 +74,7 @@ object LongitudinalCycleStatsCalculator {
                     isCurrent = isCurrent,
                     isExcluded = cycle.isExcludedFromEstimates,
                     exclusionReason = cycle.exclusionReason,
-                    hasStrawSwing = hasStrawSwing
+                    hasSevenDayShift = hasSevenDayShift
                 )
             )
         }

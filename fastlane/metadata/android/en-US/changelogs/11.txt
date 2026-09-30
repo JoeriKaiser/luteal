@@ -1,0 +1,6 @@
+- Past dates in late cycles no longer display expired prediction windows on the calendar.
+- Clinical report: fixed population filters for mean bleeding and excluded in-progress cycles from date extremes.
+- Intermenstrual bleeding now separates prolonged menses from mid-cycle spotting.
+- Journal Trends estimates active cycle phases using your personal cycle history instead of a fixed 28-day model.
+- Duo tips: adjusted endometriosis partner guidance toward collaborative, requested support.
+- Deterministic cycle length calculations and expanded boundary test coverage.

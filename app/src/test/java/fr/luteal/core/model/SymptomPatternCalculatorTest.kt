@@ -120,4 +120,58 @@ class SymptomPatternCalculatorTest {
         assertEquals(0, result.first().phaseBreakdown[CyclePhase.FOLLICULAR])
         assertEquals(CyclePhase.MENSTRUAL, result.first().mostFrequentPhase)
     }
+
+    @Test
+    fun `active cycle uses median completed cycle length to delay luteal phase`() {
+        val cycles = listOf(
+            Cycle(id = "c1", startDate = LocalDate.of(2026, 1, 1), endDate = LocalDate.of(2026, 2, 4)),
+            Cycle(id = "c2", startDate = LocalDate.of(2026, 2, 5), endDate = LocalDate.of(2026, 3, 11)),
+            Cycle(id = "c3", startDate = LocalDate.of(2026, 3, 12), endDate = null)
+        )
+        val entries = listOf(
+            DailyEntry(date = LocalDate.of(2026, 3, 27), symptomIds = setOf("headache"))
+        )
+        val result = SymptomPatternCalculator.calculate(cycles, entries)
+        assertEquals(1, result.size)
+        val headache = result.first()
+        assertEquals("headache", headache.symptomId)
+        assertEquals(CyclePhase.FOLLICULAR, headache.mostFrequentPhase)
+        assertEquals(1, headache.phaseBreakdown[CyclePhase.FOLLICULAR])
+        assertEquals(0, headache.phaseBreakdown[CyclePhase.LUTEAL])
+    }
+
+    @Test
+    fun `active cycle without completed history does not speculate luteal`() {
+        val cycles = listOf(
+            Cycle(id = "c1", startDate = LocalDate.of(2026, 1, 1), endDate = null)
+        )
+        val entries = listOf(
+            DailyEntry(date = LocalDate.of(2026, 1, 18), symptomIds = setOf("fatigue"))
+        )
+        val result = SymptomPatternCalculator.calculate(cycles, entries)
+        assertEquals(1, result.size)
+        val fatigue = result.first()
+        assertEquals("fatigue", fatigue.symptomId)
+        assertEquals(CyclePhase.FOLLICULAR, fatigue.mostFrequentPhase)
+        assertEquals(1, fatigue.phaseBreakdown[CyclePhase.FOLLICULAR])
+        assertEquals(0, fatigue.phaseBreakdown[CyclePhase.LUTEAL])
+    }
+
+    @Test
+    fun `entry in inter-cycle gap resolves to null cycle and follicular`() {
+        val cycles = listOf(
+            Cycle(id = "c1", startDate = LocalDate.of(2026, 1, 1), endDate = LocalDate.of(2026, 1, 20)),
+            Cycle(id = "c2", startDate = LocalDate.of(2026, 2, 1), endDate = LocalDate.of(2026, 2, 28))
+        )
+        val entries = listOf(
+            DailyEntry(date = LocalDate.of(2026, 1, 25), symptomIds = setOf("bloating"))
+        )
+        val result = SymptomPatternCalculator.calculate(cycles, entries)
+        assertEquals(1, result.size)
+        val bloating = result.first()
+        assertEquals("bloating", bloating.symptomId)
+        assertEquals(1, bloating.phaseBreakdown[CyclePhase.FOLLICULAR])
+        assertEquals(1, bloating.cycleCount)
+        assertEquals(CyclePhase.FOLLICULAR, bloating.mostFrequentPhase)
+    }
 }

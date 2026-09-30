@@ -38,7 +38,8 @@ data class CycleReportRow(
     val peakFlow: BleedingIntensity,
     val painDaysCount: Int,
     val isExcluded: Boolean,
-    val exclusionReason: CycleExclusionReason?
+    val exclusionReason: CycleExclusionReason?,
+    val isCompleted: Boolean = true
 )
 
 data class CycleStatistics(

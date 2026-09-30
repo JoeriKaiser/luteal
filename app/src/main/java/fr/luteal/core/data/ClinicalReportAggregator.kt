@@ -213,14 +213,13 @@ class ClinicalReportAggregator @Inject constructor(
                         peakFlow = peakFlow,
                         painDaysCount = painDaysCount,
                         isExcluded = cycle.isExcludedFromEstimates,
-                        exclusionReason = cycle.exclusionReason
+                        exclusionReason = cycle.exclusionReason,
+                        isCompleted = isCompleted
                     )
                 )
 
                 if (isCompleted && !cycle.isExcludedFromEstimates && length in CycleEstimateCalculator.plausibleCycleDays) {
                     completedLengths.add(length)
-                }
-                if (isCompleted) {
                     bleedingDaysList.add(bleedingDaysCount)
                 }
             }
@@ -245,7 +244,9 @@ class ClinicalReportAggregator @Inject constructor(
             val maxLength = completedLengths.maxOrNull()
             val meanBleeding = if (bleedingDaysList.isNotEmpty()) bleedingDaysList.average() else null
 
-            val validCompletedCycles = cycleRows.filter { !it.isExcluded && it.lengthDays in CycleEstimateCalculator.plausibleCycleDays }
+            val validCompletedCycles = cycleRows.filter {
+                it.isCompleted && !it.isExcluded && it.lengthDays in CycleEstimateCalculator.plausibleCycleDays
+            }
             val shortestCycle = validCompletedCycles.minByOrNull { it.lengthDays }
             val longestCycle = validCompletedCycles.maxByOrNull { it.lengthDays }
 
@@ -270,7 +271,34 @@ class ClinicalReportAggregator @Inject constructor(
             var heavyCount = 0
             var intermenstrualCount = 0
 
-            val cycleStartDates = selectedCycles.map { it.startDate }.toSet()
+            val bleedingDateSet = selectedEntries
+                .filter { it.bleedingIntensity != null && it.bleedingIntensity != BleedingIntensity.NONE }
+                .map { it.date }
+                .toSet()
+
+            val mensesDates = mutableSetOf<LocalDate>()
+            for (i in selectedCycles.indices) {
+                val cycle = selectedCycles[i]
+                val nextStart = if (i < selectedCycles.size - 1) selectedCycles[i + 1].startDate else null
+                val effectiveEnd = cycle.endDate ?: nextStart?.minusDays(1)
+
+                var currentDate = cycle.startDate
+                var consecutiveNonBleeding = 0
+
+                val maxDate = effectiveEnd ?: now
+                while (currentDate <= maxDate) {
+                    if (currentDate in bleedingDateSet) {
+                        consecutiveNonBleeding = 0
+                        mensesDates.add(currentDate)
+                    } else {
+                        consecutiveNonBleeding++
+                        if (consecutiveNonBleeding >= 2) {
+                            break
+                        }
+                    }
+                    currentDate = currentDate.plusDays(1)
+                }
+            }
 
             for (entry in selectedEntries) {
                 val intensity = entry.bleedingIntensity ?: continue
@@ -282,14 +310,8 @@ class ClinicalReportAggregator @Inject constructor(
                     BleedingIntensity.HEAVY -> heavyCount++
                 }
 
-                if (intensity != BleedingIntensity.NONE) {
-                    val daysFromNearestCycleStart = cycleStartDates.minOfOrNull {
-                        abs(ChronoUnit.DAYS.between(it, entry.date))
-                    } ?: Long.MAX_VALUE
-
-                    if (daysFromNearestCycleStart >= 7) {
-                        intermenstrualCount++
-                    }
+                if (intensity != BleedingIntensity.NONE && entry.date !in mensesDates) {
+                    intermenstrualCount++
                 }
             }
 

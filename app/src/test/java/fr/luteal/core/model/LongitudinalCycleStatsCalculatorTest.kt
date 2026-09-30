@@ -82,8 +82,8 @@ class LongitudinalCycleStatsCalculatorTest {
         val cycle2Item = stats.items.first { it.cycleId == "2" }
         val cycle1Item = stats.items.first { it.cycleId == "1" }
 
-        assertTrue(cycle2Item.hasStrawSwing)
-        assertFalse(cycle1Item.hasStrawSwing)
+        assertTrue(cycle2Item.hasSevenDayShift)
+        assertFalse(cycle1Item.hasSevenDayShift)
     }
 
     @Test
@@ -112,7 +112,7 @@ class LongitudinalCycleStatsCalculatorTest {
         val cycle2Item = stats.items.first { it.cycleId == "2" }
 
         assertEquals(28, cycle2Item.lengthDays)
-        assertFalse(cycle2Item.hasStrawSwing)
+        assertFalse(cycle2Item.hasSevenDayShift)
     }
 
     @Test
@@ -146,6 +146,6 @@ class LongitudinalCycleStatsCalculatorTest {
         val cycle3Item = stats.items.first { it.cycleId == "3" }
 
         assertEquals(28, cycle3Item.lengthDays)
-        assertFalse(cycle3Item.hasStrawSwing)
+        assertFalse(cycle3Item.hasSevenDayShift)
     }
 }

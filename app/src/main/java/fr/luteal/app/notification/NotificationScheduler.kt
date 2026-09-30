@@ -37,6 +37,23 @@ class NotificationScheduler @Inject constructor(
         const val REQUEST_CODE_DAILY = 1001
         const val REQUEST_CODE_WINDOW = 1002
         const val REQUEST_CODE_LATE = 1003
+
+        fun calculateDailyCheckInTarget(targetTime: LocalTime, now: LocalDateTime, hasEntryToday: Boolean): LocalDateTime {
+            val today = now.toLocalDate()
+            return if (hasEntryToday || now.toLocalTime().isAfter(targetTime)) {
+                today.plusDays(1).atTime(targetTime)
+            } else {
+                today.atTime(targetTime)
+            }
+        }
+
+        fun calculatePeriodWindowTarget(earliestDate: LocalDate, leadDays: Int): LocalDateTime {
+            return earliestDate.minusDays(leadDays.toLong()).atTime(9, 0)
+        }
+
+        fun calculateLateCycleTarget(latestDate: LocalDate, graceDays: Int): LocalDateTime {
+            return latestDate.plusDays(graceDays.toLong()).atTime(10, 0)
+        }
     }
 
     suspend fun reconcileAllSchedules(now: LocalDateTime = LocalDateTime.now()) {
@@ -85,18 +102,13 @@ class NotificationScheduler @Inject constructor(
         val today = now.toLocalDate()
         val hasEntryToday = dailyEntryRepository.getEntryOnce(today)?.hasObservations == true
 
-        val targetDateTime = if (hasEntryToday || now.toLocalTime().isAfter(targetTime)) {
-            today.plusDays(1).atTime(targetTime)
-        } else {
-            today.atTime(targetTime)
-        }
+        val targetDateTime = calculateDailyCheckInTarget(targetTime, now, hasEntryToday)
 
         setAlarm(NotificationType.DAILY_CHECK_IN, targetDateTime)
     }
 
     private fun schedulePeriodWindow(earliestDate: LocalDate, leadDays: Int, now: LocalDateTime) {
-        val targetDate = earliestDate.minusDays(leadDays.toLong())
-        val targetDateTime = targetDate.atTime(9, 0) // 09:00 AM
+        val targetDateTime = calculatePeriodWindowTarget(earliestDate, leadDays)
 
         if (targetDateTime.isAfter(now)) {
             setAlarm(NotificationType.PERIOD_WINDOW, targetDateTime)
@@ -106,8 +118,7 @@ class NotificationScheduler @Inject constructor(
     }
 
     private fun scheduleLateCycle(latestDate: LocalDate, graceDays: Int, now: LocalDateTime) {
-        val targetDate = latestDate.plusDays(graceDays.toLong())
-        val targetDateTime = targetDate.atTime(10, 0) // 10:00 AM
+        val targetDateTime = calculateLateCycleTarget(latestDate, graceDays)
 
         if (targetDateTime.isAfter(now)) {
             setAlarm(NotificationType.LATE_CYCLE, targetDateTime)

@@ -256,7 +256,7 @@ private fun CycleBarRow(
         append(stringResource(R.string.variability_bar_cd, formattedStart, item.lengthDays, item.bleedingDaysCount))
         if (item.isCurrent) append(" ").append(stringResource(R.string.variability_current_badge))
         if (item.isExcluded) append(" ").append(stringResource(R.string.variability_excluded_badge))
-        if (item.hasStrawSwing) append(" ").append(stringResource(R.string.variability_straw_swing_badge))
+        if (item.hasSevenDayShift) append(" ").append(stringResource(R.string.variability_straw_swing_badge))
     }
 
     Column(
@@ -282,7 +282,7 @@ private fun CycleBarRow(
                 horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (item.hasStrawSwing) {
+                if (item.hasSevenDayShift) {
                     StatusPill(
                         text = stringResource(R.string.variability_straw_swing_badge),
                         tone = StatusTone.ESTIMATED
