@@ -8,6 +8,7 @@ import fr.luteal.core.data.entity.DailyEntryEntity
 import fr.luteal.core.data.local.LutealDatabase
 import fr.luteal.core.data.report.HtmlReportBuilder
 import fr.luteal.core.model.ClinicalReportConfig
+import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.model.ReportDateRangePreset
 import fr.luteal.core.model.ReportFormat
 import fr.luteal.core.model.ReportLanguage
@@ -206,5 +207,195 @@ class ClinicalReportAggregatorTest {
         assertEquals(29.0, data.cycleStats.meanLengthDays!!, 0.01)
         assertEquals(LocalDate.of(2026, 1, 1), data.cycleStats.shortestCycleDate)
         assertEquals(LocalDate.of(2026, 1, 29), data.cycleStats.longestCycleDate)
+    }
+
+    @Test
+    fun excludedCycleWithBleedingDoesNotSkewMeanBleedingDays() = runTest {
+        // c1: 2026-01-01 to 2026-01-28, 5 bleeding days in entries (Jan 1 to Jan 5)
+        database.cycleDao().insertCycle(
+            CycleEntity(
+                id = "c1",
+                startDate = "2026-01-01",
+                endDate = "2026-01-28",
+                averageLengthDays = 28,
+                lutealPhaseLengthDays = 14,
+                periodDaysJson = "[]"
+            )
+        )
+        for (i in 0 until 5) {
+            val dateStr = LocalDate.of(2026, 1, 1).plusDays(i.toLong()).toString()
+            database.dailyEntryDao().upsert(
+                DailyEntryEntity(
+                    date = dateStr,
+                    bleedingIntensity = BleedingIntensity.MEDIUM.name,
+                    painLevel = null,
+                    moodLevel = 3,
+                    energyLevel = 3,
+                    symptomIdsJson = "[]",
+                    notes = "",
+                    updatedAtEpochMillis = 1000L
+                )
+            )
+        }
+
+        // c2: 2026-01-29 to 2026-02-27, 5 bleeding days in entries (Jan 29 to Feb 2)
+        database.cycleDao().insertCycle(
+            CycleEntity(
+                id = "c2",
+                startDate = "2026-01-29",
+                endDate = "2026-02-27",
+                averageLengthDays = 30,
+                lutealPhaseLengthDays = 14,
+                periodDaysJson = "[]"
+            )
+        )
+        for (i in 0 until 5) {
+            val dateStr = LocalDate.of(2026, 1, 29).plusDays(i.toLong()).toString()
+            database.dailyEntryDao().upsert(
+                DailyEntryEntity(
+                    date = dateStr,
+                    bleedingIntensity = BleedingIntensity.MEDIUM.name,
+                    painLevel = null,
+                    moodLevel = 3,
+                    energyLevel = 3,
+                    symptomIdsJson = "[]",
+                    notes = "",
+                    updatedAtEpochMillis = 1000L
+                )
+            )
+        }
+
+        // c3: 2026-02-28 to 2026-04-28, isExcludedFromEstimates = true, exclusionReason = "SURGERY", 20 bleeding days
+        database.cycleDao().insertCycle(
+            CycleEntity(
+                id = "c3",
+                startDate = "2026-02-28",
+                endDate = "2026-04-28",
+                averageLengthDays = 60,
+                lutealPhaseLengthDays = 14,
+                periodDaysJson = "[]",
+                isExcludedFromEstimates = true,
+                exclusionReason = "SURGERY"
+            )
+        )
+        for (i in 0 until 20) {
+            val dateStr = LocalDate.of(2026, 2, 28).plusDays(i.toLong()).toString()
+            database.dailyEntryDao().upsert(
+                DailyEntryEntity(
+                    date = dateStr,
+                    bleedingIntensity = BleedingIntensity.HEAVY.name,
+                    painLevel = null,
+                    moodLevel = 3,
+                    energyLevel = 3,
+                    symptomIdsJson = "[]",
+                    notes = "",
+                    updatedAtEpochMillis = 1000L
+                )
+            )
+        }
+
+        val config = ClinicalReportConfig(preset = ReportDateRangePreset.ALL_CYCLES)
+        val data = aggregator.aggregate(config, now = LocalDate.of(2026, 5, 1))
+
+        assertEquals(2, data.cycleStats.completedCyclesCount)
+        assertEquals(5.0, data.cycleStats.meanBleedingDays!!, 0.01)
+    }
+
+    @Test
+    fun openCycleShorterThanCompletedCyclesDoesNotBecomeShortestCycleDate() = runTest {
+        // Insert completed cycle c1: 2026-01-01 to 2026-01-28 (length 28)
+        database.cycleDao().insertCycle(
+            CycleEntity(
+                id = "c1",
+                startDate = "2026-01-01",
+                endDate = "2026-01-28",
+                averageLengthDays = 28,
+                lutealPhaseLengthDays = 14,
+                periodDaysJson = "[]"
+            )
+        )
+        // Insert completed cycle c2: 2026-01-29 to 2026-02-27 (length 30)
+        database.cycleDao().insertCycle(
+            CycleEntity(
+                id = "c2",
+                startDate = "2026-01-29",
+                endDate = "2026-02-27",
+                averageLengthDays = 30,
+                lutealPhaseLengthDays = 14,
+                periodDaysJson = "[]"
+            )
+        )
+        // Insert open cycle c3: startDate = "2026-03-01", endDate = null
+        database.cycleDao().insertCycle(
+            CycleEntity(
+                id = "c3",
+                startDate = "2026-03-01",
+                endDate = null,
+                averageLengthDays = 28,
+                lutealPhaseLengthDays = 14,
+                periodDaysJson = "[]"
+            )
+        )
+
+        // Aggregate with now = LocalDate.of(2026, 3, 10) (open cycle has lasted only 10 days)
+        val config = ClinicalReportConfig(preset = ReportDateRangePreset.ALL_CYCLES)
+        val data = aggregator.aggregate(config, now = LocalDate.of(2026, 3, 10))
+
+        assertEquals(28, data.cycleStats.minLengthDays)
+        assertEquals(LocalDate.of(2026, 1, 1), data.cycleStats.shortestCycleDate)
+    }
+
+    @Test
+    fun intermenstrualBleedingDistinguishesMensesFromMidCycleBleeding() = runTest {
+        // Insert completed cycle c1: 2026-01-01 to 2026-01-28
+        database.cycleDao().insertCycle(
+            CycleEntity(
+                id = "c1",
+                startDate = "2026-01-01",
+                endDate = "2026-01-28",
+                averageLengthDays = 28,
+                lutealPhaseLengthDays = 14,
+                periodDaysJson = "[]"
+            )
+        )
+
+        // Jan 1 through Jan 7: BleedingIntensity.MEDIUM (normal 7-day period)
+        for (day in 1..7) {
+            val dateStr = String.format("2026-01-%02d", day)
+            database.dailyEntryDao().upsert(
+                DailyEntryEntity(
+                    date = dateStr,
+                    bleedingIntensity = BleedingIntensity.MEDIUM.name,
+                    painLevel = null,
+                    moodLevel = 3,
+                    energyLevel = 3,
+                    symptomIdsJson = "[]",
+                    notes = "",
+                    updatedAtEpochMillis = 1000L
+                )
+            )
+        }
+
+        // Jan 18: BleedingIntensity.SPOTTING (mid-cycle / intermenstrual)
+        database.dailyEntryDao().upsert(
+            DailyEntryEntity(
+                date = "2026-01-18",
+                bleedingIntensity = BleedingIntensity.SPOTTING.name,
+                painLevel = null,
+                moodLevel = 3,
+                energyLevel = 3,
+                symptomIdsJson = "[]",
+                notes = "",
+                updatedAtEpochMillis = 1000L
+            )
+        )
+
+        val config = ClinicalReportConfig(preset = ReportDateRangePreset.ALL_CYCLES)
+        val data = aggregator.aggregate(config, now = LocalDate.of(2026, 2, 1))
+
+        assertEquals(1, data.bleedingDist.intermenstrualBleedingDays)
+        assertEquals(8, data.bleedingDist.totalBleedingDays)
+        assertEquals(7, data.bleedingDist.mediumDays)
+        assertEquals(1, data.bleedingDist.spottingDays)
     }
 }

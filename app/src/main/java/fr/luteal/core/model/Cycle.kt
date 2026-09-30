@@ -31,11 +31,15 @@ data class Cycle(
     val isCurrent: Boolean
         get() = endDate == null
 
-    val lengthInDays: Int
-        get() = if (endDate != null) {
+    fun lengthInDays(today: LocalDate = LocalDate.now()): Int {
+        return if (endDate != null) {
             ChronoUnit.DAYS.between(startDate, endDate).toInt() + 1
         } else {
-            ChronoUnit.DAYS.between(startDate, LocalDate.now()).toInt() + 1
+            ChronoUnit.DAYS.between(startDate, today).toInt() + 1
         }
+    }
+
+    val lengthInDays: Int
+        get() = lengthInDays(LocalDate.now())
 
 }

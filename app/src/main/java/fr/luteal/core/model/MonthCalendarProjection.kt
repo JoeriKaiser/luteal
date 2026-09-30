@@ -82,7 +82,8 @@ object MonthCalendarProjectionCalculator {
             // Estimate applies only to future/today dates that don't have actual recorded period
             val isEstimated = !hasPeriod &&
                 estimateRange != null &&
-                cur in estimateRange
+                cur in estimateRange &&
+                !cur.isBefore(today)
 
             if (isCurrentMonth && isEstimated) {
                 hasEstimateInMonth = true

@@ -83,29 +83,45 @@ object SymptomPatternCalculator {
         }
 
         val cycle = sortedCycles[cycleIndex]
-        val nextCycle = sortedCycles.getOrNull(cycleIndex + 1)
-        if (nextCycle != null && !entry.date.isBefore(nextCycle.startDate)) {
+        if (cycle.endDate != null && entry.date.isAfter(cycle.endDate)) {
             return null to CyclePhase.FOLLICULAR
         }
+        val nextCycle = sortedCycles.getOrNull(cycleIndex + 1)
+        val completedLengths = sortedCycles
+            .filter { it.endDate != null && !it.isExcludedFromEstimates && it.lengthInDays in CycleEstimateCalculator.plausibleCycleDays }
+            .map { it.lengthInDays }
+        val typicalCycleLength = if (completedLengths.isNotEmpty()) {
+            val sorted = completedLengths.sorted()
+            sorted[sorted.size / 2] // median
+        } else {
+            null
+        }
 
-        val cycleLength = when {
+        val lengthOrNull = when {
             cycle.endDate != null -> ChronoUnit.DAYS.between(cycle.startDate, cycle.endDate).toInt() + 1
             nextCycle != null -> ChronoUnit.DAYS.between(cycle.startDate, nextCycle.startDate).toInt()
-            else -> 28
-        }.coerceAtLeast(10)
+            else -> typicalCycleLength
+        }
 
         val dayIndex = ChronoUnit.DAYS.between(cycle.startDate, entry.date).toInt()
 
-        val lutealStart = maxOf(6, cycleLength - 14)
-        val ovulatoryStart = maxOf(5, lutealStart - 2)
+        val phase = if (lengthOrNull != null) {
+            val cycleLength = lengthOrNull.coerceAtLeast(10)
+            val lutealStart = maxOf(6, cycleLength - 14)
+            val ovulatoryStart = maxOf(5, lutealStart - 2)
 
-        val phase = when {
-            dayIndex < 5 -> CyclePhase.MENSTRUAL
-            dayIndex in ovulatoryStart until lutealStart -> CyclePhase.OVULATORY
-            dayIndex >= lutealStart -> CyclePhase.LUTEAL
-            else -> CyclePhase.FOLLICULAR
+            when {
+                dayIndex < 5 -> CyclePhase.MENSTRUAL
+                dayIndex in ovulatoryStart until lutealStart -> CyclePhase.OVULATORY
+                dayIndex >= lutealStart -> CyclePhase.LUTEAL
+                else -> CyclePhase.FOLLICULAR
+            }
+        } else {
+            when {
+                dayIndex < 5 -> CyclePhase.MENSTRUAL
+                else -> CyclePhase.FOLLICULAR
+            }
         }
-
         return cycle to phase
     }
 }
