@@ -221,5 +221,5 @@ class MonthCalendarProjectionTest {
         val aug29 = projection.weeks.flatten().first { it.date == LocalDate.of(2026, 8, 29) }
         assertTrue(aug29.isEstimatedPeriodWindow)
         assertFalse(aug29.isEstimatedPeriodTarget)
-}
+    }
 }
