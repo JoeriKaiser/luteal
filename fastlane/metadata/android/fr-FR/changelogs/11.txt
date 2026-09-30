@@ -1,0 +1,6 @@
+- Le calendrier n'affiche plus les fenêtres de prédiction sur les dates passées lorsque les règles ont du retard.
+- Rapport médical : calcul précis des saignements moyens et exclusion des cycles en cours des dates extrêmes.
+- Les saignements intermenstruels distinguent désormais les règles prolongées des saignements en milieu de cycle.
+- L'onglet Tendances estime les phases du cycle en cours selon votre propre historique plutôt qu'un cycle standard de 28 jours.
+- Conseils Duo : formulations de soutien collaboratives et adaptées lors des crises d'endométriose.
+- Déterminisme renforcé des calculs d'historique et enrichissement de la suite de tests unitaires.
