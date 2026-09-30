@@ -13,6 +13,7 @@ data class CalendarDayProjection(
     val bleedingIntensity: BleedingIntensity?,
     val hasObservations: Boolean,
     val isEstimatedPeriodWindow: Boolean,
+    val isEstimatedPeriodTarget: Boolean = false,
     val entry: DailyEntry?
 ) {
     val hasBleeding: Boolean
@@ -39,12 +40,10 @@ object MonthCalendarProjectionCalculator {
         val entriesByDate = entries.associateBy(DailyEntry::date)
         val cycleStartDates = cycles.map(Cycle::startDate).toSet()
 
-        val estimateRange: ClosedRange<LocalDate>? = when (estimateResult) {
-            is CycleEstimateResult.Available -> {
-                val est = estimateResult.estimate
-                est.earliestDate..est.latestDate
-            }
-            else -> null
+        val estimate = (estimateResult as? CycleEstimateResult.Available)?.estimate
+        val centralDate = estimate?.centralDate
+        val estimateRange: ClosedRange<LocalDate>? = estimate?.let {
+            it.earliestDate..it.latestDate
         }
 
         val firstDayOfMonth = targetMonth.atDay(1)
@@ -79,13 +78,11 @@ object MonthCalendarProjectionCalculator {
                 recordedPeriodCount++
             }
 
-            // Estimate applies only to future/today dates that don't have actual recorded period
-            val isEstimated = !hasPeriod &&
-                estimateRange != null &&
-                cur in estimateRange &&
-                !cur.isBefore(today)
+            val isFutureOrToday = !cur.isBefore(today)
+            val isEstimatedTarget = !hasPeriod && isFutureOrToday && estimateRange != null && cur in estimateRange && cur == centralDate
+            val isEstimatedWindow = !hasPeriod && isFutureOrToday && !isEstimatedTarget && estimateRange != null && cur in estimateRange
 
-            if (isCurrentMonth && isEstimated) {
+            if (isCurrentMonth && (isEstimatedTarget || isEstimatedWindow)) {
                 hasEstimateInMonth = true
             }
 
@@ -97,7 +94,8 @@ object MonthCalendarProjectionCalculator {
                     isCycleStart = isCycleStart,
                     bleedingIntensity = bleeding,
                     hasObservations = hasObservations,
-                    isEstimatedPeriodWindow = isEstimated,
+                    isEstimatedPeriodWindow = isEstimatedWindow,
+                    isEstimatedPeriodTarget = isEstimatedTarget,
                     entry = entry
                 )
             )

@@ -36,7 +36,8 @@ sealed interface DuoWidgetSnapshot {
         val estimateStart: LocalDate?,
         val estimateEnd: LocalDate?,
         val refreshedAt: Instant,
-        val freshness: WidgetFreshness
+        val freshness: WidgetFreshness,
+        val estimateCentral: LocalDate? = null
     ) : DuoWidgetSnapshot
 
     data object ReadFailure : DuoWidgetSnapshot

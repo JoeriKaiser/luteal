@@ -114,12 +114,14 @@ fun CalendarDayCell(
 
     val cellBackground: Color = when {
         day.hasBleeding -> phaseColors.menstrual.container
-        day.isEstimatedPeriodWindow -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.35f)
+        day.isEstimatedPeriodTarget -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.65f)
+        day.isEstimatedPeriodWindow -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.20f)
         else -> Color.Transparent
     }
 
     val cellBorder: BorderStroke? = when {
         isSelected -> BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        day.isEstimatedPeriodTarget -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.tertiary)
         day.isEstimatedPeriodWindow -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         day.isToday -> BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
         else -> null
@@ -150,6 +152,9 @@ fun CalendarDayCell(
                 else -> stringResource(R.string.calendar_legend_recorded_period)
             }
             append(stringResource(R.string.calendar_day_cd_recorded, "", intensityLabel).trimStart(',', ' '))
+        } else if (day.isEstimatedPeriodTarget) {
+            append(", ")
+            append(stringResource(R.string.calendar_legend_estimated_period_target))
         } else if (day.isEstimatedPeriodWindow) {
             append(", ")
             append(stringResource(R.string.calendar_legend_estimated_period))
@@ -281,7 +286,26 @@ fun CalendarLegendCard(modifier: Modifier = Modifier) {
                         modifier = Modifier
                             .size(12.dp)
                             .clip(RoundedCornerShape(3.dp))
-                            .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.35f))
+                            .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.65f))
+                            .border(1.5.dp, MaterialTheme.colorScheme.tertiary, RoundedCornerShape(3.dp))
+                    )
+                    Text(
+                        text = stringResource(R.string.calendar_legend_estimated_period_target),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // Estimated window
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.20f))
                             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(3.dp))
                     )
                     Text(

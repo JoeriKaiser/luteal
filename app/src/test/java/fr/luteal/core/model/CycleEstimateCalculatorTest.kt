@@ -148,7 +148,7 @@ class CycleEstimateCalculatorTest {
         val variableRadius =
             radiusOf(requireNotNull(CycleEstimateCalculator.estimateNextPeriod(recurringSwings)))
 
-        assertEquals(8, steadyRadius)
+        assertEquals(7, steadyRadius)
         assertTrue(
             "Recurring swings ($variableRadius) must widen versus a one-off ($steadyRadius)",
             variableRadius > steadyRadius
@@ -265,6 +265,88 @@ class CycleEstimateCalculatorTest {
         // Contexts and age may only change how uncertain the app says it is.
         // Moving the prediction itself would be inference about a condition.
         assertEquals(plain.centralDate, declared.centralDate)
+    }
+
+    @Test
+    fun `regular history contracts window to tight radius as sample size grows`() {
+        val sixRegular = intervalsToCycles(listOf(28, 28, 28, 28, 28, 28))
+        val estimate = requireNotNull(CycleEstimateCalculator.estimateNextPeriod(sixRegular))
+        val radius = radiusOf(estimate)
+
+        // With 6 consistent cycles and prior weight attenuation, radius contracts to 4 days or less
+        assertTrue("Radius ($radius) should contract to <= 4 days for 6 regular cycles", radius <= 4)
+    }
+
+    @Test
+    fun `proven longitudinal regularity across ten cycles relaxes timing context floor`() {
+        val tenRegular = intervalsToCycles(List(10) { 28 })
+        val withoutContext = radiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(tenRegular, hasTimingContext = false)
+            )
+        )
+        val withContext = radiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(tenRegular, hasTimingContext = true)
+            )
+        )
+
+        // After 10 consecutive regular cycles with no swings, the timing context floor relaxes
+        assertEquals(withoutContext, withContext)
+        assertTrue("Radius ($withContext) should be <= 4 days after 10 regular cycles", withContext <= 4)
+    }
+
+    @Test
+    fun `a recent seven day swing preserves the timing context variance floor`() {
+        // 10 cycles, but one swing of 7 days in the last 10 intervals
+        val tenWithSwing = intervalsToCycles(listOf(28, 28, 28, 35, 28, 28, 28, 28, 28, 28))
+        val withContext = radiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(tenWithSwing, hasTimingContext = true)
+            )
+        )
+
+        // The 7-day swing within the 10-cycle window keeps the floor active
+        assertTrue("Radius ($withContext) must remain wide (>= 8) when a recent swing exists", withContext >= 8)
+    }
+
+    @Test
+    fun `nine regular cycles does not relax timing context floor`() {
+        val nineRegular = intervalsToCycles(List(9) { 28 })
+        val withoutContext = radiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(nineRegular, hasTimingContext = false)
+            )
+        )
+        val withContext = radiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(nineRegular, hasTimingContext = true)
+            )
+        )
+
+        // Nine intervals falls one short of PERSISTENCE_CYCLE_WINDOW, so floor remains active
+        assertTrue("Without context ($withoutContext) should be tight (<= 4)", withoutContext <= 4)
+        assertTrue("With context ($withContext) must remain wide (>= 8) until 10 intervals", withContext >= 8)
+        assertTrue(withContext > withoutContext)
+    }
+
+    @Test
+    fun `a six day swing does not trigger the variance floor under ten cycles`() {
+        // 10 cycles, max swing is exactly 6 days (VARIABILITY_SWING_DAYS - 1)
+        val tenWithSixDayDelta = intervalsToCycles(listOf(28, 28, 28, 34, 28, 28, 28, 28, 28, 28))
+        val withoutContext = radiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(tenWithSixDayDelta, hasTimingContext = false)
+            )
+        )
+        val withContext = radiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(tenWithSixDayDelta, hasTimingContext = true)
+            )
+        )
+
+        // A 6-day delta is below the 7-day STRAW threshold, so longitudinal regularity is preserved
+        assertEquals(withoutContext, withContext)
     }
 
     @Test

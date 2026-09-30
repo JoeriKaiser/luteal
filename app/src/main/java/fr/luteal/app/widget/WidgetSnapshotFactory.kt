@@ -60,6 +60,7 @@ class WidgetSnapshotFactory @Inject constructor() {
                 val cycleDay = cached.cycleDay.takeIf { cached.cycleDayGranted }
                 val estimateStart = cached.estimateStart.takeIf { cached.estimateGranted }
                 val estimateEnd = cached.estimateEnd.takeIf { cached.estimateGranted }
+                val estimateCentral = cached.estimateCentral.takeIf { cached.estimateGranted }
                 if (cycleDay == null && (estimateStart == null || estimateEnd == null)) {
                     DuoWidgetSnapshot.NothingShared
                 } else {
@@ -68,6 +69,7 @@ class WidgetSnapshotFactory @Inject constructor() {
                         cycleDay = cycleDay,
                         estimateStart = estimateStart,
                         estimateEnd = estimateEnd,
+                        estimateCentral = estimateCentral,
                         refreshedAt = cached.refreshedAt,
                         freshness = freshness
                     )

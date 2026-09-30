@@ -224,14 +224,31 @@ private fun DuoAvailableContent(
                 style = WidgetTheme.labelText
             )
             Text(
-                text = if (snapshot.estimateStart != null && snapshot.estimateEnd != null) {
-                    context.getString(
-                        R.string.widget_estimate_range_short,
-                        LocalizedDateFormatter.formatShortDate(snapshot.estimateStart, locale),
-                        LocalizedDateFormatter.formatShortDate(snapshot.estimateEnd, locale)
-                    )
-                } else {
-                    context.getString(R.string.widget_duo_estimate_not_shared)
+                text = when {
+                    snapshot.estimateCentral != null && !wide && snapshot.estimateStart != null && snapshot.estimateEnd != null -> {
+                        context.getString(
+                            R.string.widget_estimate_target_with_range,
+                            LocalizedDateFormatter.formatShortDate(snapshot.estimateCentral, locale),
+                            LocalizedDateFormatter.formatShortDate(snapshot.estimateStart, locale),
+                            LocalizedDateFormatter.formatShortDate(snapshot.estimateEnd, locale)
+                        )
+                    }
+                    snapshot.estimateCentral != null -> {
+                        context.getString(
+                            R.string.widget_estimate_target,
+                            LocalizedDateFormatter.formatShortDate(snapshot.estimateCentral, locale)
+                        )
+                    }
+                    snapshot.estimateStart != null && snapshot.estimateEnd != null -> {
+                        context.getString(
+                            R.string.widget_estimate_range_short,
+                            LocalizedDateFormatter.formatShortDate(snapshot.estimateStart, locale),
+                            LocalizedDateFormatter.formatShortDate(snapshot.estimateEnd, locale)
+                        )
+                    }
+                    else -> {
+                        context.getString(R.string.widget_duo_estimate_not_shared)
+                    }
                 },
                 style = WidgetTheme.estimateText,
                 maxLines = 2

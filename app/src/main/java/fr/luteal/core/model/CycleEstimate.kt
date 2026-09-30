@@ -57,6 +57,19 @@ object CycleEstimateCalculator {
     private const val PRIOR_WEIGHT = 2.0
 
     /**
+     * Attenuated prior weight once three to five intervals are recorded. Real
+     * history begins to carry signal, reducing reliance on the population prior.
+     */
+    private const val PRIOR_WEIGHT_MODERATE = 1.4
+
+    /**
+     * Attenuated prior weight once at least six intervals are recorded. Six
+     * consistent intervals provide enough evidence to let the user's history
+     * drive the estimate without penalizing regular cycles.
+     */
+    private const val PRIOR_WEIGHT_ESTABLISHED = 0.8
+
+    /**
      * Prior weight once the recorded history shows persistent variability.
      *
      * A population prior describes a population. When this user's own record
@@ -121,7 +134,9 @@ object CycleEstimateCalculator {
      *   see [AgeBand]. Null uses [AgeBand.UNDECLARED_VARIATION_SD_DAYS].
      * @param hasTimingContext whether the user has declared any
      *   [ContextGroup.TIMING] tracking context. Widens the window by trusting
-     *   the population prior less; it never moves the central date.
+     *   the population prior less; it never moves the central date. When the
+     *   user establishes longitudinal stability across 10 cycles without
+     *   swings, the floor yields to their observed regularity.
      */
     fun evaluate(
         cycles: List<Cycle>,
@@ -145,11 +160,15 @@ object CycleEstimateCalculator {
         // six intervals used for the average, because persistence is defined
         // across ten cycles.
         val highVariability = hasPersistentVariability(lengths)
+        val hasProvenRegularity = lengths.size >= PERSISTENCE_CYCLE_WINDOW &&
+            !highVariability &&
+            hasNoRecentSwings(lengths.takeLast(PERSISTENCE_CYCLE_WINDOW), VARIABILITY_SWING_DAYS)
         val rangeRadius = rangeRadiusDays(
             lengths = recentLengths,
             highVariability = highVariability,
             hasTimingContext = hasTimingContext,
-            priorSdDays = ageBand?.variationSdDays ?: AgeBand.UNDECLARED_VARIATION_SD_DAYS
+            priorSdDays = ageBand?.variationSdDays ?: AgeBand.UNDECLARED_VARIATION_SD_DAYS,
+            hasProvenRegularity = hasProvenRegularity
         )
         val lastCycle = sortedCycles.last()
         val centralDate = lastCycle.startDate.plusDays(averageLength.toLong())
@@ -215,14 +234,17 @@ object CycleEstimateCalculator {
      * fewest cycles had been recorded, which is exactly when it is highest.
      *
      * Instead: shrink the sample variance towards the population prior, then
-     * take a ~95% window. Range is also outlier-fragile, and a single mistyped
-     * cycle start should not dominate the window.
+     * take a ~95% window. Attenuate the prior weight as consistent intervals
+     * accumulate so regular users are not penalized by a heavy static prior.
+     * When [hasTimingContext] is true, enforce at least population-level
+     * uncertainty unless [hasProvenRegularity] demonstrates longitudinal stability.
      */
     private fun rangeRadiusDays(
         lengths: List<Int>,
         highVariability: Boolean,
         hasTimingContext: Boolean,
-        priorSdDays: Double
+        priorSdDays: Double,
+        hasProvenRegularity: Boolean = false
     ): Int {
         val n = lengths.size
         val priorVariance = priorSdDays * priorSdDays
@@ -231,10 +253,11 @@ object CycleEstimateCalculator {
         } else {
             val mean = lengths.average()
             val sampleVariance = lengths.sumOf { (it - mean) * (it - mean) } / (n - 1)
-            val priorWeight = if (highVariability) {
-                PRIOR_WEIGHT_HIGH_VARIABILITY
-            } else {
-                PRIOR_WEIGHT
+            val priorWeight = when {
+                highVariability -> PRIOR_WEIGHT_HIGH_VARIABILITY
+                lengths.size >= 6 -> PRIOR_WEIGHT_ESTABLISHED
+                lengths.size >= 3 -> PRIOR_WEIGHT_MODERATE
+                else -> PRIOR_WEIGHT
             }
             val sampleWeight = (n - 1).toDouble()
             (sampleWeight * sampleVariance + priorWeight * priorVariance) /
@@ -242,9 +265,9 @@ object CycleEstimateCalculator {
         }
 
         // A declared timing context guarantees at least population-level
-        // uncertainty. If the user's own cycles are more variable than that,
-        // their record wins. This can only ever widen, never tighten.
-        val flooredVariance = if (hasTimingContext) {
+        // uncertainty unless the user has demonstrated longitudinal stability.
+        // If proven regular, allow shrunkVariance rather than locking at priorVariance.
+        val flooredVariance = if (hasTimingContext && !hasProvenRegularity) {
             max(shrunkVariance, priorVariance)
         } else {
             shrunkVariance
@@ -252,6 +275,21 @@ object CycleEstimateCalculator {
 
         val radius = ceil(WINDOW_Z * sqrt(flooredVariance)).toInt()
         return radius.coerceIn(MINIMUM_RANGE_RADIUS_DAYS, MAXIMUM_RANGE_RADIUS_DAYS)
+    }
+
+    /**
+     * Whether all consecutive cycle differences in [lengths] stay strictly
+     * below [thresholdDays]. Used to verify longitudinal stability across
+     * [PERSISTENCE_CYCLE_WINDOW] intervals before trusting regular history
+     * over a declared timing context.
+     */
+    private fun hasNoRecentSwings(lengths: List<Int>, thresholdDays: Int): Boolean {
+        for (i in 0 until lengths.size - 1) {
+            if (abs(lengths[i + 1] - lengths[i]) >= thresholdDays) {
+                return false
+            }
+        }
+        return true
     }
 
     /**

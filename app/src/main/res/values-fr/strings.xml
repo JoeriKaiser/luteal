@@ -730,4 +730,9 @@
     <string name="partner_tip_partner_luteal_pmdd_space_message">La dysphorie prémenstruelle est une réaction neurochimique. Écouter calmement sans chercher à débattre ou corriger les émotions offre un espace sécurisant et apaisant.</string>
     <string name="partner_tip_partner_perimeno_support">Souplesse face aux variations d\'énergie</string>
     <string name="partner_tip_partner_perimeno_support_message">La périménopause peut causer des baisses d\'énergie et des sensations thermiques imprévisibles. Rester souple sur les projets du soir fait une vraie différence.</string>
+    <string name="estimate_target_headline">Prévues autour du %1$s</string>
+    <string name="estimate_window_subhead">Fenêtre probable : %1$s – %2$s</string>
+    <string name="calendar_legend_estimated_period_target">Règles estimées (jour prévu)</string>
+    <string name="widget_estimate_target">Autour du %1$s</string>
+    <string name="widget_estimate_target_with_range">Autour du %1$s (%2$s – %3$s)</string>
 </resources>

@@ -1,0 +1,5 @@
+- Prediction focus: highlighted the central expected period date distinctly from the boundary window on the calendar.
+- Today view: elevated expected target date prominently with likely window subhead and anchor indicator.
+- Cycle estimation: attenuated population prior weights as consistent personal history accumulates, narrowing windows for regular cycles.
+- Stability decoupling: allowed variance floors to relax for users demonstrating long-term regular cycles while protecting episodic variations.
+- Widget presentation: streamlined glanceable estimate summaries for compact and wide layouts.

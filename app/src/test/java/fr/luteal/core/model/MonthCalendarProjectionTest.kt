@@ -211,9 +211,15 @@ class MonthCalendarProjectionTest {
 
         val aug27 = projection.weeks.flatten().first { it.date == LocalDate.of(2026, 8, 27) }
         assertFalse(aug27.isEstimatedPeriodWindow)
+        assertFalse(aug27.isEstimatedPeriodTarget)
         assertTrue(aug27.hasBleeding)
 
         val aug28 = projection.weeks.flatten().first { it.date == LocalDate.of(2026, 8, 28) }
-        assertTrue(aug28.isEstimatedPeriodWindow)
-    }
+        assertTrue(aug28.isEstimatedPeriodTarget)
+        assertFalse(aug28.isEstimatedPeriodWindow)
+
+        val aug29 = projection.weeks.flatten().first { it.date == LocalDate.of(2026, 8, 29) }
+        assertTrue(aug29.isEstimatedPeriodWindow)
+        assertFalse(aug29.isEstimatedPeriodTarget)
+}
 }

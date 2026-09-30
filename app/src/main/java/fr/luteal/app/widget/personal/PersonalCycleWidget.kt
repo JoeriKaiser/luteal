@@ -155,7 +155,7 @@ private fun PersonalStandardContent(snapshot: PersonalWidgetSnapshot) {
         )
         is PersonalWidgetSnapshot.NoCurrentCycle -> WidgetMessage(
             context.getString(R.string.widget_no_cycle_title),
-            estimateSummary(snapshot.estimateResult, snapshot.today)
+            estimateSummary(snapshot.estimateResult, snapshot.today, shortRange = true)
         )
         PersonalWidgetSnapshot.ReadFailure -> WidgetMessage(
             context.getString(R.string.widget_unavailable_title),
@@ -174,7 +174,7 @@ private fun PersonalStandardContent(snapshot: PersonalWidgetSnapshot) {
             )
             Spacer(GlanceModifier.height(4.dp))
             Text(
-                text = estimateSummary(snapshot.estimateResult, snapshot.today),
+                text = estimateSummary(snapshot.estimateResult, snapshot.today, shortRange = true),
                 style = WidgetTheme.estimateText,
                 maxLines = 2
             )
@@ -284,12 +284,19 @@ private fun estimateSummary(
                 }
                 !today.isBefore(result.estimate.centralDate) ->
                     context.getString(R.string.widget_estimate_in_progress)
-                else -> context.getString(
-                    if (shortRange) R.string.widget_estimate_range_short
-                    else R.string.widget_estimate_range,
-                    LocalizedDateFormatter.formatShortDate(result.estimate.earliestDate, locale),
-                    LocalizedDateFormatter.formatShortDate(result.estimate.latestDate, locale)
-                )
+                else -> if (shortRange) {
+                    context.getString(
+                        R.string.widget_estimate_target,
+                        LocalizedDateFormatter.formatShortDate(result.estimate.centralDate, locale)
+                    )
+                } else {
+                    context.getString(
+                        R.string.widget_estimate_target_with_range,
+                        LocalizedDateFormatter.formatShortDate(result.estimate.centralDate, locale),
+                        LocalizedDateFormatter.formatShortDate(result.estimate.earliestDate, locale),
+                        LocalizedDateFormatter.formatShortDate(result.estimate.latestDate, locale)
+                    )
+                }
             }
         }
     }
