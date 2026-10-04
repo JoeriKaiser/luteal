@@ -1,0 +1,5 @@
+- Précision des prévisions : mise en valeur du jour prévu des règles distinctement de la fenêtre d'incertitude sur le calendrier.
+- Vue Aujourd'hui : affichage prioritaire du jour prévu avec sous-titre de la fenêtre probable et repère visuel.
+- Estimation des cycles : atténuation des a priori de population avec l'historique personnel, réduisant l'amplitude pour les cycles réguliers.
+- Découplage de stabilité : assouplissement du plancher de variance après 10 cycles réguliers avérés tout en protégeant les variations épisodiques.
+- Widgets : amélioration du formatage des résumés d'estimation pour les affichages standard et large.

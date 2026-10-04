@@ -726,4 +726,9 @@
     <string name="partner_tip_partner_luteal_pmdd_space_message">Premenstrual dysphoria is a neurochemical reaction. Listening calmly without debating or trying to fix emotions creates a safe and reassuring space.</string>
     <string name="partner_tip_partner_perimeno_support">Flexibility with changing energy</string>
     <string name="partner_tip_partner_perimeno_support_message">Perimenopausal shifts can cause unpredictable fatigue or temperature changes. Staying flexible with evening plans makes a real difference.</string>
+    <string name="estimate_target_headline">Expected around %1$s</string>
+    <string name="estimate_window_subhead">Likely window: %1$s – %2$s</string>
+    <string name="calendar_legend_estimated_period_target">Estimated period (target day)</string>
+    <string name="widget_estimate_target">Around %1$s</string>
+    <string name="widget_estimate_target_with_range">Around %1$s (%2$s – %3$s)</string>
 </resources>

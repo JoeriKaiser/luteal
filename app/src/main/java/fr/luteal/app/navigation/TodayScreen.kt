@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -31,6 +32,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -419,11 +421,20 @@ private fun EstimateSection(state: LutealUiState, onBackfillCycle: () -> Unit) {
 
                 Text(
                     text = stringResource(
-                        R.string.estimate_range,
+                        R.string.estimate_target_headline,
+                        LocalizedDateFormatter.formatShortDate(estimate.centralDate, locale)
+                    ),
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Spacer(Modifier.height(LutealSpacing.xxs))
+                Text(
+                    text = stringResource(
+                        R.string.estimate_window_subhead,
                         LocalizedDateFormatter.formatShortDate(estimate.earliestDate, locale),
                         LocalizedDateFormatter.formatShortDate(estimate.latestDate, locale)
                     ),
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(LutealSpacing.xxs))
                 Text(
@@ -442,15 +453,18 @@ private fun EstimateSection(state: LutealUiState, onBackfillCycle: () -> Unit) {
                             )
                         else -> stringResource(R.string.estimate_in_progress)
                     },
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 if (daysUntilEarliest > 0) {
+                    val centralOffsetDays =
+                        ChronoUnit.DAYS.between(estimate.earliestDate, estimate.centralDate).toInt()
                     Spacer(Modifier.height(LutealSpacing.md))
                     EstimateWindowTrack(
                         leadDays = daysUntilEarliest,
                         windowDays = windowDays,
+                        centralOffsetDays = centralOffsetDays,
                         latestLabel = LocalizedDateFormatter.formatShortDate(estimate.latestDate, locale)
                     )
                 }
@@ -478,7 +492,8 @@ private fun EstimateSection(state: LutealUiState, onBackfillCycle: () -> Unit) {
 }
 
 /**
- * The wait ahead, drawn to scale, with the estimated window as a band on it.
+ * The wait ahead, drawn to scale, with the estimated window as a band on it
+ * and an anchor pip marking the central target date.
  *
  * The band's width is the uncertainty: a narrow one means the recorded history
  * agrees with itself, a wide one means it does not. Reporting the same range
@@ -488,6 +503,7 @@ private fun EstimateSection(state: LutealUiState, onBackfillCycle: () -> Unit) {
 private fun EstimateWindowTrack(
     leadDays: Int,
     windowDays: Int,
+    centralOffsetDays: Int,
     latestLabel: String
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -515,7 +531,20 @@ private fun EstimateWindowTrack(
                     .weight(windowDays.toFloat())
                     .fillMaxHeight()
                     .background(scheme.tertiary)
-            )
+            ) {
+                val fraction = if (windowDays > 0) {
+                    (centralOffsetDays + 0.5f) / windowDays.toFloat()
+                } else {
+                    0.5f
+                }
+                val bias = (fraction * 2f - 1f).coerceIn(-1f, 1f)
+                Box(
+                    modifier = Modifier
+                        .align(BiasAlignment(horizontalBias = bias, verticalBias = 0f))
+                        .size(6.dp)
+                        .background(scheme.onTertiary, shape = CircleShape)
+                )
+            }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
