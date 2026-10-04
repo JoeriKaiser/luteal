@@ -731,4 +731,22 @@
     <string name="calendar_legend_estimated_period_target">Estimated period (target day)</string>
     <string name="widget_estimate_target">Around %1$s</string>
     <string name="widget_estimate_target_with_range">Around %1$s (%2$s – %3$s)</string>
+    <string name="calendar_legend_toggle">Phases and observations legend</string>
+    <string name="calendar_legend_phase_menstrual">Menstrual phase (recorded period)</string>
+    <string name="calendar_legend_phase_follicular">Follicular phase (estimate)</string>
+    <string name="calendar_legend_phase_ovulatory">Ovulatory transition (estimate window)</string>
+    <string name="calendar_legend_phase_luteal">Luteal phase (estimate)</string>
+    <string name="calendar_legend_spotting">Spotting (recorded observation)</string>
+    <string name="calendar_legend_biomarkers">Biomarkers (temperature, cervical fluid, tests)</string>
+    <string name="calendar_month_summary_period_days">%1$d period days recorded</string>
+    <string name="calendar_picker_title">Select month and year</string>
+    <string name="calendar_picker_confirm">View month</string>
+    <string name="inspection_cycle_day">Cycle day %1$d</string>
+    <string name="inspection_phase_recorded">%1$s (recorded)</string>
+    <string name="inspection_phase_estimated">%1$s (estimate)</string>
+    <string name="inspection_biomarker_bbt">Temperature: %1$s</string>
+    <string name="inspection_biomarker_fluid">Cervical fluid: %1$s</string>
+    <string name="inspection_biomarker_lh">LH test: %1$s</string>
+    <string name="inspection_lh_positive">Positive (surge)</string>
+    <string name="inspection_lh_negative">Negative</string>
 </resources>

@@ -735,4 +735,22 @@
     <string name="calendar_legend_estimated_period_target">Règles estimées (jour prévu)</string>
     <string name="widget_estimate_target">Autour du %1$s</string>
     <string name="widget_estimate_target_with_range">Autour du %1$s (%2$s – %3$s)</string>
+    <string name="calendar_legend_toggle">Légende des phases et observations</string>
+    <string name="calendar_legend_phase_menstrual">Phase menstruelle (règles enregistrées)</string>
+    <string name="calendar_legend_phase_follicular">Phase folliculaire (estimation)</string>
+    <string name="calendar_legend_phase_ovulatory">Transition ovulatoire (fenêtre estimée)</string>
+    <string name="calendar_legend_phase_luteal">Phase lutéale (estimation)</string>
+    <string name="calendar_legend_spotting">Spotting (observation enregistrée)</string>
+    <string name="calendar_legend_biomarkers">Biomarqueurs (température, glaire, tests)</string>
+    <string name="calendar_month_summary_period_days">%1$d jours de règles enregistrés</string>
+    <string name="calendar_picker_title">Choisir le mois et l’année</string>
+    <string name="calendar_picker_confirm">Afficher le mois</string>
+    <string name="inspection_cycle_day">Jour %1$d du cycle</string>
+    <string name="inspection_phase_recorded">%1$s (enregistrée)</string>
+    <string name="inspection_phase_estimated">%1$s (estimée)</string>
+    <string name="inspection_biomarker_bbt">Température : %1$s</string>
+    <string name="inspection_biomarker_fluid">Glaire cervicale : %1$s</string>
+    <string name="inspection_biomarker_lh">Test LH : %1$s</string>
+    <string name="inspection_lh_positive">Positif (pic détecté)</string>
+    <string name="inspection_lh_negative">Négatif</string>
 </resources>
