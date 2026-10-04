@@ -10,22 +10,28 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
@@ -35,6 +41,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fr.luteal.app.R
 import fr.luteal.core.common.LocalizedDateFormatter
@@ -42,7 +49,9 @@ import fr.luteal.core.designsystem.theme.LocalPhaseColors
 import fr.luteal.core.designsystem.theme.LutealSpacing
 import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.model.CalendarDayProjection
+import fr.luteal.core.model.CyclePhase
 import fr.luteal.core.model.MonthCalendarProjection
+import fr.luteal.core.model.PhaseCertainty
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.time.temporal.WeekFields
@@ -97,7 +106,11 @@ private fun WeekdayHeaderRow() {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics {
+                        contentDescription = day.getDisplayName(TextStyle.FULL, locale)
+                    }
             )
         }
     }
@@ -113,9 +126,14 @@ fun CalendarDayCell(
     val phaseColors = LocalPhaseColors.current
 
     val cellBackground: Color = when {
-        day.hasBleeding -> phaseColors.menstrual.container
+        day.hasPeriodFlow -> phaseColors.menstrual.container
         day.isEstimatedPeriodTarget -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.65f)
-        day.isEstimatedPeriodWindow -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.20f)
+        day.isEstimatedPeriodWindow -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.25f)
+        day.isSpottingOnly -> Color.Transparent
+        day.cyclePhase == CyclePhase.FOLLICULAR -> phaseColors.follicular.container.copy(alpha = 0.35f)
+        day.cyclePhase == CyclePhase.OVULATORY -> phaseColors.ovulatory.container.copy(alpha = 0.45f)
+        day.cyclePhase == CyclePhase.LUTEAL -> phaseColors.luteal.container.copy(alpha = 0.35f)
+        day.cyclePhase == CyclePhase.MENSTRUAL -> phaseColors.menstrual.container.copy(alpha = 0.35f)
         else -> Color.Transparent
     }
 
@@ -123,13 +141,14 @@ fun CalendarDayCell(
         isSelected -> BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
         day.isEstimatedPeriodTarget -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.tertiary)
         day.isEstimatedPeriodWindow -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        day.isSpottingOnly -> BorderStroke(1.dp, phaseColors.menstrual.content.copy(alpha = 0.5f))
         day.isToday -> BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
         else -> null
     }
 
     val textColor: Color = when {
         !day.isCurrentMonth -> MaterialTheme.colorScheme.outline
-        day.hasBleeding -> phaseColors.menstrual.content
+        day.hasPeriodFlow -> phaseColors.menstrual.content
         day.isToday -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.onSurface
     }
@@ -142,26 +161,58 @@ fun CalendarDayCell(
             append(", ")
             append(stringResource(R.string.calendar_today_button))
         }
-        if (day.hasBleeding) {
+        if (day.cycleDayNumber != null) {
             append(", ")
-            val intensityLabel = when (day.bleedingIntensity) {
-                BleedingIntensity.LIGHT -> stringResource(R.string.bleeding_light)
-                BleedingIntensity.MEDIUM -> stringResource(R.string.bleeding_medium)
-                BleedingIntensity.HEAVY -> stringResource(R.string.bleeding_heavy)
-                BleedingIntensity.SPOTTING -> stringResource(R.string.bleeding_spotting)
-                else -> stringResource(R.string.calendar_legend_recorded_period)
+            append(stringResource(R.string.inspection_cycle_day, day.cycleDayNumber))
+        }
+        when {
+            day.hasPeriodFlow -> {
+                append(", ")
+                val intensityLabel = when (day.bleedingIntensity) {
+                    BleedingIntensity.LIGHT -> stringResource(R.string.bleeding_light)
+                    BleedingIntensity.MEDIUM -> stringResource(R.string.bleeding_medium)
+                    BleedingIntensity.HEAVY -> stringResource(R.string.bleeding_heavy)
+                    else -> null
+                }
+                if (intensityLabel != null) {
+                    append("$intensityLabel, ")
+                }
+                append(stringResource(R.string.calendar_legend_recorded_period))
             }
-            append(stringResource(R.string.calendar_day_cd_recorded, "", intensityLabel).trimStart(',', ' '))
-        } else if (day.isEstimatedPeriodTarget) {
-            append(", ")
-            append(stringResource(R.string.calendar_legend_estimated_period_target))
-        } else if (day.isEstimatedPeriodWindow) {
-            append(", ")
-            append(stringResource(R.string.calendar_legend_estimated_period))
+            day.isSpottingOnly -> {
+                append(", ")
+                append(stringResource(R.string.bleeding_spotting))
+            }
+            day.isEstimatedPeriodTarget -> {
+                append(", ")
+                append(stringResource(R.string.calendar_legend_estimated_period_target))
+            }
+            day.isEstimatedPeriodWindow -> {
+                append(", ")
+                append(stringResource(R.string.calendar_legend_estimated_period))
+            }
+            day.cyclePhase != null -> {
+                append(", ")
+                val phaseLabel = when (day.cyclePhase) {
+                    CyclePhase.MENSTRUAL -> stringResource(R.string.phase_menstrual)
+                    CyclePhase.FOLLICULAR -> stringResource(R.string.phase_follicular)
+                    CyclePhase.OVULATORY -> stringResource(R.string.phase_ovulatory)
+                    CyclePhase.LUTEAL -> stringResource(R.string.phase_luteal)
+                }
+                if (day.phaseCertainty == PhaseCertainty.RECORDED) {
+                    append(stringResource(R.string.inspection_phase_recorded, phaseLabel))
+                } else {
+                    append(stringResource(R.string.inspection_phase_estimated, phaseLabel))
+                }
+            }
         }
         if (day.hasObservations) {
             append(", ")
             append(stringResource(R.string.calendar_legend_observation))
+        }
+        if (day.hasBiomarkers) {
+            append(", ")
+            append(stringResource(R.string.calendar_legend_biomarkers))
         }
     }
 
@@ -192,31 +243,35 @@ fun CalendarDayCell(
             Text(
                 text = day.date.dayOfMonth.toString(),
                 style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = if (day.isToday || isSelected || day.hasBleeding) FontWeight.Bold else FontWeight.Normal
+                    fontWeight = if (day.isToday || isSelected || day.hasPeriodFlow) FontWeight.Bold else FontWeight.Normal
                 ),
                 color = textColor,
                 textAlign = TextAlign.Center
             )
 
-            // Observation or cycle-start indicator
+            // Indicators below day number
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                when {
-                    day.hasObservations && day.isCycleStart -> {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            CalendarDot(color = phaseColors.menstrual.content, size = 5.dp)
-                            CalendarDot(color = MaterialTheme.colorScheme.secondary, size = 5.dp)
-                        }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (day.isCycleStart) {
+                        CalendarDot(color = phaseColors.menstrual.content, size = 5.dp)
                     }
-                    day.isCycleStart -> CalendarDot(color = phaseColors.menstrual.content, size = 6.dp)
-                    day.hasObservations -> CalendarDot(color = MaterialTheme.colorScheme.secondary, size = 6.dp)
+                    if (day.isSpottingOnly) {
+                        CalendarDot(color = phaseColors.menstrual.content.copy(alpha = 0.7f), size = 4.dp)
+                    }
+                    if (day.hasObservations) {
+                        CalendarDot(color = MaterialTheme.colorScheme.secondary, size = 5.dp)
+                    }
+                    if (day.hasBiomarkers) {
+                        CalendarDot(color = MaterialTheme.colorScheme.tertiary, size = 5.dp)
+                    }
                 }
             }
         }
@@ -237,6 +292,7 @@ private fun CalendarDot(color: Color, size: Dp) {
 @Composable
 fun CalendarLegendCard(modifier: Modifier = Modifier) {
     val phaseColors = LocalPhaseColors.current
+    var isExpanded by remember { mutableStateOf(false) }
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -247,90 +303,253 @@ fun CalendarLegendCard(modifier: Modifier = Modifier) {
             modifier = Modifier.padding(LutealSpacing.sm),
             verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
         ) {
-            Text(
-                text = stringResource(R.string.calendar_legend_title),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            FlowRow(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LutealSpacing.md),
-                verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Recorded period
+                Text(
+                    text = stringResource(R.string.calendar_legend_toggle),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                IconButton(
+                    onClick = { isExpanded = !isExpanded }
+                ) {
+                    Icon(
+                        imageVector = if (isExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        contentDescription = stringResource(R.string.calendar_legend_toggle),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (!isExpanded) {
+                val menstrualDesc = stringResource(R.string.calendar_legend_phase_menstrual)
+                val follicularDesc = stringResource(R.string.calendar_legend_phase_follicular)
+                val ovulatoryDesc = stringResource(R.string.calendar_legend_phase_ovulatory)
+                val lutealDesc = stringResource(R.string.calendar_legend_phase_luteal)
+                val observationDesc = stringResource(R.string.calendar_legend_observation)
+
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(LutealSpacing.sm),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(12.dp)
+                            .weight(1f)
+                            .height(10.dp)
                             .clip(RoundedCornerShape(3.dp))
                             .background(phaseColors.menstrual.container)
                             .border(1.dp, phaseColors.menstrual.content.copy(alpha = 0.5f), RoundedCornerShape(3.dp))
+                            .semantics { contentDescription = menstrualDesc }
                     )
-                    Text(
-                        text = stringResource(R.string.calendar_legend_recorded_period),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                // Estimated period
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
-                ) {
                     Box(
                         modifier = Modifier
-                            .size(12.dp)
+                            .weight(1f)
+                            .height(10.dp)
                             .clip(RoundedCornerShape(3.dp))
-                            .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.65f))
-                            .border(1.5.dp, MaterialTheme.colorScheme.tertiary, RoundedCornerShape(3.dp))
+                            .background(phaseColors.follicular.container.copy(alpha = 0.35f))
+                            .semantics { contentDescription = follicularDesc }
                     )
-                    Text(
-                        text = stringResource(R.string.calendar_legend_estimated_period_target),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                // Estimated window
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
-                ) {
                     Box(
                         modifier = Modifier
-                            .size(12.dp)
+                            .weight(1f)
+                            .height(10.dp)
                             .clip(RoundedCornerShape(3.dp))
-                            .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.20f))
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(3.dp))
+                            .background(phaseColors.ovulatory.container.copy(alpha = 0.45f))
+                            .semantics { contentDescription = ovulatoryDesc }
                     )
-                    Text(
-                        text = stringResource(R.string.calendar_legend_estimated_period),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                // Observations dot
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
-                ) {
                     Box(
                         modifier = Modifier
-                            .size(6.dp)
+                            .weight(1f)
+                            .height(10.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(phaseColors.luteal.container.copy(alpha = 0.35f))
+                            .semantics { contentDescription = lutealDesc }
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.secondary)
+                            .semantics { contentDescription = observationDesc }
                     )
-                    Text(
-                        text = stringResource(R.string.calendar_legend_observation),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                }
+            } else {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(LutealSpacing.md),
+                    verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                ) {
+                    // Recorded period
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(phaseColors.menstrual.container)
+                                .border(1.dp, phaseColors.menstrual.content.copy(alpha = 0.5f), RoundedCornerShape(3.dp))
+                        )
+                        Text(
+                            text = stringResource(R.string.calendar_legend_phase_menstrual),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Spotting
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .border(1.dp, phaseColors.menstrual.content.copy(alpha = 0.5f), RoundedCornerShape(3.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CalendarDot(color = phaseColors.menstrual.content.copy(alpha = 0.7f), size = 4.dp)
+                        }
+                        Text(
+                            text = stringResource(R.string.calendar_legend_spotting),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Follicular
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(phaseColors.follicular.container.copy(alpha = 0.35f))
+                        )
+                        Text(
+                            text = stringResource(R.string.calendar_legend_phase_follicular),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Ovulatory transition
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(phaseColors.ovulatory.container.copy(alpha = 0.45f))
+                        )
+                        Text(
+                            text = stringResource(R.string.calendar_legend_phase_ovulatory),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Luteal
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(phaseColors.luteal.container.copy(alpha = 0.35f))
+                        )
+                        Text(
+                            text = stringResource(R.string.calendar_legend_phase_luteal),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Estimated period target
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.65f))
+                                .border(1.5.dp, MaterialTheme.colorScheme.tertiary, RoundedCornerShape(3.dp))
+                        )
+                        Text(
+                            text = stringResource(R.string.calendar_legend_estimated_period_target),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Estimated period window
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.25f))
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(3.dp))
+                        )
+                        Text(
+                            text = stringResource(R.string.calendar_legend_estimated_period),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Observations
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.secondary)
+                        )
+                        Text(
+                            text = stringResource(R.string.calendar_legend_observation),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Biomarkers
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.tertiary)
+                        )
+                        Text(
+                            text = stringResource(R.string.calendar_legend_biomarkers),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }

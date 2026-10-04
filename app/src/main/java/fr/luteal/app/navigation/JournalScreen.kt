@@ -3,6 +3,7 @@ package fr.luteal.app.navigation
 import android.content.Context
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,11 +11,16 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.rounded.Description
@@ -40,11 +46,13 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
 import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.Today
 import androidx.compose.material.icons.rounded.WaterDrop
 import fr.luteal.core.model.Cycle
 import fr.luteal.core.model.CyclePhase
 import fr.luteal.core.model.SymptomPatternCalculator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -64,7 +72,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -86,7 +98,16 @@ import fr.luteal.core.designsystem.component.LutealPrimaryButton
 import fr.luteal.core.designsystem.component.LutealSecondaryButton
 import fr.luteal.core.designsystem.component.MonthCalendarGrid
 import fr.luteal.core.designsystem.component.ThermalShiftChart
+import fr.luteal.core.designsystem.component.StatusPill
+import fr.luteal.core.designsystem.component.StatusTone
+import fr.luteal.core.designsystem.theme.LocalPhaseColors
 import fr.luteal.core.designsystem.theme.LutealSpacing
+import fr.luteal.core.model.BasalBodyTemperature
+import fr.luteal.core.model.BiomarkerObservation
+import fr.luteal.core.model.CervicalMucusSensation
+import fr.luteal.core.model.CervicalMucusTexture
+import fr.luteal.core.model.LhTestResult
+import fr.luteal.core.model.PhaseCertainty
 import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.model.DailyEntry
 import fr.luteal.core.model.TemperatureUnit
@@ -96,6 +117,9 @@ import fr.luteal.core.model.MonthCalendarProjectionCalculator
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.Month
+import java.time.format.TextStyle
+import java.time.temporal.ChronoUnit
 import java.time.temporal.WeekFields
 
 enum class JournalViewMode {
@@ -119,8 +143,16 @@ fun JournalScreen(
 ) {
     val context = LocalContext.current
     var viewMode by rememberSaveable { mutableStateOf(initialViewMode) }
+    val baseMonth = remember { YearMonth.from(state.today) }
+    val pagerState = rememberPagerState(initialPage = 1200, pageCount = { 2400 })
+    val pagerMonth = remember(pagerState.currentPage) { baseMonth.plusMonths((pagerState.currentPage - 1200).toLong()) }
     var currentMonth by rememberSaveable { mutableStateOf(YearMonth.from(state.today)) }
+    LaunchedEffect(pagerState.currentPage) {
+        currentMonth = pagerMonth
+    }
     var selectedDate by rememberSaveable { mutableStateOf(state.today) }
+    var showMonthPicker by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
     val locale = LocalConfiguration.current.locales[0]
     var showDatePicker by remember { mutableStateOf(false) }
     var cycleToEdit by remember { mutableStateOf<Cycle?>(null) }
@@ -174,27 +206,52 @@ fun JournalScreen(
         state.entries.associateBy(DailyEntry::date)
     }
 
-    val calendarProjection = remember(currentMonth, state.today, state.cycles, state.entries, state.estimateResult, locale) {
+    val calendarProjection = remember(currentMonth, state.today, state.cycles, state.entries, state.biomarkers, state.estimateResult, locale) {
         MonthCalendarProjectionCalculator.project(
             targetMonth = currentMonth,
             today = state.today,
             cycles = state.cycles,
             entries = state.entries,
             estimateResult = state.estimateResult,
+            biomarkers = state.biomarkers,
             firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek
         )
     }
+    val biomarkersByDate = remember(state.biomarkers) {
+        state.biomarkers.associateBy(BiomarkerObservation::date)
+    }
+    val temperatureUnit = remember(state.preferences.temperatureUnit) {
+        TemperatureUnit.entries.firstOrNull { it.name == state.preferences.temperatureUnit } ?: TemperatureUnit.CELSIUS
+    }
+    val selectedMonth = remember(selectedDate) { YearMonth.from(selectedDate) }
+    val selectedDayProjection = remember(selectedDate, selectedMonth, currentMonth, calendarProjection, state.cycles, state.entries, state.biomarkers, state.estimateResult, locale) {
+        if (selectedMonth == currentMonth) {
+            calendarProjection.weeks.flatten().firstOrNull { it.date == selectedDate }
+        } else {
+            MonthCalendarProjectionCalculator.project(
+                targetMonth = selectedMonth,
+                today = state.today,
+                cycles = state.cycles,
+                entries = state.entries,
+                estimateResult = state.estimateResult,
+                biomarkers = state.biomarkers,
+                firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek
+            ).weeks.flatten().firstOrNull { it.date == selectedDate }
+        }
+    }
 
-    cycleToManageExclusion?.let { cycle ->
-        CycleExclusionDialog(
-            cycle = cycle,
-            onDismiss = { cycleToManageExclusion = null },
-            onConfirm = { isExcluded, reason ->
-                onToggleCycleExclusion(cycle.id, isExcluded, reason)
-                cycleToManageExclusion = null
+    if (showMonthPicker) {
+        MonthYearPickerDialog(
+            currentMonth = currentMonth,
+            onDismiss = { showMonthPicker = false },
+            onSelectMonth = { target ->
+                showMonthPicker = false
+                val page = 1200 + ChronoUnit.MONTHS.between(baseMonth, target).toInt()
+                coroutineScope.launch { pagerState.animateScrollToPage(page) }
             }
         )
     }
+
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -321,33 +378,99 @@ fun JournalScreen(
                 MonthNavigationBar(
                     currentMonth = currentMonth,
                     isCurrentMonthToday = currentMonth == YearMonth.from(state.today),
-                    onPreviousMonth = { currentMonth = currentMonth.minusMonths(1) },
-                    onNextMonth = { currentMonth = currentMonth.plusMonths(1) },
+                    onPreviousMonth = {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                        }
+                    },
+                    onNextMonth = {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                        }
+                    },
                     onJumpToToday = {
-                        currentMonth = YearMonth.from(state.today)
+                        val todayMonth = YearMonth.from(state.today)
+                        val targetPage = 1200 + ChronoUnit.MONTHS.between(baseMonth, todayMonth).toInt()
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(targetPage)
+                        }
                         selectedDate = state.today
-                    }
+                    },
+                    onTitleClick = { showMonthPicker = true }
                 )
             }
 
+            if (calendarProjection.recordedPeriodDaysCount > 0) {
+                item {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                    ) {
+                        Text(
+                            text = stringResource(
+                                R.string.calendar_month_summary_period_days,
+                                calendarProjection.recordedPeriodDaysCount
+                            ),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = LutealSpacing.sm, vertical = LutealSpacing.xs)
+                        )
+                    }
+                }
+            }
+
             item {
-                MonthCalendarGrid(
-                    projection = calendarProjection,
-                    selectedDate = selectedDate,
-                    onSelectDate = { selectedDate = it }
-                )
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxWidth()
+                ) { page ->
+                    val pageMonth = baseMonth.plusMonths((page - 1200).toLong())
+                    val pageProjection = remember(pageMonth, state.today, state.cycles, state.entries, state.biomarkers, state.estimateResult, locale) {
+                        MonthCalendarProjectionCalculator.project(
+                            targetMonth = pageMonth,
+                            today = state.today,
+                            cycles = state.cycles,
+                            entries = state.entries,
+                            estimateResult = state.estimateResult,
+                            biomarkers = state.biomarkers,
+                            firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek
+                        )
+                    }
+                    MonthCalendarGrid(
+                        projection = pageProjection,
+                        selectedDate = selectedDate,
+                        onSelectDate = { date ->
+                            selectedDate = date
+                            val targetMonth = YearMonth.from(date)
+                            if (targetMonth != pageMonth) {
+                                val targetPage = 1200 + ChronoUnit.MONTHS.between(baseMonth, targetMonth).toInt()
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(targetPage)
+                                }
+                            }
+                        }
+                    )
+                }
             }
 
             item {
                 CalendarLegendCard()
             }
 
+            val cycleStart = state.cycles.firstOrNull { it.startDate == selectedDate }
+            val selectedCycle = state.cycles.firstOrNull { it.startDate <= selectedDate && (it.endDate == null || it.endDate >= selectedDate) }
             item {
                 SelectedDayInspectionCard(
                     date = selectedDate,
                     entry = entriesByDate[selectedDate],
+                    biomarker = biomarkersByDate[selectedDate],
+                    cycle = selectedCycle,
+                    cycleDayNumber = selectedDayProjection?.cycleDayNumber,
+                    phase = selectedDayProjection?.cyclePhase,
+                    phaseCertainty = selectedDayProjection?.phaseCertainty,
                     isToday = selectedDate == state.today,
-                    cycleStart = state.cycles.firstOrNull { it.startDate == selectedDate },
+                    cycleStart = cycleStart,
+                    temperatureUnit = temperatureUnit,
                     onEditCycle = { cycleToEdit = it },
                     onDeleteCycle = { cycleToDelete = it },
                     onEditOrAdd = { onSelectDate(selectedDate) }
@@ -496,6 +619,7 @@ private fun MonthNavigationBar(
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onJumpToToday: () -> Unit,
+    onTitleClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val locale = LocalConfiguration.current.locales[0]
@@ -514,13 +638,29 @@ private fun MonthNavigationBar(
             )
         }
 
-        Text(
-            text = LocalizedDateFormatter.formatMonthYear(currentMonth.atDay(1), locale),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
-            textAlign = TextAlign.Center
-        )
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .clip(MaterialTheme.shapes.small)
+                .clickable(onClick = onTitleClick)
+                .padding(vertical = LutealSpacing.xs, horizontal = LutealSpacing.sm),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = LocalizedDateFormatter.formatMonthYear(currentMonth.atDay(1), locale),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.Rounded.ArrowDropDown,
+                contentDescription = stringResource(R.string.calendar_picker_title),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+        }
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -551,19 +691,143 @@ private fun MonthNavigationBar(
     }
 }
 
+@Composable
+fun MonthYearPickerDialog(
+    currentMonth: YearMonth,
+    onDismiss: () -> Unit,
+    onSelectMonth: (YearMonth) -> Unit
+) {
+    val locale = LocalConfiguration.current.locales[0]
+    var selectedYear by remember(currentMonth) { mutableStateOf(currentMonth.year) }
+    var selectedMonthVal by remember(currentMonth) { mutableStateOf(currentMonth.month) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(R.string.calendar_picker_title),
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(LutealSpacing.md)
+            ) {
+                // Year selector with - and + icon buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { selectedYear-- },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Remove,
+                            contentDescription = stringResource(R.string.calendar_previous_month)
+                        )
+                    }
+                    Text(
+                        text = selectedYear.toString(),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    IconButton(
+                        onClick = { selectedYear++ },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = stringResource(R.string.calendar_next_month)
+                        )
+                    }
+                }
+
+                // 3x4 grid of month buttons
+                val months = Month.entries
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                ) {
+                    for (row in 0 until 4) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                        ) {
+                            for (col in 0 until 3) {
+                                val month = months[row * 3 + col]
+                                val isSelected = month == selectedMonthVal
+                                Surface(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp)
+                                        .clip(MaterialTheme.shapes.small)
+                                        .clickable { selectedMonthVal = month },
+                                    shape = MaterialTheme.shapes.small,
+                                    color = if (isSelected) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                    }
+                                ) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Text(
+                                            text = month.getDisplayName(TextStyle.SHORT, locale),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = if (isSelected) {
+                                                MaterialTheme.colorScheme.onPrimaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSelectMonth(YearMonth.of(selectedYear, selectedMonthVal)) }
+            ) {
+                Text(stringResource(R.string.calendar_picker_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        }
+    )
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SelectedDayInspectionCard(
     date: LocalDate,
     entry: DailyEntry?,
+    biomarker: BiomarkerObservation?,
+    cycle: Cycle?,
+    cycleDayNumber: Int?,
+    phase: CyclePhase?,
+    phaseCertainty: PhaseCertainty?,
     isToday: Boolean,
     cycleStart: Cycle?,
+    temperatureUnit: TemperatureUnit,
     onEditCycle: (Cycle) -> Unit,
     onDeleteCycle: (Cycle) -> Unit,
     onEditOrAdd: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val hasObservations = entry?.hasObservations == true
+    val hasEntryObservations = entry?.hasObservations == true
+    val hasBiomarkerObservations = biomarker != null && !biomarker.isEmpty
     val locale = LocalConfiguration.current.locales[0]
 
     LutealCard(modifier = modifier.fillMaxWidth()) {
@@ -598,6 +862,38 @@ private fun SelectedDayInspectionCard(
 
                 if (entry?.bleedingIntensity != null && entry.bleedingIntensity != BleedingIntensity.NONE) {
                     BleedingMark(intensity = entry.bleedingIntensity)
+                }
+            }
+
+            // Badges row: cycle day number and phase badge
+            if (cycleDayNumber != null || phase != null) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                ) {
+                    if (cycleDayNumber != null) {
+                        StatusPill(
+                            text = stringResource(R.string.inspection_cycle_day, cycleDayNumber),
+                            tone = StatusTone.NEUTRAL
+                        )
+                    }
+                    if (phase != null) {
+                        val phaseName = journalPhaseLabel(phase)
+                        val phaseText = if (phaseCertainty == PhaseCertainty.RECORDED) {
+                            stringResource(R.string.inspection_phase_recorded, phaseName)
+                        } else {
+                            stringResource(R.string.inspection_phase_estimated, phaseName)
+                        }
+                        val tone = if (phaseCertainty == PhaseCertainty.RECORDED) {
+                            StatusTone.RECORDED
+                        } else {
+                            StatusTone.ESTIMATED
+                        }
+                        StatusPill(
+                            text = phaseText,
+                            tone = tone
+                        )
+                    }
                 }
             }
 
@@ -644,7 +940,98 @@ private fun SelectedDayInspectionCard(
                 }
             }
 
-            if (hasObservations) {
+            // Bleeding detail
+            if (entry?.bleedingIntensity != null && entry.bleedingIntensity != BleedingIntensity.NONE) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                ) {
+                    Text(
+                        text = bleedingLabel(entry.bleedingIntensity),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
+            // Biomarkers section
+            if (biomarker != null && !biomarker.isEmpty) {
+                Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)) {
+                    biomarker.bbt?.let { bbt ->
+                        val unitLabel = if (temperatureUnit == TemperatureUnit.CELSIUS) {
+                            stringResource(R.string.bbt_unit_celsius)
+                        } else {
+                            stringResource(R.string.bbt_unit_fahrenheit)
+                        }
+                        val formattedTemp = String.format(
+                            java.util.Locale.getDefault(),
+                            "%.2f %s",
+                            bbt.valueInUnit(temperatureUnit),
+                            unitLabel
+                        )
+                        Text(
+                            text = stringResource(R.string.inspection_biomarker_bbt, formattedTemp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    biomarker.cervicalFluid?.let { fluid ->
+                        if (fluid.hasObservation) {
+                            val parts = mutableListOf<String>()
+                            fluid.sensation?.let { sensation ->
+                                parts.add(sensationLabel(sensation))
+                            }
+                            fluid.texture?.let { texture ->
+                                parts.add(textureLabel(texture))
+                            }
+                            if (parts.isNotEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.inspection_biomarker_fluid, parts.joinToString(", ")),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+
+                    biomarker.rapidTests?.lhTest?.let { lhTest ->
+                        val lhStatus = when (lhTest) {
+                            LhTestResult.PEAK_POSITIVE -> stringResource(R.string.inspection_lh_positive)
+                            else -> stringResource(R.string.inspection_lh_negative)
+                        }
+                        Text(
+                            text = stringResource(R.string.inspection_biomarker_lh, lhStatus),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+
+            // Symptoms section with FlowRow of individual chips
+            if (entry?.symptomIds?.isNotEmpty() == true) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                ) {
+                    entry.symptomIds.forEach { symptomId ->
+                        Surface(
+                            shape = MaterialTheme.shapes.extraSmall,
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                        ) {
+                            Text(
+                                text = symptomDisplayName(symptomId),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (hasEntryObservations) {
                 val levels = listOfNotNull(
                     entry.painLevel?.let { stringResource(R.string.level_label_pain) to it },
                     entry.moodLevel?.let { stringResource(R.string.level_label_mood) to it },
@@ -677,7 +1064,7 @@ private fun SelectedDayInspectionCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            } else {
+            } else if (!hasBiomarkerObservations && (entry?.bleedingIntensity == null || entry.bleedingIntensity == BleedingIntensity.NONE)) {
                 Text(
                     text = stringResource(R.string.calendar_day_empty_inspection),
                     style = MaterialTheme.typography.bodyMedium,
@@ -685,14 +1072,15 @@ private fun SelectedDayInspectionCard(
                 )
             }
 
+            val hasAnyData = entry?.hasObservations == true || hasBiomarkerObservations
             LutealPrimaryButton(
                 text = when {
-                    hasObservations -> stringResource(R.string.action_edit_today)
+                    hasAnyData -> stringResource(R.string.action_edit_today)
                     isToday -> stringResource(R.string.action_log_today)
                     else -> stringResource(R.string.action_add_observation)
                 },
                 onClick = onEditOrAdd,
-                icon = if (hasObservations) Icons.Rounded.Edit else Icons.Rounded.Add,
+                icon = if (hasAnyData) Icons.Rounded.Edit else Icons.Rounded.Add,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -1161,5 +1549,25 @@ private fun journalPhaseLabel(phase: CyclePhase): String = stringResource(
         CyclePhase.FOLLICULAR -> R.string.phase_follicular
         CyclePhase.OVULATORY -> R.string.phase_ovulatory
         CyclePhase.LUTEAL -> R.string.phase_luteal
+    }
+)
+
+@Composable
+private fun sensationLabel(sensation: CervicalMucusSensation): String = stringResource(
+    when (sensation) {
+        CervicalMucusSensation.DRY -> R.string.sensation_dry
+        CervicalMucusSensation.DAMP -> R.string.sensation_damp
+        CervicalMucusSensation.WET -> R.string.sensation_wet
+        CervicalMucusSensation.SLIPPERY -> R.string.sensation_slippery
+    }
+)
+
+@Composable
+private fun textureLabel(texture: CervicalMucusTexture): String = stringResource(
+    when (texture) {
+        CervicalMucusTexture.STICKY -> R.string.texture_sticky
+        CervicalMucusTexture.CREAMY -> R.string.texture_creamy
+        CervicalMucusTexture.EGG_WHITE -> R.string.texture_egg_white
+        CervicalMucusTexture.WATERY -> R.string.texture_watery
     }
 )
