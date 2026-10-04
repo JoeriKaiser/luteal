@@ -964,7 +964,7 @@ private fun SelectedDayInspectionCard(
                             stringResource(R.string.bbt_unit_fahrenheit)
                         }
                         val formattedTemp = String.format(
-                            java.util.Locale.getDefault(),
+                            locale,
                             "%.2f %s",
                             bbt.valueInUnit(temperatureUnit),
                             unitLabel
