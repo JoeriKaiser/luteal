@@ -1,5 +1,5 @@
-- Phases du cycle : distinction visuelle et sémantique des quatre phases (menstruelle, folliculaire, transition ovulatoire, lutéale) sur le calendrier.
-- Précision du spotting : séparation nette entre spotting et flux menstruel pour préserver les repères du cycle.
-- Biomarqueurs : intégration de la température basale, de la glaire cervicale et des tests LH sur la grille et la fiche du jour.
-- Navigation fluide : ajout du défilement horizontal entre les mois et d\'un sélecteur rapide de mois et d\'année.
-- Fiche d\'inspection : affichage du jour du cycle, des puces de symptômes détaillées et d\'une légende repliable.
+- Phases du cycle : les quatre phases (menstruelle, folliculaire, transition ovulatoire, lutéale) se distinguent sur la grille.
+- Précision du spotting : le spotting est séparé du flux menstruel pour préserver les repères du cycle.
+- Biomarqueurs : température basale, glaire cervicale et tests LH dans la fiche du jour.
+- Navigation fluide : défilement entre les mois et sélecteur rapide de mois et d’année.
+- Fiche d’inspection : jour du cycle, symptômes détaillés et légende repliable.
