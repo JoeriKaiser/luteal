@@ -1,5 +1,8 @@
 package fr.luteal.app.navigation
 
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -45,6 +48,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
 import fr.luteal.app.R
@@ -207,6 +215,26 @@ fun DailyEntrySheet(
     }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    // Prevent unconsumed LazyColumn scroll and fling from reaching ModalBottomSheet.
+    // In Material3 1.4, leftover upward fling velocity triggers a spring settle on
+    // the already-expanded sheet that overshoots the top edge and jitters, while
+    // leftover downward scroll drags or dismisses the sheet when returning to the top.
+    val sheetScrollGuard = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset = Offset(0f, available.y)
+
+            override suspend fun onPostFling(
+                consumed: Velocity,
+                available: Velocity
+            ): Velocity = Velocity(0f, available.y)
+        }
+    }
+    val bodyDragGuard = rememberDraggableState {}
+
     val painDescriptions = scaleDescriptions(R.string.editor_pain_value_description)
 
     val moodDescriptions = scaleDescriptions(R.string.editor_mood_value_description)
@@ -221,6 +249,8 @@ fun DailyEntrySheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.94f)
+                .nestedScroll(sheetScrollGuard)
+                .draggable(state = bodyDragGuard, orientation = Orientation.Vertical)
                 .imePadding()
                 .navigationBarsPadding()
         ) {
