@@ -32,6 +32,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -42,6 +43,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -88,8 +92,17 @@ fun DuoScreen(
     // and survives tab switches, so without this it keeps showing whatever was
     // true when it was first created - notably "synchronisation requise" after
     // the user has since registered from Settings, which only a restart cleared.
-    LaunchedEffect(Unit) {
-        viewModel.refresh()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refresh(fromResume = true)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     Column(
@@ -99,11 +112,16 @@ fun DuoScreen(
             .padding(horizontal = LutealSpacing.md, vertical = LutealSpacing.lg),
         verticalArrangement = Arrangement.spacedBy(LutealSpacing.md)
     ) {
+        val subtitleRes = when (state.phase) {
+            DuoPhase.NoAccount, DuoPhase.NoLink -> R.string.duo_subtitle
+            DuoPhase.InvitationPending -> R.string.duo_subtitle_pending
+            DuoPhase.TrackerActive -> R.string.duo_subtitle_tracker
+            DuoPhase.PartnerActive -> R.string.duo_subtitle_partner
+        }
         ScreenHeader(
             title = stringResource(R.string.duo_title),
-            subtitle = stringResource(R.string.duo_subtitle)
+            subtitle = stringResource(subtitleRes)
         )
-
         if (state.phase != DuoPhase.NoAccount) {
             TextButton(onClick = { viewModel.refresh() }) {
                 Text(text = stringResource(R.string.duo_refresh))
@@ -137,6 +155,8 @@ fun DuoScreen(
                 onAcceptCode = { viewModel.acceptInvitation(it) }
             )
             DuoPhase.InvitationPending -> InvitationPendingSection(
+                state = state,
+                onToggleGrant = { field, granted -> viewModel.toggleGrant(field, granted) },
                 pairingCode = state.shareableUrl ?: state.invitation?.pairingCode,
                 onCancel = { viewModel.revokeLink() }
             )
@@ -152,6 +172,7 @@ fun DuoScreen(
             )
             DuoPhase.PartnerActive -> PartnerActiveSection(
                 state = state,
+                onRevoke = { viewModel.revokeLink() },
                 onSendSupport = { kind, msg -> viewModel.sendSupportRequest(kind, msg) },
                 onAck = { viewModel.ackSupportRequest(it) },
                 onApplyNudge = { text, kind, send -> viewModel.applyQuickNudge(text, kind, send) },
@@ -288,6 +309,8 @@ private fun NoLinkSection(
 
 @Composable
 private fun InvitationPendingSection(
+    state: DuoUiState,
+    onToggleGrant: (GrantField, Boolean) -> Unit,
     pairingCode: String?,
     onCancel: () -> Unit
 ) {
@@ -351,6 +374,11 @@ private fun InvitationPendingSection(
             }
         }
     }
+
+    DuoGrantsSection(
+        state = state,
+        onToggleGrant = onToggleGrant
+    )
 }
 
 // --- Tracker: grants, preview, revoke ---------------------------------------
@@ -375,71 +403,10 @@ private fun TrackerActiveSection(
         }
     }
 
-    LutealCard(modifier = Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
-            Text(
-                text = stringResource(R.string.duo_sharing_title),
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = stringResource(R.string.duo_sharing_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Text(
-                text = stringResource(R.string.duo_cycle_group_title),
-                style = MaterialTheme.typography.titleSmall
-            )
-            GrantToggle(
-                field = GrantField.CYCLE_DAY,
-                titleRes = R.string.duo_share_cycle_day,
-                descRes = R.string.duo_share_cycle_day_desc,
-                state = state,
-                onToggleGrant = onToggleGrant
-            )
-            GrantToggle(
-                field = GrantField.PERIOD_ESTIMATE,
-                titleRes = R.string.duo_share_estimate,
-                descRes = R.string.duo_share_estimate_desc,
-                state = state,
-                onToggleGrant = onToggleGrant
-            )
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-            Text(
-                text = stringResource(R.string.duo_feelings_group_title),
-                style = MaterialTheme.typography.titleSmall
-            )
-            Text(
-                text = stringResource(R.string.duo_feelings_group_body),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            GrantToggle(
-                field = GrantField.MOOD,
-                titleRes = R.string.duo_share_mood,
-                descRes = R.string.duo_share_mood_desc,
-                state = state,
-                onToggleGrant = onToggleGrant
-            )
-            GrantToggle(
-                field = GrantField.ENERGY,
-                titleRes = R.string.duo_share_energy,
-                descRes = R.string.duo_share_energy_desc,
-                state = state,
-                onToggleGrant = onToggleGrant
-            )
-            GrantToggle(
-                field = GrantField.SUPPORT_REQUESTS,
-                titleRes = R.string.duo_share_support,
-                descRes = R.string.duo_share_support_desc,
-                state = state,
-                onToggleGrant = onToggleGrant
-            )
-        }
-    }
+    DuoGrantsSection(
+        state = state,
+        onToggleGrant = onToggleGrant
+    )
 
     // Exact preview of what the partner receives: rendered from the same
     // projection that was sealed and published, not a parallel code path that
@@ -551,6 +518,7 @@ private fun GrantToggle(
 @Composable
 private fun PartnerActiveSection(
     state: DuoUiState,
+    onRevoke: () -> Unit,
     onSendSupport: (SupportKind, String) -> Unit,
     onAck: (String) -> Unit,
     onApplyNudge: (String, SupportKind, Boolean) -> Unit,
@@ -577,7 +545,7 @@ private fun PartnerActiveSection(
     LutealCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
             Text(
-                text = stringResource(R.string.duo_grants_title),
+                text = stringResource(R.string.duo_partner_shared_title),
                 style = MaterialTheme.typography.titleMedium
             )
             SharedProjectionList(state = state)
@@ -594,6 +562,21 @@ private fun PartnerActiveSection(
         onSupportDraftChange = onSupportDraftChange,
         isSendingSupport = isSendingSupport
     )
+
+    LutealCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
+            Text(
+                text = stringResource(R.string.duo_revoke_confirm),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            LutealSecondaryButton(
+                text = stringResource(R.string.duo_revoke),
+                onClick = onRevoke,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
 }
 
 /**
@@ -604,6 +587,8 @@ private fun PartnerActiveSection(
 private fun SharedProjectionList(state: DuoUiState) {
     val projection = state.projection
     val locale = LocalConfiguration.current.locales[0]
+    val anyGranted = state.grants.values.any { it }
+    val isTracker = state.phase == DuoPhase.TrackerActive
 
     when {
         // The link key lives only on the paired devices. Without it the payload
@@ -614,8 +599,17 @@ private fun SharedProjectionList(state: DuoUiState) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
+        !anyGranted -> Text(
+            text = stringResource(
+                if (isTracker) R.string.duo_preview_no_grants
+                else R.string.duo_partner_view_no_grants
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
         projection == null -> Text(
-            text = stringResource(R.string.duo_view_hidden),
+            text = stringResource(R.string.duo_view_no_observations),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -644,7 +638,7 @@ private fun SharedProjectionList(state: DuoUiState) {
 
             if (items.isEmpty()) {
                 Text(
-                    text = stringResource(R.string.duo_view_hidden),
+                    text = stringResource(R.string.duo_view_no_observations),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -663,6 +657,78 @@ private fun SharedProjectionList(state: DuoUiState) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DuoGrantsSection(
+    state: DuoUiState,
+    onToggleGrant: (GrantField, Boolean) -> Unit
+) {
+    LutealCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
+            Text(
+                text = stringResource(R.string.duo_sharing_title),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.duo_sharing_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Text(
+                text = stringResource(R.string.duo_cycle_group_title),
+                style = MaterialTheme.typography.titleSmall
+            )
+            GrantToggle(
+                field = GrantField.CYCLE_DAY,
+                titleRes = R.string.duo_share_cycle_day,
+                descRes = R.string.duo_share_cycle_day_desc,
+                state = state,
+                onToggleGrant = onToggleGrant
+            )
+            GrantToggle(
+                field = GrantField.PERIOD_ESTIMATE,
+                titleRes = R.string.duo_share_estimate,
+                descRes = R.string.duo_share_estimate_desc,
+                state = state,
+                onToggleGrant = onToggleGrant
+            )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            Text(
+                text = stringResource(R.string.duo_feelings_group_title),
+                style = MaterialTheme.typography.titleSmall
+            )
+            Text(
+                text = stringResource(R.string.duo_feelings_group_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            GrantToggle(
+                field = GrantField.MOOD,
+                titleRes = R.string.duo_share_mood,
+                descRes = R.string.duo_share_mood_desc,
+                state = state,
+                onToggleGrant = onToggleGrant
+            )
+            GrantToggle(
+                field = GrantField.ENERGY,
+                titleRes = R.string.duo_share_energy,
+                descRes = R.string.duo_share_energy_desc,
+                state = state,
+                onToggleGrant = onToggleGrant
+            )
+            GrantToggle(
+                field = GrantField.SUPPORT_REQUESTS,
+                titleRes = R.string.duo_share_support,
+                descRes = R.string.duo_share_support_desc,
+                state = state,
+                onToggleGrant = onToggleGrant
+            )
         }
     }
 }

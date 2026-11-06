@@ -67,6 +67,7 @@ class DuoViewModel @Inject constructor(
     // that: sealing with an unknown grant set would publish "nothing
     // shared" and silently wipe the partner's view on a cold start.
     private var grantsConfirmed = false
+    private var lastRefreshAttempt: Instant = Instant.EPOCH
     val uiState: StateFlow<DuoUiState> = _uiState.asStateFlow()
 
     // Deliberately no init { refresh() }. The tab scaffold is a `when`, not a
@@ -76,7 +77,17 @@ class DuoViewModel @Inject constructor(
     // after the user registers from Settings. DuoScreen refreshes on entry
     // instead; see the LaunchedEffect there.
 
-    fun refresh() {
+    fun refresh(fromResume: Boolean = false) {
+        if (fromResume) {
+            val now = Instant.now()
+            val cooldown = Duration.between(lastRefreshAttempt, now)
+            val isPending = _uiState.value.phase == DuoPhase.InvitationPending
+            if (!isPending && cooldown < Duration.ofSeconds(15)) {
+                return
+            }
+        }
+        lastRefreshAttempt = Instant.now()
+
         viewModelScope.launch {
             val cached = widgetCacheRepository.getLatest()
             if (!duoRepository.hasAccount() && cached == null) {
@@ -112,7 +123,16 @@ class DuoViewModel @Inject constructor(
                     val missingLink = err is fr.luteal.core.network.FolicularApiException && err.status == 404
                     if (missingLink) {
                         widgetCacheRepository.clear()
-                        _uiState.update { DuoUiState(phase = DuoPhase.NoLink, isLoading = false) }
+                        val preservedUrl = _uiState.value.shareableUrl
+                        val preservedInvitation = _uiState.value.invitation
+                        _uiState.update {
+                            DuoUiState(
+                                phase = DuoPhase.NoLink,
+                                isLoading = false,
+                                shareableUrl = preservedUrl,
+                                invitation = preservedInvitation
+                            )
+                        }
                         discoverLinks()
                     } else {
                         val cached = widgetCacheRepository.getLatest()
@@ -180,9 +200,20 @@ class DuoViewModel @Inject constructor(
         val isTracker =
             view.role == fr.luteal.core.network.contract.models.DuoRole.TRACKER
         val serverGrants = view.grants
-        if (serverGrants != null) {
+        var effectiveGrants = serverGrants
+        if (isTracker) {
             grantsConfirmed = true
-            persistGrants(serverGrants)
+            val localPrefs = userRepository.getUserPreferences().first().duoSharing.toGrantMap()
+            if (serverGrants.isNullOrEmpty() && localPrefs.values.any { it }) {
+                localPrefs.forEach { (field, isGranted) ->
+                    if (isGranted) {
+                        runCatching { duoRepository.patchGrants(view.linkId.toString(), field, true) }
+                    }
+                }
+                effectiveGrants = localPrefs.filterValues { it }.keys.toList()
+            } else if (serverGrants != null) {
+                persistGrants(serverGrants)
+            }
         }
         val decodedProjection = projectionDecoder.decode(view)
         widgetCacheWriter.save(view)
@@ -199,7 +230,7 @@ class DuoViewModel @Inject constructor(
                 activeLinkId = view.linkId.toString(),
                 projection = projection,
                 supportMessages = openSupportMessages(view),
-                grants = serverGrants?.associateWith { true } ?: it.grants,
+                grants = effectiveGrants?.associateWith { true } ?: it.grants,
                 keyMissing = decodedProjection == DuoProjectionDecodeResult.KeyMissing,
                 isLoading = false,
                 partnerPhase = partnerPhase,
@@ -300,18 +331,24 @@ class DuoViewModel @Inject constructor(
     fun toggleGrant(field: GrantField, granted: Boolean) {
         val linkId = _uiState.value.activeLinkId
             ?: _uiState.value.duoView?.linkId?.toString()
-            ?: return
+        val isPending = _uiState.value.phase == DuoPhase.InvitationPending
+
         viewModelScope.launch {
+            if (isPending || linkId == null) {
+                // While pending, save locally without hitting the server.
+                // The server rejects PATCH grants on pending links with 409.
+                userRepository.updateDuoSharing(field.toDuoSharingField(), granted)
+                _uiState.update { state ->
+                    state.copy(grants = state.grants + (field to granted))
+                }
+                return@launch
+            }
+
             runCatching { duoRepository.patchGrants(linkId, field, granted) }
                 .onSuccess {
-                    // projection must reflect the new grant immediately (a
-                    // republish against the stale map would keep revoked
-                    // fields flowing and delay newly granted ones).
                     _uiState.update { state ->
-                        state.copy(grants = state.grants + (field to granted))
+                        state.copy(grants = state.grants + (field to granted), error = null)
                     }
-                    // Keep the local cache in step so a later cold start shows
-                    // the last confirmed choices even before the server answers.
                     userRepository.updateDuoSharing(field.toDuoSharingField(), granted)
                     publishProjection()
                 }
@@ -336,7 +373,17 @@ class DuoViewModel @Inject constructor(
                     }
                 }
                 .onFailure { err ->
-                    _uiState.update { it.copy(error = err.message, isLoading = false) }
+                    val alreadyDead = err is fr.luteal.core.network.FolicularApiException &&
+                        (err.status == 404 || err.status == 409)
+                    if (alreadyDead) {
+                        duoKeyStore.remove(linkId)
+                        widgetCacheRepository.clear()
+                        _uiState.update {
+                            DuoUiState(phase = DuoPhase.NoLink)
+                        }
+                    } else {
+                        _uiState.update { it.copy(error = err.message, isLoading = false) }
+                    }
                 }
         }
     }
