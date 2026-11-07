@@ -45,6 +45,27 @@ class StringFormatSpecifierTest {
             .map { it.groupValues[1] }
             .toSet()
 
+    private val specifierSignature = Regex("""%(\d+)\$[-#+ 0,(]*\d*(?:\.\d+)?([a-zA-Z])""")
+
+    private fun formatSignatures(file: File): Map<String, List<String>> {
+        val text = file.readText()
+        val result = mutableMapOf<String, List<String>>()
+        Regex("""<string\s+name="([^"]+)"[^>]*>(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
+            .findAll(text)
+            .forEach { match ->
+                val name = match.groupValues[1]
+                val body = match.groupValues[2]
+                val sigs = specifierSignature.findAll(body)
+                    .map { "${it.groupValues[1]}:${it.groupValues[2]}" }
+                    .sorted()
+                    .toList()
+                if (sigs.isNotEmpty()) {
+                    result[name] = sigs
+                }
+            }
+        return result
+    }
+
     @Test
     fun `default and french resource files are present`() {
         val found = translations.map { it.folder }
@@ -106,6 +127,37 @@ class StringFormatSpecifierTest {
 
         assertEquals(
             "Malformed format specifiers found:\n${offenders.joinToString("\n")}",
+            emptyList<String>(),
+            offenders
+        )
+    }
+
+    @Test
+    fun `every translation has identical format specifier signatures as the default`() {
+        val defaultFile = File("src/main/res/values/strings.xml")
+        val defaultSignatures = formatSignatures(defaultFile)
+
+        val offenders = mutableListOf<String>()
+
+        translations
+            .filter { it.folder != "values" }
+            .forEach { translation ->
+                val actualSignatures = formatSignatures(translation.file)
+                defaultSignatures.forEach { (name, expectedSig) ->
+                    val actualSig = actualSignatures[name].orEmpty()
+                    if (expectedSig != actualSig) {
+                        offenders += "${translation.folder}: $name expected $expectedSig but got $actualSig"
+                    }
+                }
+                actualSignatures.forEach { (name, actualSig) ->
+                    if (name !in defaultSignatures) {
+                        offenders += "${translation.folder}: $name unexpected specifier $actualSig"
+                    }
+                }
+            }
+
+        assertEquals(
+            "Format specifier signature mismatches found:\n${offenders.joinToString("\n")}",
             emptyList<String>(),
             offenders
         )
