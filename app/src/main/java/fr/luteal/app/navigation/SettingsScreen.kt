@@ -58,6 +58,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -261,23 +262,23 @@ fun SettingsScreen(
         SettingsSectionHeader(title = stringResource(R.string.settings_privacy_title))
 
         LutealCard(modifier = Modifier.fillMaxWidth()) {
-            SettingsInformationRow(
-                icon = Icons.Rounded.PhoneAndroid,
-                title = stringResource(R.string.settings_storage_title),
-                body = stringResource(R.string.settings_storage_body)
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsInformationRow(
-                icon = Icons.Rounded.Shield,
-                title = stringResource(R.string.settings_backup_title),
-                body = stringResource(R.string.settings_backup_body)
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsInformationRow(
-                icon = Icons.Rounded.VisibilityOff,
-                title = stringResource(R.string.settings_widgets_privacy_title),
-                body = stringResource(R.string.widget_privacy_notice)
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.md)) {
+                SettingsInformationRow(
+                    icon = Icons.Rounded.PhoneAndroid,
+                    title = stringResource(R.string.settings_storage_title),
+                    body = stringResource(R.string.settings_storage_body)
+                )
+                SettingsInformationRow(
+                    icon = Icons.Rounded.Shield,
+                    title = stringResource(R.string.settings_backup_title),
+                    body = stringResource(R.string.settings_backup_body)
+                )
+                SettingsInformationRow(
+                    icon = Icons.Rounded.VisibilityOff,
+                    title = stringResource(R.string.settings_widgets_privacy_title),
+                    body = stringResource(R.string.widget_privacy_notice)
+                )
+            }
         }
 
         // Online cloud sync
@@ -1313,15 +1314,27 @@ private fun DataManagementCard(
                 enabled = importState !is DataImportState.Inspecting && importState !is DataImportState.Restoring
             )
             when (importState) {
-                is DataImportState.Success -> Text(
-                    text = stringResource(
-                        R.string.settings_import_success,
+                is DataImportState.Success -> {
+                    val cyclesCount = pluralStringResource(
+                        R.plurals.settings_import_cycles_count,
                         importState.summary.cyclesImported,
+                        importState.summary.cyclesImported
+                    )
+                    val entriesCount = pluralStringResource(
+                        R.plurals.settings_import_entries_count,
+                        importState.summary.dailyEntriesImported,
                         importState.summary.dailyEntriesImported
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.settings_import_success,
+                            cyclesCount,
+                            entriesCount
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
                 is DataImportState.Error -> Column(
                     verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)
                 ) {
@@ -1788,7 +1801,10 @@ private fun SyncCard(
                     )
 
                     Text(
-                        text = "${stringResource(R.string.settings_sync_base_url_label)} : ${state.storedBaseUrl.ifBlank { BuildConfig.SYNC_BASE_URL }}",
+                        text = stringResource(
+                            R.string.settings_sync_base_url_display,
+                            state.storedBaseUrl.ifBlank { BuildConfig.SYNC_BASE_URL }
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -2011,9 +2027,7 @@ private fun SettingsInformationRow(
     body: String
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = LutealSpacing.sm),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(LutealSpacing.md),
         verticalAlignment = Alignment.Top
     ) {

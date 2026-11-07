@@ -24,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.luteal.app.R
@@ -102,9 +104,12 @@ fun CyclePhasesGuideSheet(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
+                        val capsuleA11y = stringResource(R.string.fact_view_source_named, capsule.source)
                         TextButton(
                             onClick = { uriHandler.openUri(capsule.url) },
-                            modifier = Modifier.align(Alignment.End)
+                            modifier = Modifier
+                                .align(Alignment.End)
+                                .semantics { contentDescription = capsuleA11y }
                         ) {
                             Text(text = stringResource(R.string.fact_view_source))
                         }
@@ -129,9 +134,12 @@ fun CyclePhasesGuideSheet(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    val fehringA11y = stringResource(R.string.fact_view_source_named, ClinicalSources.FEHRING)
                     TextButton(
                         onClick = { uriHandler.openUri(ClinicalSources.FEHRING_URL) },
-                        modifier = Modifier.align(Alignment.End)
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .semantics { contentDescription = fehringA11y }
                     ) {
                         Text(text = stringResource(R.string.fact_view_source))
                     }

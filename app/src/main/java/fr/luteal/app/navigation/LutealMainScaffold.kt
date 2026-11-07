@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Today
@@ -253,12 +256,13 @@ internal fun LutealBottomNavigationBar(
                 } else {
                     destination.labelRes
                 }
+                val isSelected = destination == selectedDestination
                 NavigationBarItem(
-                    selected = destination == selectedDestination,
+                    selected = isSelected,
                     onClick = { onSelectDestination(destination) },
                     icon = {
                         Icon(
-                            imageVector = destination.icon,
+                            imageVector = if (isSelected) destination.selectedIcon else destination.unselectedIcon,
                             contentDescription = stringResource(destination.labelRes)
                         )
                     },
@@ -289,10 +293,13 @@ private data class EditorRequest(
 
 internal enum class LutealDestination(
     @StringRes val labelRes: Int,
-    val icon: ImageVector
+    val selectedIcon: ImageVector,
+    val unselectedIcon: ImageVector
 ) {
-    TODAY(R.string.nav_today, Icons.Rounded.Today),
-    JOURNAL(R.string.nav_journal, Icons.AutoMirrored.Rounded.MenuBook),
-    DUO(R.string.nav_duo, Icons.Rounded.FavoriteBorder),
-    SETTINGS(R.string.nav_settings, Icons.Rounded.Settings)
+    TODAY(R.string.nav_today, Icons.Rounded.Today, Icons.Rounded.CalendarToday),
+    JOURNAL(R.string.nav_journal, Icons.AutoMirrored.Rounded.MenuBook, Icons.AutoMirrored.Outlined.MenuBook),
+    DUO(R.string.nav_duo, Icons.Rounded.Favorite, Icons.Rounded.FavoriteBorder),
+    SETTINGS(R.string.nav_settings, Icons.Rounded.Settings, Icons.Outlined.Settings);
+
+    val icon: ImageVector get() = selectedIcon
 }

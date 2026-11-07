@@ -287,7 +287,7 @@ fun JournalScreen(
                 selectedTabIndex = viewMode.ordinal,
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.primary,
-                edgePadding = 0.dp,
+                edgePadding = LutealSpacing.md,
                 divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }
             ) {
                 Tab(
@@ -407,8 +407,9 @@ fun JournalScreen(
                         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
                     ) {
                         Text(
-                            text = stringResource(
-                                R.string.calendar_month_summary_period_days,
+                            text = pluralStringResource(
+                                R.plurals.calendar_month_summary_period_days,
+                                calendarProjection.recordedPeriodDaysCount,
                                 calendarProjection.recordedPeriodDaysCount
                             ),
                             style = MaterialTheme.typography.labelMedium,
@@ -572,7 +573,7 @@ fun JournalScreen(
             }
         } else {
             item {
-                ObservationPatternsCard(state = state)
+                ObservationPatternsCard(state = state, onSelectDate = onSelectDate)
             }
         }
     }
@@ -832,9 +833,7 @@ private fun SelectedDayInspectionCard(
 
     LutealCard(modifier = modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(LutealSpacing.md),
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)
         ) {
             Row(
@@ -1432,7 +1431,10 @@ private fun JournalDatePickerDialog(
 }
 
 @Composable
-private fun ObservationPatternsCard(state: LutealUiState) {
+private fun ObservationPatternsCard(
+    state: LutealUiState,
+    onSelectDate: (java.time.LocalDate) -> Unit
+) {
     val patterns = remember(state.cycles, state.entries) {
         SymptomPatternCalculator.calculate(state.cycles, state.entries)
     }
@@ -1464,6 +1466,11 @@ private fun ObservationPatternsCard(state: LutealUiState) {
                         text = stringResource(R.string.journal_patterns_empty_body),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(LutealSpacing.xs))
+                    LutealSecondaryButton(
+                        text = stringResource(R.string.action_log_today),
+                        onClick = { onSelectDate(state.today) }
                     )
                 }
             }

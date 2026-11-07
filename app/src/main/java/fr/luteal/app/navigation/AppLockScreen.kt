@@ -1,7 +1,13 @@
 package fr.luteal.app.navigation
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -12,11 +18,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Backspace
 import androidx.compose.material.icons.rounded.Fingerprint
@@ -36,10 +46,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -53,6 +65,8 @@ import androidx.activity.compose.BackHandler
 import fr.luteal.app.R
 import fr.luteal.core.designsystem.component.LutealPrimaryButton
 import fr.luteal.core.designsystem.theme.LutealSpacing
+import fr.luteal.core.designsystem.theme.LocalReducedMotion
+import fr.luteal.core.designsystem.theme.tabular
 import fr.luteal.core.model.PinEntryPolicy
 import fr.luteal.core.model.PinVerificationResult
 import kotlinx.coroutines.delay
@@ -89,7 +103,9 @@ fun AppLockScreen(
     var incorrectAttemptsRemaining by remember { mutableStateOf<Int?>(null) }
     var currentLockoutSeconds by remember(remainingLockoutSeconds) { mutableIntStateOf(remainingLockoutSeconds) }
 
+    val reducedMotion = LocalReducedMotion.current
     val shakeOffset = remember { Animatable(0f) }
+    val dotAlpha = remember { Animatable(1f) }
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
 
@@ -116,21 +132,26 @@ fun AppLockScreen(
 
     fun triggerShake() {
         scope.launch {
-            shakeOffset.animateTo(
-                targetValue = 0f,
-                animationSpec = keyframes {
-                    durationMillis = 400
-                    0f at 0
-                    -20f at 50
-                    20f at 100
-                    -15f at 150
-                    15f at 200
-                    -10f at 250
-                    10f at 300
-                    -5f at 350
-                    0f at 400
-                }
-            )
+            if (reducedMotion) {
+                dotAlpha.animateTo(0.3f, tween(100, easing = LinearEasing))
+                dotAlpha.animateTo(1f, tween(150, easing = LinearEasing))
+            } else {
+                shakeOffset.animateTo(
+                    targetValue = 0f,
+                    animationSpec = keyframes {
+                        durationMillis = 400
+                        0f at 0
+                        -20f at 50
+                        20f at 100
+                        -15f at 150
+                        15f at 200
+                        -10f at 250
+                        10f at 300
+                        -5f at 350
+                        0f at 400
+                    }
+                )
+            }
         }
     }
 
@@ -183,7 +204,10 @@ fun AppLockScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = LutealSpacing.lg, vertical = LutealSpacing.xl),
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = LutealSpacing.lg, vertical = LutealSpacing.md),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -191,7 +215,7 @@ fun AppLockScreen(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm),
-                modifier = Modifier.padding(top = LutealSpacing.xl)
+                modifier = Modifier.padding(top = LutealSpacing.md)
             ) {
                 Box(
                     modifier = Modifier
@@ -225,8 +249,9 @@ fun AppLockScreen(
 
                 // Animated PIN Indicators
                 val dotCount = maxOf(4, enteredPin.length)
-                val accessibilityDescription = stringResource(
-                    R.string.lock_accessibility_progress,
+                val accessibilityDescription = pluralStringResource(
+                    R.plurals.lock_accessibility_progress,
+                    enteredPin.length,
                     enteredPin.length
                 )
 
@@ -234,6 +259,7 @@ fun AppLockScreen(
                     horizontalArrangement = Arrangement.spacedBy(LutealSpacing.md),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
+                        .graphicsLayer { alpha = dotAlpha.value }
                         .offset { IntOffset(shakeOffset.value.roundToInt(), 0) }
                         .padding(vertical = LutealSpacing.md)
                         .semantics { contentDescription = accessibilityDescription }
@@ -262,15 +288,16 @@ fun AppLockScreen(
                 // Error / Lockout Messages
                 if (isLockedOut) {
                     Text(
-                        text = stringResource(R.string.lock_rate_limited, currentLockoutSeconds),
+                        text = pluralStringResource(R.plurals.lock_rate_limited, currentLockoutSeconds, currentLockoutSeconds),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error,
                         textAlign = TextAlign.Center,
                         fontWeight = FontWeight.SemiBold
                     )
                 } else if (incorrectAttemptsRemaining != null) {
+                    val attempts = incorrectAttemptsRemaining ?: 0
                     Text(
-                        text = stringResource(R.string.lock_incorrect_pin, incorrectAttemptsRemaining ?: 0),
+                        text = pluralStringResource(R.plurals.lock_incorrect_pin, attempts, attempts),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error,
                         textAlign = TextAlign.Center
@@ -388,13 +415,27 @@ private fun NumpadKey(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val reducedMotion = LocalReducedMotion.current
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && enabled && !reducedMotion) 0.96f else 1f,
+        animationSpec = tween(durationMillis = 150, easing = EaseOut),
+        label = "numpad_key_scale"
+    )
+
     Surface(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        interactionSource = interactionSource,
         modifier = modifier
             .size(64.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .semantics { contentDescription = text }
     ) {
         Box(
@@ -403,7 +444,7 @@ private fun NumpadKey(
         ) {
             Text(
                 text = text,
-                style = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp),
+                style = MaterialTheme.typography.headlineMedium.tabular(),
                 fontWeight = FontWeight.SemiBold,
                 color = if (enabled) MaterialTheme.colorScheme.onSurface
                 else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)

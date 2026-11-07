@@ -47,6 +47,7 @@ import fr.luteal.app.R
 import fr.luteal.core.common.LocalizedDateFormatter
 import fr.luteal.core.designsystem.theme.LocalPhaseColors
 import fr.luteal.core.designsystem.theme.LutealSpacing
+import fr.luteal.core.designsystem.theme.tabular
 import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.model.CalendarDayProjection
 import fr.luteal.core.model.CyclePhase
@@ -224,10 +225,10 @@ fun CalendarDayCell(
                 onClick = onClick
             )
             .padding(2.dp)
-            .clip(RoundedCornerShape(LutealSpacing.xs))
+            .clip(MaterialTheme.shapes.small)
             .background(cellBackground)
             .then(
-                if (cellBorder != null) Modifier.border(cellBorder, RoundedCornerShape(LutealSpacing.xs))
+                if (cellBorder != null) Modifier.border(cellBorder, MaterialTheme.shapes.small)
                 else Modifier
             )
             .semantics {
@@ -242,7 +243,7 @@ fun CalendarDayCell(
         ) {
             Text(
                 text = day.date.dayOfMonth.toString(),
-                style = MaterialTheme.typography.bodyMedium.copy(
+                style = MaterialTheme.typography.bodyMedium.tabular().copy(
                     fontWeight = if (day.isToday || isSelected || day.hasPeriodFlow) FontWeight.Bold else FontWeight.Normal
                 ),
                 color = textColor,
@@ -340,16 +341,16 @@ fun CalendarLegendCard(modifier: Modifier = Modifier) {
                         modifier = Modifier
                             .weight(1f)
                             .height(10.dp)
-                            .clip(RoundedCornerShape(3.dp))
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .background(phaseColors.menstrual.container)
-                            .border(1.dp, phaseColors.menstrual.content.copy(alpha = 0.5f), RoundedCornerShape(3.dp))
+                            .border(1.dp, phaseColors.menstrual.content.copy(alpha = 0.5f), MaterialTheme.shapes.extraSmall)
                             .semantics { contentDescription = menstrualDesc }
                     )
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .height(10.dp)
-                            .clip(RoundedCornerShape(3.dp))
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .background(phaseColors.follicular.container.copy(alpha = 0.35f))
                             .semantics { contentDescription = follicularDesc }
                     )
@@ -357,7 +358,7 @@ fun CalendarLegendCard(modifier: Modifier = Modifier) {
                         modifier = Modifier
                             .weight(1f)
                             .height(10.dp)
-                            .clip(RoundedCornerShape(3.dp))
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .background(phaseColors.ovulatory.container.copy(alpha = 0.45f))
                             .semantics { contentDescription = ovulatoryDesc }
                     )
@@ -365,7 +366,7 @@ fun CalendarLegendCard(modifier: Modifier = Modifier) {
                         modifier = Modifier
                             .weight(1f)
                             .height(10.dp)
-                            .clip(RoundedCornerShape(3.dp))
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .background(phaseColors.luteal.container.copy(alpha = 0.35f))
                             .semantics { contentDescription = lutealDesc }
                     )
@@ -391,9 +392,9 @@ fun CalendarLegendCard(modifier: Modifier = Modifier) {
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
-                                .clip(RoundedCornerShape(3.dp))
+                                .clip(MaterialTheme.shapes.extraSmall)
                                 .background(phaseColors.menstrual.container)
-                                .border(1.dp, phaseColors.menstrual.content.copy(alpha = 0.5f), RoundedCornerShape(3.dp))
+                                .border(1.dp, phaseColors.menstrual.content.copy(alpha = 0.5f), MaterialTheme.shapes.extraSmall)
                         )
                         Text(
                             text = stringResource(R.string.calendar_legend_phase_menstrual),
@@ -410,8 +411,8 @@ fun CalendarLegendCard(modifier: Modifier = Modifier) {
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
-                                .clip(RoundedCornerShape(3.dp))
-                                .border(1.dp, phaseColors.menstrual.content.copy(alpha = 0.5f), RoundedCornerShape(3.dp)),
+                                .clip(MaterialTheme.shapes.extraSmall)
+                                .border(1.dp, phaseColors.menstrual.content.copy(alpha = 0.5f), MaterialTheme.shapes.extraSmall),
                             contentAlignment = Alignment.Center
                         ) {
                             CalendarDot(color = phaseColors.menstrual.content.copy(alpha = 0.7f), size = 4.dp)
@@ -431,7 +432,7 @@ fun CalendarLegendCard(modifier: Modifier = Modifier) {
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
-                                .clip(RoundedCornerShape(3.dp))
+                                .clip(MaterialTheme.shapes.extraSmall)
                                 .background(phaseColors.follicular.container.copy(alpha = 0.35f))
                         )
                         Text(
@@ -449,7 +450,7 @@ fun CalendarLegendCard(modifier: Modifier = Modifier) {
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
-                                .clip(RoundedCornerShape(3.dp))
+                                .clip(MaterialTheme.shapes.extraSmall)
                                 .background(phaseColors.ovulatory.container.copy(alpha = 0.45f))
                         )
                         Text(
@@ -467,7 +468,7 @@ fun CalendarLegendCard(modifier: Modifier = Modifier) {
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
-                                .clip(RoundedCornerShape(3.dp))
+                                .clip(MaterialTheme.shapes.extraSmall)
                                 .background(phaseColors.luteal.container.copy(alpha = 0.35f))
                         )
                         Text(
@@ -485,9 +486,9 @@ fun CalendarLegendCard(modifier: Modifier = Modifier) {
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
-                                .clip(RoundedCornerShape(3.dp))
+                                .clip(MaterialTheme.shapes.extraSmall)
                                 .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.65f))
-                                .border(1.5.dp, MaterialTheme.colorScheme.tertiary, RoundedCornerShape(3.dp))
+                                .border(1.5.dp, MaterialTheme.colorScheme.tertiary, MaterialTheme.shapes.extraSmall)
                         )
                         Text(
                             text = stringResource(R.string.calendar_legend_estimated_period_target),
@@ -504,9 +505,9 @@ fun CalendarLegendCard(modifier: Modifier = Modifier) {
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
-                                .clip(RoundedCornerShape(3.dp))
+                                .clip(MaterialTheme.shapes.extraSmall)
                                 .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.25f))
-                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(3.dp))
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.extraSmall)
                         )
                         Text(
                             text = stringResource(R.string.calendar_legend_estimated_period),

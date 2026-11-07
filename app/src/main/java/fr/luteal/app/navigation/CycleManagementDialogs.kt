@@ -193,7 +193,6 @@ fun CycleExclusionDialog(
 
                 LutealToggleRow(
                     title = stringResource(R.string.cycle_exclusion_switch_label),
-                    description = "",
                     checked = isExcluded,
                     onCheckedChange = { isExcluded = it }
                 )

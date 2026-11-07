@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
+import fr.luteal.core.designsystem.theme.tabular
 
 /**
  * The Luteal emblem, sized up to frame the current cycle day.
@@ -108,7 +109,7 @@ fun CycleDayRing(
         }
         Text(
             text = dayOfCycle.toString(),
-            style = MaterialTheme.typography.displaySmall,
+            style = MaterialTheme.typography.displaySmall.tabular(),
             color = scheme.onSurface
         )
     }

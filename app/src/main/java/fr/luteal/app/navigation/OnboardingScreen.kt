@@ -121,8 +121,6 @@ fun OnboardingScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    Spacer(modifier = Modifier.height(LutealSpacing.md))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
 
                 Box(
@@ -161,7 +159,7 @@ fun OnboardingScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                     if (step > 0) {
-                        Spacer(modifier = Modifier.height(LutealSpacing.xs))
+                        Spacer(modifier = Modifier.height(LutealSpacing.sm))
                         LutealSecondaryButton(
                             text = stringResource(R.string.onboarding_button_back),
                             onClick = { step-- },
@@ -170,7 +168,7 @@ fun OnboardingScreen(
                     }
 
                     if (step < totalSteps - 1) {
-                        Spacer(modifier = Modifier.height(LutealSpacing.xs))
+                        Spacer(modifier = Modifier.height(LutealSpacing.sm))
                         Box(
                             modifier = Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.Center

@@ -22,7 +22,7 @@
     <string name="widget_estimate_needs_history">Estimate unavailable: add another recorded cycle start.</string>
     <string name="widget_estimate_out_of_range">No estimated range is available from the recorded intervals.</string>
     <string name="widget_estimate_range">Estimated: %1$s to %2$s</string>
-    <string name="widget_estimate_range_short">%1$s - %2$s</string>
+    <string name="widget_estimate_range_short">%1$s – %2$s</string>
     <string name="widget_estimate_in_progress">The estimated range is in progress.</string>
     <plurals name="widget_estimate_past">
         <item quantity="one">The estimated range ended %1$d day ago.</item>
@@ -175,7 +175,7 @@
     <string name="editor_optional_show">Add more observations or a note</string>
     <string name="editor_optional_hide">Hide optional details</string>
     <string name="editor_symptoms">Other observations</string>
-    <string name="editor_symptoms_copy_yesterday">Copy yesterday\'s observations (%1$d)</string>
+    <string name="editor_symptoms_copy_yesterday">Copy yesterday’s observations (%1$d)</string>
     <string name="symptom_cramps">Cramps</string>
     <string name="symptom_headache">Headache</string>
     <string name="symptom_abdominal_pain">Abdominal pain</string>
@@ -192,8 +192,8 @@
     <string name="symptom_acne">Skin, acne</string>
     <string name="symptom_pelvic_pain_outside_period">Pelvic pain outside your period</string>
     <string name="symptom_group_pain">Pain</string>
-    <string name="symptom_group_physical">Body &amp; Digestion</string>
-    <string name="symptom_group_mood_energy">Mood &amp; Energy</string>
+    <string name="symptom_group_physical">Body &amp; digestion</string>
+    <string name="symptom_group_mood_energy">Mood &amp; energy</string>
     <string name="editor_notes">Private notes</string>
     <string name="editor_notes_hint">Add any context that helps you</string>
     <string name="action_save_entry">Save observations</string>
@@ -201,8 +201,8 @@
     <string name="action_close">Close</string>
     <string name="action_cancel">Cancel</string>
     <string name="save_success_local">Observations saved on this device.</string>
-    <string name="save_error">Your changes were not saved. Please try again.</string>
-    <string name="save_error_preserved">Saving failed. Your changes are kept here; you can try again.</string>
+    <string name="save_error">Changes not saved. Try again.</string>
+    <string name="save_error_preserved">Saving failed. Your changes remain saved here. Try again.</string>
     <string name="editor_discard_title">Leave without saving?</string>
     <string name="editor_discard_body">The changes you entered for this date will be lost.</string>
     <string name="editor_discard_confirm">Leave without saving</string>
@@ -231,7 +231,7 @@
     <string name="duo_share_support_desc">Allow sharing of requests you make yourself.</string>
     <string name="duo_preview_title">Partner preview</string>
     <string name="duo_preview_body">This preview shows only the categories you allowed. No data is sent.</string>
-    <string name="duo_error_invalid_pairing_link">Incomplete sharing link: use the full link provided by your partner.</string>
+    <string name="duo_error_invalid_pairing_link">Incomplete sharing link. Paste the full link provided by your partner.</string>
     <string name="duo_private_notes_never_shared">Private notes are never included in Duo sharing.</string>
 
     <string name="settings_title">Settings</string>
@@ -248,7 +248,8 @@
     <string name="settings_sync_online_body">Turns on sync with the Luteal server. Off by default.</string>
     <string name="settings_sync_server_body">By default, sync connects to the official Luteal server. You can also enter the address of your own self-hosted folicular instance.</string>
     <string name="settings_sync_base_url_label">Server address</string>
-    <string name="settings_sync_save">Save</string>
+    <string name="settings_sync_base_url_display">Server address: %1$s</string>
+    <string name="settings_sync_save">Save address</string>
     <string name="settings_sync_now">Sync now</string>
     <string name="settings_sync_in_progress">Syncing…</string>
     <string name="settings_sync_idle">No sync yet.</string>
@@ -268,7 +269,7 @@
     <string name="settings_sync_last_success">Last sync: %1$s</string>
     <string name="sync_error_auth_rejected">The server no longer accepts this device. Reconnect your account from Settings &gt; Synchronisation using your account code.</string>
     <string name="sync_error_incomplete">Sync stopped because a record could not be read. Nothing after that record was applied. Try again after the next app update if this keeps happening.</string>
-    <string name="sync_error_dataset_blocked">This device\'s saved records belong to another account or server. Recover that account, or erase local data before using a different one.</string>
+    <string name="sync_error_dataset_blocked">This device’s saved records belong to another account or server. Recover that account, or erase local data before using a different one.</string>
     <string name="settings_recovery_error_foreign_account">This device already holds records for a different account. Erase local data before restoring another account.</string>
     <string name="settings_sync_last_error">Sync failed: %1$s</string>
     <string name="settings_appearance_title">Appearance</string>
@@ -279,7 +280,7 @@
     <string name="settings_test_data_body">Insert 3 test cycles with observations and symptoms to try out estimates, the journal and Duo mode without waiting several months.</string>
     <string name="settings_test_data_seed_button">Generate 3 test cycles</string>
     <string name="settings_test_data_clear_button">Erase all data</string>
-    <string name="settings_test_data_success">Test data inserted successfully.</string>
+    <string name="settings_test_data_success">Test data inserted.</string>
     <string name="settings_test_data_cleared">All data has been erased.</string>
     <string name="settings_test_data_error">Error: %1$s</string>
     <string name="settings_test_data_clear_title">Erase all data?</string>
@@ -319,9 +320,10 @@
     <string name="settings_age_band_title">Age range</string>
     <string name="settings_age_band_body">Used only to adjust how wide your estimates are.</string>
     <string name="settings_age_band_none">Not set</string>
-    <string name="fact_card_title">Did you know</string>
+    <string name="fact_card_title">Did you know?</string>
     <string name="fact_source_label">Source: %1$s</string>
     <string name="fact_view_source">View the source</string>
+    <string name="fact_view_source_named">View source: %1$s</string>
     <string name="fact_no_single_normal">Only about one person in six has a median cycle of 28 days. There is no single “normal” length.</string>
     <string name="fact_most_cycles_in_range">About nine people in ten have cycles between 21 and 35 days.</string>
     <string name="fact_variation_is_common">Nearly a third of people see their cycle length vary by six days or more from one cycle to the next.</string>
@@ -355,7 +357,7 @@
     <string name="age_band_45_49">45 to 49</string>
     <string name="age_band_50_plus">50 and over</string>
     <string name="onboarding_privacy_step_title">Transparency &amp; estimates</string>
-    <string name="onboarding_privacy_step_body">Luteal draws a clear line between recorded facts and calculated predictions. Estimates are shown as ranges, with the uncertainty visible.</string>
+    <string name="onboarding_privacy_step_body">Luteal draws a clear line between recorded facts and calculated estimates. Estimates are shown as ranges, with the uncertainty visible.</string>
     <string name="onboarding_button_next">Continue</string>
     <string name="onboarding_button_back">Back</string>
     <string name="onboarding_button_start">Get started</string>
@@ -376,7 +378,7 @@
         <item quantity="other">In about %1$d days</item>
     </plurals>
     <string name="estimate_in_progress">Estimated period range under way</string>
-    <string name="action_start_period_short">Period start</string>
+    <string name="action_start_period_short">Log period start</string>
     <string name="estimate_unavailable_short">Waiting for history (2 cycles)</string>
     <string name="estimate_unavailable_hint">Record your cycles as they come, or add your recent past cycles, to get an estimate.</string>
     <string name="estimate_out_of_range_short">No estimate available for your cycles</string>
@@ -386,7 +388,7 @@
         <item quantity="other">Range passed %1$d days ago</item>
     </plurals>
     <string name="crash_dialog_title">Luteal ran into a problem</string>
-    <string name="crash_dialog_text">The app stopped unexpectedly. You can send an anonymous report to help us fix it. No tracking data is included.</string>
+    <string name="crash_dialog_text">The app stopped unexpectedly. You can send a crash report to help diagnose the issue. No personal tracking data is included.</string>
     <string name="crash_dialog_comment">Describe what you were doing (optional)</string>
     <string name="crash_mail_body">Thank you for helping us improve Luteal. The technical report is attached below.</string>
     <string name="duo_no_account_title">Sync required</string>
@@ -409,6 +411,9 @@
     <string name="duo_connected_partner">Duo link active (partner)</string>
     <string name="duo_revoke">Revoke the link</string>
     <string name="duo_revoke_confirm">Sharing will stop immediately. This cannot be undone.</string>
+    <string name="duo_revoke_dialog_title">Revoke Duo link?</string>
+    <string name="duo_revoke_dialog_body">Sharing will stop immediately and the connection with your partner will be permanently removed. This action cannot be undone.</string>
+    <string name="duo_revoke_dialog_confirm">Revoke link</string>
     <string name="duo_grants_title">What you share</string>
     <string name="duo_partner_shared_title">Shared by your partner</string>
     <string name="duo_view_cycle_day">Cycle day: %1$d</string>
@@ -419,10 +424,10 @@
     <string name="duo_partner_view_no_grants">Your partner has not enabled sharing for any category yet. Information will appear here when they turn on categories in their Duo tab.</string>
     <string name="duo_preview_no_grants">No categories enabled yet. Turn on categories above to share them with your partner.</string>
     <string name="duo_view_no_observations">No observations recorded today for the shared categories.</string>
-    <string name="duo_key_missing">The key for this Duo link is not available on this device. Shared data cannot be decrypted here: create the link with your partner again.</string>
+    <string name="duo_key_missing">The key for this Duo link is not available on this device. Shared data cannot be decrypted here. Create the link with your partner again.</string>
     <string name="duo_share_link_note">Share the full link: it contains the encryption key, which is never sent to the server.</string>
     <string name="duo_support_title">Support requests</string>
-    <string name="duo_support_empty">No support requests.</string>
+    <string name="duo_support_empty">No support requests yet. Active requests from your partner will appear here.</string>
     <string name="duo_support_send">Send</string>
     <string name="duo_support_hint">Write a message of support…</string>
     <string name="duo_support_ack">Acknowledge</string>
@@ -449,22 +454,22 @@
     <string name="cycle_action_delete">Delete cycle</string>
     <string name="cycle_edit_body">Choose the start date for this cycle. Adjacent cycle lengths will be adjusted automatically.</string>
     <string name="cycle_edit_confirm">Save date</string>
-    <string name="cycle_edit_collision_error">Another cycle already starts on this date.</string>
+    <string name="cycle_edit_collision_error">Another cycle already starts on this date. Choose a different start date.</string>
     <string name="cycle_delete_title">Delete this cycle?</string>
     <string name="cycle_delete_body">The start date of this cycle will be removed. Your daily observations for this date will be kept in the journal.</string>
-    <string name="cycle_delete_confirm">Delete</string>
+    <string name="cycle_delete_confirm">Delete cycle</string>
     <string name="cycle_start_badge">Cycle start</string>
     
     <string name="settings_data_management_title">Data management &amp; backup</string>
-    <string name="settings_export_title">Export my data (JSON)</string>
+    <string name="settings_export_title">Export data (JSON)</string>
     <string name="settings_export_body">Create a complete, readable backup of your cycles, daily observations, and preferences directly on your device.</string>
     <string name="settings_export_action">Export as JSON</string>
     <string name="settings_export_in_progress">Export in progress…</string>
-    <string name="settings_export_success">Data exported successfully.</string>
-    <string name="settings_export_error">Export failed. Please try again.</string>
-    <string name="settings_wipe_error">Data wipe failed. Please try again.</string>
-    <string name="settings_test_data_error_seed">Error generating test data.</string>
-    <string name="settings_test_data_error_clear">Error clearing test data.</string>
+    <string name="settings_export_success">Data exported.</string>
+    <string name="settings_export_error">Export failed. Try again.</string>
+    <string name="settings_wipe_error">Data erasure failed. Try again.</string>
+    <string name="settings_test_data_error_seed">Unable to generate test data. Try again.</string>
+    <string name="settings_test_data_error_clear">Unable to clear test data. Try again.</string>
     <string name="settings_wipe_title">Erase all local data</string>
     <string name="settings_wipe_body">Immediately deletes all your observations, cycles, settings, and encryption keys from this device.</string>
     <string name="settings_wipe_action">Erase local data</string>
@@ -478,10 +483,18 @@
     <string name="settings_import_action">Import a JSON file</string>
     <string name="settings_import_in_progress">Restoring data…</string>
     <string name="settings_import_inspecting">Analyzing file…</string>
-    <string name="settings_import_success">Backup restored successfully (%1$d cycle(s), %2$d observation(s)).</string>
-    <string name="settings_import_error_generic">Import failed. Please check that the file is valid.</string>
-    <string name="settings_import_error_syntax">The selected file is not a valid Luteal JSON backup.</string>
-    <string name="settings_import_error_schema">Unsupported backup version. Please update the application.</string>
+    <plurals name="settings_import_cycles_count">
+        <item quantity="one">%1$d cycle</item>
+        <item quantity="other">%1$d cycles</item>
+    </plurals>
+    <plurals name="settings_import_entries_count">
+        <item quantity="one">%1$d observation</item>
+        <item quantity="other">%1$d observations</item>
+    </plurals>
+    <string name="settings_import_success">Backup restored: %1$s, %2$s.</string>
+    <string name="settings_import_error_generic">Import failed. Check that the file is a valid backup.</string>
+    <string name="settings_import_error_syntax">The selected file is not a valid Luteal backup. Select a JSON backup file exported from Luteal.</string>
+    <string name="settings_import_error_schema">Unsupported backup version. Update Luteal to restore this backup.</string>
     <string name="settings_import_dialog_title">Restore a backup</string>
     <string name="settings_import_dialog_cycles">Cycles: %1$d (%2$s to %3$s)</string>
     <string name="settings_import_dialog_cycles_no_dates">Cycles: %1$d</string>
@@ -492,20 +505,29 @@
     <string name="settings_import_strategy_merge_desc">Keeps your existing records and adds or updates records from the backup.</string>
     <string name="settings_import_strategy_replace">Replace all data</string>
     <string name="settings_import_strategy_replace_desc">Erases all current local data before restoring the backup.</string>
-    <string name="settings_import_dialog_confirm">Restore</string>
+    <string name="settings_import_dialog_confirm">Restore backup</string>
     
     <string name="lock_screen_title">Luteal is locked</string>
     <string name="lock_enter_pin">Enter your PIN to unlock the application.</string>
     <string name="lock_submit_pin">Unlock</string>
-    <string name="lock_incorrect_pin">Incorrect PIN. %1$d attempt(s) remaining.</string>
-    <string name="lock_rate_limited">Too many attempts. Try again in %1$d second(s).</string>
-    <string name="lock_accessibility_progress">%1$d digit(s) entered</string>
+    <plurals name="lock_incorrect_pin">
+        <item quantity="one">Incorrect PIN. %1$d attempt remaining.</item>
+        <item quantity="other">Incorrect PIN. %1$d attempts remaining.</item>
+    </plurals>
+    <plurals name="lock_rate_limited">
+        <item quantity="one">Too many attempts. Try again in %1$d second.</item>
+        <item quantity="other">Too many attempts. Try again in %1$d seconds.</item>
+    </plurals>
+    <plurals name="lock_accessibility_progress">
+        <item quantity="one">%1$d digit entered</item>
+        <item quantity="other">%1$d digits entered</item>
+    </plurals>
     <string name="lock_biometric_prompt">Unlock with biometric</string>
     <string name="lock_backspace">Backspace</string>
     <string name="lock_biometric_title">Unlock Luteal</string>
     <string name="lock_biometric_subtitle">Confirm your identity to access your data</string>
     <string name="lock_biometric_negative">Use PIN</string>
-    <string name="settings_security_title">Security &amp; Lock</string>
+    <string name="settings_security_title">Security &amp; lock</string>
     <string name="settings_app_lock_title">App lock</string>
     <string name="settings_app_lock_desc">Requires a PIN or biometric authentication to open the application.</string>
     <string name="settings_biometric_title">Biometric unlock</string>
@@ -522,24 +544,27 @@
     <string name="dialog_set_pin_body">Choose a 4 to 8 digit PIN.</string>
     <string name="dialog_set_pin_label">PIN</string>
     <string name="dialog_set_pin_confirm_label">Confirm PIN</string>
-    <string name="dialog_set_pin_error_match">PINs do not match.</string>
-    <string name="dialog_set_pin_error_length">PIN must be between 4 and 8 digits.</string>
+    <string name="dialog_set_pin_error_match">PINs do not match. Enter the same PIN in both fields.</string>
+    <string name="dialog_set_pin_error_length">Enter a PIN with 4 to 8 digits.</string>
     <string name="dialog_set_pin_action">Enable lock</string>
     <string name="dialog_change_pin_title">Change PIN</string>
     <string name="dialog_change_pin_current_label">Current PIN</string>
     <string name="dialog_change_pin_new_label">New PIN</string>
     <string name="dialog_change_pin_confirm_label">Confirm new PIN</string>
-    <string name="dialog_change_pin_error_current">Current PIN is incorrect.</string>
-    <string name="dialog_change_pin_action">Save</string>
+    <string name="dialog_change_pin_error_current">Current PIN is incorrect. Check your current PIN and try again.</string>
+    <string name="dialog_change_pin_action">Save PIN</string>
     <string name="dialog_disable_lock_title">Disable app lock</string>
     <string name="dialog_disable_lock_body">Enter your current PIN to disable app lock.</string>
-    <string name="dialog_disable_lock_error">Incorrect PIN.</string>
-    <string name="dialog_disable_lock_action">Disable</string>
+    <string name="dialog_disable_lock_error">Incorrect PIN. Check your PIN and try again.</string>
+    <string name="dialog_disable_lock_action">Disable lock</string>
     
     <string name="journal_view_variability">Variability</string>
     <string name="variability_title">Cycle history &amp; variability</string>
     <string name="variability_subtitle">Longitudinal view of your cycle lengths</string>
-    <string name="variability_stat_total">Total: %1$d cycles</string>
+    <plurals name="variability_stat_total">
+        <item quantity="one">Total: %1$d cycle</item>
+        <item quantity="other">Total: %1$d cycles</item>
+    </plurals>
     <string name="variability_stat_median">Median: %1$.1f d</string>
     <string name="variability_stat_mean">Mean: %1$.1f d</string>
     <string name="variability_stat_excluded">%1$d excluded</string>
@@ -556,7 +581,7 @@
     <string name="variability_cycle_days">%1$d days</string>
     <string name="cycle_exclusion_dialog_title">Exclude this cycle from estimates</string>
     <string name="cycle_exclusion_dialog_body">An atypical cycle (illness, medical treatment, emergency contraception) can be kept in your journal without skewing upcoming period calculations.</string>
-    <string name="cycle_exclusion_switch_label">Exclude from prediction calculations</string>
+    <string name="cycle_exclusion_switch_label">Exclude from estimate calculations</string>
     <string name="cycle_exclusion_reason_label">Reason for exclusion (optional)</string>
     <string name="cycle_exclusion_reason_illness">Illness / Fever</string>
     <string name="cycle_exclusion_reason_medical_treatment">Medical treatment / Surgery</string>
@@ -572,7 +597,7 @@
     <string name="report_preset_12_cycles">Last 12 cycles</string>
     <string name="report_preset_all">All history</string>
     <string name="report_format_label">Document format</string>
-    <string name="report_format_pdf">PDF (Printable A4)</string>
+    <string name="report_format_pdf">PDF (printable A4)</string>
     <string name="report_format_html">HTML (Standalone web page)</string>
     <string name="report_language_label">Report language</string>
     <string name="report_language_fr">Français</string>
@@ -583,8 +608,8 @@
     <string name="settings_report_title">Medical consultation report (PDF / HTML)</string>
     <string name="settings_report_body">Create a clear, printable summary of your cycles, pain, and symptoms for your doctor or midwife.</string>
     <string name="settings_report_action">Generate consultation report</string>
-    <string name="settings_report_success">Medical report exported successfully.</string>
-    <string name="settings_report_error">Report generation failed.</string>
+    <string name="settings_report_success">Consultation report exported.</string>
+    <string name="settings_report_error">Report generation failed. Try again.</string>
     
     <string name="notif_channel_daily_title">Daily tracking</string>
     <string name="notif_channel_daily_desc">Daily reminders to record your observations</string>
@@ -602,9 +627,9 @@
     <string name="notif_window_descriptive_body">Your next estimated period is approaching in the coming days.</string>
     <string name="notif_late_descriptive_title">Cycle check-in</string>
     <string name="notif_late_descriptive_body">Your current cycle is extending. Remember to log your observations.</string>
-    <string name="settings_notifications_title">Notifications &amp; Reminders</string>
+    <string name="settings_notifications_title">Notifications &amp; reminders</string>
     <string name="settings_notifications_master_title">Local reminders</string>
-    <string name="settings_notifications_master_desc">Disabled by default. 100%% on-device, zero external servers.</string>
+    <string name="settings_notifications_master_desc">Receive reminders on your device. Everything stays on device, with no external servers.</string>
     <string name="settings_notif_daily_title">Daily observation reminder</string>
     <string name="settings_notif_daily_desc">Automatic evening reminder, skipped if you already logged today.</string>
     <string name="settings_notif_time_label">Reminder time: %1$s</string>
@@ -625,7 +650,7 @@
     <string name="settings_notif_visibility_custom_desc">Define your own title and message.</string>
     <string name="settings_notif_custom_title_label">Custom title</string>
     <string name="settings_notif_custom_body_label">Custom message</string>
-    <string name="cycle_exclusion_save">Save</string>
+    <string name="cycle_exclusion_save">Save changes</string>
 
     <string name="editor_biomarkers_show">Show biomarkers</string>
     <string name="editor_biomarkers_hide">Hide biomarkers</string>
@@ -681,7 +706,15 @@
     <string name="thermal_chart_subtitle">Recorded temperatures for the current cycle. A confirmed shift is retrospective, not a fertility prediction.</string>
     <string name="thermal_chart_summary">Thermal chart: %1$d temperature readings, %2$d disturbed, %3$s</string>
     <string name="thermal_chart_no_shift">no confirmed thermal shift</string>
-    <string name="variability_bar_cd">Cycle starting %1$s, length %2$d days, %3$d bleeding days.</string>
+    <plurals name="variability_bar_length">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <plurals name="variability_bar_bleeding">
+        <item quantity="one">%1$d bleeding day</item>
+        <item quantity="other">%1$d bleeding days</item>
+    </plurals>
+    <string name="variability_bar_cd">Cycle starting %1$s, length %2$s, %3$s.</string>
     <string name="variability_bar_label">%1$d d (%2$d bleeding)</string>
     <string name="variability_detail_title">Cycle of %1$s</string>
     <string name="variability_detail_end">Cycle end: %1$s</string>
@@ -771,7 +804,10 @@
     <string name="calendar_legend_phase_luteal">Luteal phase (estimate)</string>
     <string name="calendar_legend_spotting">Spotting (recorded observation)</string>
     <string name="calendar_legend_biomarkers">Biomarkers (temperature, cervical fluid, tests)</string>
-    <string name="calendar_month_summary_period_days">%1$d period days recorded</string>
+    <plurals name="calendar_month_summary_period_days">
+        <item quantity="one">%1$d period day recorded</item>
+        <item quantity="other">%1$d period days recorded</item>
+    </plurals>
     <string name="calendar_picker_title">Select month and year</string>
     <string name="calendar_picker_confirm">View month</string>
     <string name="inspection_cycle_day">Cycle day %1$d</string>

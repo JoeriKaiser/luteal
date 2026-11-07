@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -53,6 +54,7 @@ import fr.luteal.core.designsystem.component.LutealSecondaryButton
 import fr.luteal.core.designsystem.component.StatusPill
 import fr.luteal.core.designsystem.component.StatusTone
 import fr.luteal.core.designsystem.theme.LutealSpacing
+import fr.luteal.core.designsystem.theme.tabular
 import fr.luteal.core.model.CycleExclusionReason
 import fr.luteal.core.model.LongitudinalCycleItem
 import fr.luteal.core.model.LongitudinalCycleStats
@@ -108,7 +110,7 @@ fun CycleVariabilityVisualizer(
                     modifier = Modifier.padding(top = LutealSpacing.xs)
                 ) {
                     Text(
-                        text = stringResource(R.string.variability_stat_total, stats.totalCyclesCount),
+                        text = pluralStringResource(R.plurals.variability_stat_total, stats.totalCyclesCount, stats.totalCyclesCount),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -168,12 +170,17 @@ fun CycleVariabilityVisualizer(
                 modifier = Modifier
                     .fillMaxWidth()
                     .drawBehind {
-                        val x21 = size.width * (21f / maxDays.toFloat()).coerceIn(0f, 1f)
-                        val x35 = size.width * (35f / maxDays.toFloat()).coerceIn(0f, 1f)
+                        val isRtl = layoutDirection == androidx.compose.ui.unit.LayoutDirection.Rtl
+                        val f21 = (21f / maxDays.toFloat()).coerceIn(0f, 1f)
+                        val f35 = (35f / maxDays.toFloat()).coerceIn(0f, 1f)
+                        val x21 = if (isRtl) size.width * (1f - f21) else size.width * f21
+                        val x35 = if (isRtl) size.width * (1f - f35) else size.width * f35
+                        val rectLeft = minOf(x21, x35)
+                        val rectRight = maxOf(x21, x35)
                         drawRect(
                             color = refColor,
-                            topLeft = Offset(x21, 0f),
-                            size = Size((x35 - x21).coerceAtLeast(0f), size.height)
+                            topLeft = Offset(rectLeft, 0f),
+                            size = Size((rectRight - rectLeft).coerceAtLeast(0f), size.height)
                         )
                         drawLine(
                             color = guideColor,
@@ -205,21 +212,11 @@ fun CycleVariabilityVisualizer(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(R.string.variability_ref_min),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
                     text = stringResource(R.string.variability_reference_band),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = stringResource(R.string.variability_ref_max),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -252,8 +249,10 @@ private fun CycleBarRow(
         LocalizedDateFormatter.formatShortDate(item.startDate, locale)
     }
 
+    val lengthDesc = pluralStringResource(R.plurals.variability_bar_length, item.lengthDays, item.lengthDays)
+    val bleedingDesc = pluralStringResource(R.plurals.variability_bar_bleeding, item.bleedingDaysCount, item.bleedingDaysCount)
     val accessibilityDesc = buildString {
-        append(stringResource(R.string.variability_bar_cd, formattedStart, item.lengthDays, item.bleedingDaysCount))
+        append(stringResource(R.string.variability_bar_cd, formattedStart, lengthDesc, bleedingDesc))
         if (item.isCurrent) append(" ").append(stringResource(R.string.variability_current_badge))
         if (item.isExcluded) append(" ").append(stringResource(R.string.variability_excluded_badge))
         if (item.hasSevenDayShift) append(" ").append(stringResource(R.string.variability_straw_swing_badge))
@@ -307,7 +306,6 @@ private fun CycleBarRow(
 
         // Range Bar Graphic with adaptive label placement
         val barFraction = (item.lengthDays.toFloat() / maxDays.toFloat()).coerceIn(0.04f, 1f)
-        val showTextInside = barFraction >= 0.40f
         val labelText = stringResource(
             R.string.variability_bar_label,
             item.lengthDays,
@@ -321,14 +319,13 @@ private fun CycleBarRow(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(barFraction)
-                    .height(28.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .height(18.dp)
+                    .clip(RoundedCornerShape(6.dp))
                     .background(
                         when {
                             item.isExcluded -> MaterialTheme.colorScheme.surfaceVariant
@@ -343,34 +340,19 @@ private fun CycleBarRow(
                             item.isCurrent -> MaterialTheme.colorScheme.primary
                             else -> MaterialTheme.colorScheme.outlineVariant
                         },
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(6.dp)
                     )
-                    .padding(horizontal = LutealSpacing.xs),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                if (showTextInside) {
-                    Text(
-                        text = labelText,
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = contentColor,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        softWrap = false
-                    )
-                }
-            }
-
-            if (!showTextInside) {
-                Text(
-                    text = labelText,
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    softWrap = false
-                )
-            }
+            )
         }
+
+        Spacer(Modifier.height(4.dp))
+
+        Text(
+            text = labelText,
+            style = MaterialTheme.typography.labelSmall.tabular(),
+            color = contentColor,
+            fontWeight = FontWeight.Medium
+        )
 }
 }
 

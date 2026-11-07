@@ -32,6 +32,8 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -58,6 +60,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
@@ -411,6 +414,33 @@ private fun TrackerActiveSection(
     isSendingSupport: Boolean,
     onOpenGuideSheet: () -> Unit
 ) {
+    var showRevokeDialog by remember { mutableStateOf(false) }
+
+    if (showRevokeDialog) {
+        AlertDialog(
+            onDismissRequest = { showRevokeDialog = false },
+            title = { Text(stringResource(R.string.duo_revoke_dialog_title)) },
+            text = { Text(stringResource(R.string.duo_revoke_dialog_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showRevokeDialog = false
+                        onRevoke()
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text(stringResource(R.string.duo_revoke_dialog_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRevokeDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
     LutealCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
             StatusPill(
@@ -492,7 +522,7 @@ private fun TrackerActiveSection(
             )
             LutealSecondaryButton(
                 text = stringResource(R.string.duo_revoke),
-                onClick = onRevoke,
+                onClick = { showRevokeDialog = true },
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -557,6 +587,33 @@ private fun PartnerActiveSection(
     isSendingSupport: Boolean,
     onOpenGuideSheet: () -> Unit
 ) {
+    var showRevokeDialog by remember { mutableStateOf(false) }
+
+    if (showRevokeDialog) {
+        AlertDialog(
+            onDismissRequest = { showRevokeDialog = false },
+            title = { Text(stringResource(R.string.duo_revoke_dialog_title)) },
+            text = { Text(stringResource(R.string.duo_revoke_dialog_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showRevokeDialog = false
+                        onRevoke()
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text(stringResource(R.string.duo_revoke_dialog_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRevokeDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
     LutealCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
             StatusPill(
@@ -606,7 +663,7 @@ private fun PartnerActiveSection(
             )
             LutealSecondaryButton(
                 text = stringResource(R.string.duo_revoke),
-                onClick = onRevoke,
+                onClick = { showRevokeDialog = true },
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -984,7 +1041,11 @@ private fun PartnerGuidanceCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f)
                         )
-                        TextButton(onClick = { uriHandler.openUri(capsule.url) }) {
+                        val capsuleA11y = stringResource(R.string.fact_view_source_named, capsule.source)
+                        TextButton(
+                            onClick = { uriHandler.openUri(capsule.url) },
+                            modifier = Modifier.semantics { contentDescription = capsuleA11y }
+                        ) {
                             Text(text = stringResource(R.string.fact_view_source))
                         }
                     }
@@ -1012,7 +1073,11 @@ private fun PartnerGuidanceCard(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.weight(1f)
                             )
-                            TextButton(onClick = { uriHandler.openUri(tip.url) }) {
+                            val tipA11y = stringResource(R.string.fact_view_source_named, tip.source)
+                            TextButton(
+                                onClick = { uriHandler.openUri(tip.url) },
+                                modifier = Modifier.semantics { contentDescription = tipA11y }
+                            ) {
                                 Text(text = stringResource(R.string.fact_view_source))
                             }
                         }
