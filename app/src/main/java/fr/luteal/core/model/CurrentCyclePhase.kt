@@ -18,7 +18,8 @@ enum class PhaseIndeterminateReason {
     PHASE_TRANSITION,
     NEXT_PERIOD_WINDOW,
     ESTIMATE_EXPIRED,
-    ESTIMATE_NOT_SHARED
+    ESTIMATE_NOT_SHARED,
+    HORMONAL_CONTRACEPTION
 }
 
 sealed interface CurrentCyclePhase {
@@ -69,7 +70,8 @@ object CurrentCyclePhaseCalculator {
         today: LocalDate,
         currentCycle: Cycle?,
         todayEntry: DailyEntry?,
-        estimateResult: CycleEstimateResult
+        estimateResult: CycleEstimateResult,
+        isPillRegimenActive: Boolean = false
     ): CurrentCyclePhase {
         val cycle = currentCycle
             ?.takeIf { !today.isBefore(it.startDate) }
@@ -83,6 +85,12 @@ object CurrentCyclePhaseCalculator {
 
         if (dayIndex == 0 || observedFlow?.isPeriodFlow() == true) {
             return CurrentCyclePhase.Available(CyclePhase.MENSTRUAL, PhaseCertainty.RECORDED)
+        }
+
+        if (isPillRegimenActive) {
+            return CurrentCyclePhase.Indeterminate(
+                PhaseIndeterminateReason.HORMONAL_CONTRACEPTION
+            )
         }
 
         if (dayIndex < EARLY_CYCLE_DAYS) {

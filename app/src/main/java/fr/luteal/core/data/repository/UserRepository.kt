@@ -31,4 +31,5 @@ interface UserRepository {
 
     /** Null clears a previously declared band. */
     suspend fun setAgeBand(ageBandId: String?)
+    suspend fun setPillLastTakenDate(date: String?) = Unit
 }

@@ -68,6 +68,7 @@ import fr.luteal.core.model.CyclePhase
 import fr.luteal.core.model.PhaseCertainty
 import fr.luteal.core.model.PhaseIndeterminateReason
 import fr.luteal.core.model.PhaseTips
+import fr.luteal.core.model.PillDayStatus
 import java.time.temporal.ChronoUnit
 import fr.luteal.core.model.TrackingContext
 import kotlin.math.roundToInt
@@ -77,7 +78,8 @@ fun TodayScreen(
     state: LutealUiState,
     onStartPeriod: () -> Unit,
     onEditToday: () -> Unit,
-    onBackfillCycle: () -> Unit
+    onBackfillCycle: () -> Unit,
+    onTogglePillTakenToday: (Boolean) -> Unit = {}
 ) {
     val locale = LocalConfiguration.current.locales[0]
     Column(
@@ -95,6 +97,13 @@ fun TodayScreen(
         CycleHeroCard(state)
 
         TodayObservationCard(state = state, onEditToday = onEditToday)
+
+        if (state.pillStatus !is PillDayStatus.Disabled) {
+            PillRegimenCard(
+                status = state.pillStatus,
+                onToggleTakenToday = onTogglePillTakenToday
+            )
+        }
 
         LutealSecondaryButton(
             text = stringResource(R.string.action_start_period_short),
@@ -350,6 +359,111 @@ private fun TodayObservationCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun PillRegimenCard(
+    status: PillDayStatus,
+    onToggleTakenToday: (Boolean) -> Unit
+) {
+    when (status) {
+        is PillDayStatus.ActiveDay -> {
+            LutealCard(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.today_pill_card_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    StatusPill(
+                        text = stringResource(
+                            if (status.isTakenToday) R.string.today_pill_taken_badge
+                            else R.string.today_pill_pending_badge
+                        ),
+                        tone = if (status.isTakenToday) StatusTone.RECORDED else StatusTone.ESTIMATED
+                    )
+                }
+
+                Spacer(Modifier.height(LutealSpacing.xs))
+
+                val title = if (status.pauseDays > 0) {
+                    stringResource(
+                        R.string.today_pill_active_day_title,
+                        status.dayOfPack,
+                        status.activeDays
+                    )
+                } else {
+                    stringResource(
+                        R.string.today_pill_active_continuous_title,
+                        status.dayOfPack,
+                        status.activeDays
+                    )
+                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+
+                Spacer(Modifier.height(LutealSpacing.sm))
+
+                if (!status.isTakenToday) {
+                    LutealPrimaryButton(
+                        text = stringResource(R.string.today_pill_action_mark_taken),
+                        onClick = { onToggleTakenToday(true) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    LutealSecondaryButton(
+                        text = stringResource(R.string.today_pill_action_undo_taken),
+                        onClick = { onToggleTakenToday(false) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+        is PillDayStatus.PauseDay -> {
+            LutealCard(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.today_pill_card_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    StatusPill(
+                        text = stringResource(R.string.today_pill_pause_badge),
+                        tone = StatusTone.PRIVATE
+                    )
+                }
+
+                Spacer(Modifier.height(LutealSpacing.xs))
+
+                Text(
+                    text = stringResource(
+                        R.string.today_pill_pause_day_title,
+                        status.dayOfPause,
+                        status.pauseDays
+                    ),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+
+                Spacer(Modifier.height(LutealSpacing.xxs))
+
+                val remainingPauseDays = (status.pauseDays - status.dayOfPause + 1).coerceAtLeast(1)
+                Text(
+                    text = stringResource(R.string.today_pill_pause_support, remainingPauseDays),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        PillDayStatus.Disabled -> Unit
     }
 }
 
@@ -807,6 +921,7 @@ private fun phaseIndeterminateSupport(reason: PhaseIndeterminateReason): String 
         PhaseIndeterminateReason.NEXT_PERIOD_WINDOW -> R.string.phase_reason_period_window
         PhaseIndeterminateReason.ESTIMATE_EXPIRED -> R.string.phase_reason_expired
         PhaseIndeterminateReason.ESTIMATE_NOT_SHARED -> R.string.phase_reason_estimate_not_shared
+        PhaseIndeterminateReason.HORMONAL_CONTRACEPTION -> R.string.phase_reason_hormonal_contraception
     }
 )
 

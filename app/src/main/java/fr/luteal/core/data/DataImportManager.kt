@@ -390,6 +390,12 @@ class DataImportManager @Inject constructor(
                     userPreferencesDataStore.setDisorderTracking("thyroid", prefs.trackThyroid)
                     userPreferencesDataStore.setAgeBand(prefs.ageBand)
                     userPreferencesDataStore.setTemperatureUnit(prefs.temperatureUnit)
+                    userPreferencesDataStore.setPillRegimenEnabled(prefs.isPillRegimenEnabled)
+                    userPreferencesDataStore.setPillActiveDays(prefs.pillActiveDays)
+                    userPreferencesDataStore.setPillPauseDays(prefs.pillPauseDays)
+                    userPreferencesDataStore.setPillStartDate(prefs.pillStartDate)
+                    userPreferencesDataStore.setPillReminderTime(prefs.pillReminderTime)
+                    userPreferencesDataStore.setPillLastTakenDate(prefs.pillLastTakenDate)
                     userPreferencesDataStore.setCompletedOnboarding(true)
                     preferencesRestored = true
                 }
@@ -426,5 +432,7 @@ class DataImportManager @Inject constructor(
         payload.dailyEntries.forEach { requireDate(it.date, "daily entry ${it.date}") }
         payload.symptomLogs.forEach { requireDate(it.date, "symptom log ${it.id}") }
         payload.biomarkerObservations.forEach { requireDate(it.date, "biomarker ${it.date}") }
+        requireDate(payload.preferences.pillStartDate, "pillStartDate")
+        requireDate(payload.preferences.pillLastTakenDate, "pillLastTakenDate")
     }
 }

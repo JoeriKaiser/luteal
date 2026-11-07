@@ -1,6 +1,8 @@
 package fr.luteal.app.notification
 
 import org.junit.Assert.assertEquals
+import fr.luteal.core.model.PillRegimenConfig
+import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -76,5 +78,63 @@ class NotificationSchedulerTest {
             graceDays = graceDays
         )
         assertEquals(LocalDateTime.of(2026, 10, 19, 10, 0), target)
+    }
+
+    @Test
+    fun `calculatePillReminderTarget returns today when before reminder time and not taken`() {
+        val startDate = LocalDate.of(2026, 10, 1)
+        val config = PillRegimenConfig(
+            isEnabled = true,
+            activeDays = 21,
+            pauseDays = 7,
+            startDate = startDate,
+            reminderTime = "20:30"
+        )
+        val now = LocalDateTime.of(2026, 10, 3, 15, 0)
+        val target = NotificationScheduler.calculatePillReminderTarget(config, now)
+        assertEquals(LocalDateTime.of(2026, 10, 3, 20, 30), target)
+    }
+
+    @Test
+    fun `calculatePillReminderTarget returns tomorrow when already taken today`() {
+        val startDate = LocalDate.of(2026, 10, 1)
+        val config = PillRegimenConfig(
+            isEnabled = true,
+            activeDays = 21,
+            pauseDays = 7,
+            startDate = startDate,
+            reminderTime = "20:30",
+            lastTakenDate = LocalDate.of(2026, 10, 3)
+        )
+        val now = LocalDateTime.of(2026, 10, 3, 15, 0)
+        val target = NotificationScheduler.calculatePillReminderTarget(config, now)
+        assertEquals(LocalDateTime.of(2026, 10, 4, 20, 30), target)
+    }
+
+    @Test
+    fun `calculatePillReminderTarget skips pause days to land on day 1 of next pack`() {
+        val startDate = LocalDate.of(2026, 10, 1)
+        val config = PillRegimenConfig(
+            isEnabled = true,
+            activeDays = 21,
+            pauseDays = 7,
+            startDate = startDate,
+            reminderTime = "20:00"
+        )
+        // Day 22 is pause day 1 (2026-10-22)
+        val now = LocalDateTime.of(2026, 10, 22, 10, 0)
+        val target = NotificationScheduler.calculatePillReminderTarget(config, now)
+        // Day 29 is 2026-10-29
+        assertEquals(LocalDateTime.of(2026, 10, 29, 20, 0), target)
+    }
+
+    @Test
+    fun `calculatePillReminderTarget returns null when pill tracking is disabled`() {
+        val config = PillRegimenConfig(
+            isEnabled = false,
+            startDate = LocalDate.of(2026, 10, 1)
+        )
+        val now = LocalDateTime.of(2026, 10, 3, 15, 0)
+        assertNull(NotificationScheduler.calculatePillReminderTarget(config, now))
     }
 }

@@ -20,10 +20,19 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class NotificationAlarmReceiver : BroadcastReceiver() {
+
+    companion object {
+        const val ACTION_MARK_PILL_TAKEN = "fr.luteal.app.action.MARK_PILL_TAKEN"
+        const val ACTION_SNOOZE_PILL = "fr.luteal.app.action.SNOOZE_PILL"
+        const val NOTIFICATION_ID_PILL = 2004
+        private const val REQUEST_CODE_ACTION_TAKEN = 3001
+        private const val REQUEST_CODE_ACTION_SNOOZE = 3002
+    }
 
     @Inject
     lateinit var contentResolver: NotificationContentResolver
@@ -35,6 +44,34 @@ class NotificationAlarmReceiver : BroadcastReceiver() {
     lateinit var notificationScheduler: NotificationScheduler
 
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == ACTION_MARK_PILL_TAKEN) {
+            val pendingResult = goAsync()
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    userPreferencesDataStore.setPillLastTakenDate(LocalDate.now().toString())
+                    notificationScheduler.cancelPillSnooze()
+                    NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID_PILL)
+                    notificationScheduler.reconcileAllSchedules()
+                } finally {
+                    pendingResult.finish()
+                }
+            }
+            return
+        }
+
+        if (intent.action == ACTION_SNOOZE_PILL) {
+            val pendingResult = goAsync()
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID_PILL)
+                    notificationScheduler.schedulePillSnooze()
+                } finally {
+                    pendingResult.finish()
+                }
+            }
+            return
+        }
+
         val typeName = intent.getStringExtra(NotificationScheduler.EXTRA_NOTIFICATION_TYPE) ?: return
         val type = runCatching { NotificationType.valueOf(typeName) }.getOrNull() ?: return
 
@@ -48,6 +85,7 @@ class NotificationAlarmReceiver : BroadcastReceiver() {
                     NotificationType.DAILY_CHECK_IN -> prefs.isDailyCheckInEnabled
                     NotificationType.PERIOD_WINDOW -> prefs.isPeriodWindowEnabled
                     NotificationType.LATE_CYCLE -> prefs.isLateCycleEnabled
+                    NotificationType.PILL_REMINDER -> prefs.isPillRegimenEnabled
                 }
                 if (!isTypeEnabled) return@launch
 
@@ -77,7 +115,7 @@ class NotificationAlarmReceiver : BroadcastReceiver() {
                     .setAutoCancel(true)
                     .build()
 
-                val notification = NotificationCompat.Builder(context, content.channelId)
+                val notificationBuilder = NotificationCompat.Builder(context, content.channelId)
                     .setSmallIcon(R.mipmap.ic_launcher)
                     .setContentTitle(content.title)
                     .setContentText(content.body)
@@ -86,12 +124,39 @@ class NotificationAlarmReceiver : BroadcastReceiver() {
                     .setPublicVersion(publicNotification)
                     .setAutoCancel(true)
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                    .build()
 
+                if (content.actionTakenLabel != null) {
+                    val takenIntent = Intent(context, NotificationAlarmReceiver::class.java).apply {
+                        action = ACTION_MARK_PILL_TAKEN
+                    }
+                    val takenPendingIntent = PendingIntent.getBroadcast(
+                        context,
+                        REQUEST_CODE_ACTION_TAKEN,
+                        takenIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    notificationBuilder.addAction(0, content.actionTakenLabel, takenPendingIntent)
+                }
+
+                if (content.actionSnoozeLabel != null) {
+                    val snoozeIntent = Intent(context, NotificationAlarmReceiver::class.java).apply {
+                        action = ACTION_SNOOZE_PILL
+                    }
+                    val snoozePendingIntent = PendingIntent.getBroadcast(
+                        context,
+                        REQUEST_CODE_ACTION_SNOOZE,
+                        snoozeIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    notificationBuilder.addAction(0, content.actionSnoozeLabel, snoozePendingIntent)
+                }
+
+                val notification = notificationBuilder.build()
                 val notificationId = when (type) {
                     NotificationType.DAILY_CHECK_IN -> 2001
                     NotificationType.PERIOD_WINDOW -> 2002
                     NotificationType.LATE_CYCLE -> 2003
+                    NotificationType.PILL_REMINDER -> NOTIFICATION_ID_PILL
                 }
 
                 val hasPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||

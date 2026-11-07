@@ -6,13 +6,18 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import fr.luteal.core.model.ContextGroup
 import fr.luteal.core.model.DuoSharingField
 import fr.luteal.core.model.DuoSharingPreferences
+import fr.luteal.core.model.PillRegimenCalculator
+import fr.luteal.core.model.PillRegimenConfig
 import fr.luteal.core.model.TrackingContext
+import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -55,7 +60,13 @@ data class UserPreferences(
     val notificationVisibilityMode: String = "CONCEALED",
     val notificationCustomTitle: String = "",
     val notificationCustomBody: String = "",
-    val temperatureUnit: String = "CELSIUS"
+    val temperatureUnit: String = "CELSIUS",
+    val isPillRegimenEnabled: Boolean = false,
+    val pillActiveDays: Int = 21,
+    val pillPauseDays: Int = 7,
+    val pillStartDate: String? = null,
+    val pillReminderTime: String = "20:00",
+    val pillLastTakenDate: String? = null
 ) {
     /** Contexts the user declared during onboarding. */
     val declaredContexts: Set<TrackingContext>
@@ -77,6 +88,16 @@ data class UserPreferences(
      */
     val hasTimingContext: Boolean
         get() = declaredContexts.any { it.group == ContextGroup.TIMING }
+
+    val pillRegimenConfig: PillRegimenConfig
+        get() = PillRegimenConfig(
+            isEnabled = isPillRegimenEnabled,
+            activeDays = pillActiveDays,
+            pauseDays = pillPauseDays,
+            startDate = pillStartDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
+            reminderTime = pillReminderTime,
+            lastTakenDate = pillLastTakenDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+        )
 }
 
 @Singleton
@@ -119,6 +140,12 @@ class UserPreferencesDataStore @Inject constructor(
         val NOTIF_CUSTOM_TITLE = stringPreferencesKey("notif_custom_title")
         val NOTIF_CUSTOM_BODY = stringPreferencesKey("notif_custom_body")
         val TEMPERATURE_UNIT = stringPreferencesKey("temperature_unit")
+        val PILL_REGIMEN_ENABLED = booleanPreferencesKey("pill_regimen_enabled")
+        val PILL_ACTIVE_DAYS = intPreferencesKey("pill_active_days")
+        val PILL_PAUSE_DAYS = intPreferencesKey("pill_pause_days")
+        val PILL_START_DATE = stringPreferencesKey("pill_start_date")
+        val PILL_REMINDER_TIME = stringPreferencesKey("pill_reminder_time")
+        val PILL_LAST_TAKEN_DATE = stringPreferencesKey("pill_last_taken_date")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -167,7 +194,13 @@ class UserPreferencesDataStore @Inject constructor(
                 notificationVisibilityMode = preferences[NOTIF_VISIBILITY_MODE] ?: "CONCEALED",
                 notificationCustomTitle = preferences[NOTIF_CUSTOM_TITLE] ?: "",
                 notificationCustomBody = preferences[NOTIF_CUSTOM_BODY] ?: "",
-                temperatureUnit = preferences[TEMPERATURE_UNIT] ?: "CELSIUS"
+                temperatureUnit = preferences[TEMPERATURE_UNIT] ?: "CELSIUS",
+                isPillRegimenEnabled = preferences[PILL_REGIMEN_ENABLED] ?: false,
+                pillActiveDays = preferences[PILL_ACTIVE_DAYS] ?: 21,
+                pillPauseDays = preferences[PILL_PAUSE_DAYS] ?: 7,
+                pillStartDate = preferences[PILL_START_DATE],
+                pillReminderTime = preferences[PILL_REMINDER_TIME] ?: "20:00",
+                pillLastTakenDate = preferences[PILL_LAST_TAKEN_DATE]
             )
         }
 
@@ -231,6 +264,22 @@ class UserPreferencesDataStore @Inject constructor(
     suspend fun setNotificationCustomTitle(title: String) = edit { it[NOTIF_CUSTOM_TITLE] = title }
     suspend fun setNotificationCustomBody(body: String) = edit { it[NOTIF_CUSTOM_BODY] = body }
     suspend fun setTemperatureUnit(unit: String) = edit { it[TEMPERATURE_UNIT] = unit }
+    suspend fun setPillRegimenEnabled(enabled: Boolean) = edit { it[PILL_REGIMEN_ENABLED] = enabled }
+    suspend fun setPillActiveDays(days: Int) = edit {
+        it[PILL_ACTIVE_DAYS] = days.coerceIn(PillRegimenCalculator.MIN_ACTIVE_DAYS, PillRegimenCalculator.MAX_ACTIVE_DAYS)
+    }
+    suspend fun setPillPauseDays(days: Int) = edit {
+        it[PILL_PAUSE_DAYS] = days.coerceIn(PillRegimenCalculator.MIN_PAUSE_DAYS, PillRegimenCalculator.MAX_PAUSE_DAYS)
+    }
+    suspend fun setPillStartDate(date: String?) = edit { preferences ->
+        if (date == null) preferences.remove(PILL_START_DATE)
+        else preferences[PILL_START_DATE] = date
+    }
+    suspend fun setPillReminderTime(time: String) = edit { it[PILL_REMINDER_TIME] = time }
+    suspend fun setPillLastTakenDate(date: String?) = edit { preferences ->
+        if (date == null) preferences.remove(PILL_LAST_TAKEN_DATE)
+        else preferences[PILL_LAST_TAKEN_DATE] = date
+    }
     suspend fun clear() = edit { it.clear() }
 
     private suspend fun edit(block: suspend (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {

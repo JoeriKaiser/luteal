@@ -71,6 +71,10 @@ class UserRepositoryImpl @Inject constructor(
         userPreferencesDataStore.setAgeBand(ageBandId)
     }
 
+    override suspend fun setPillLastTakenDate(date: String?) {
+        userPreferencesDataStore.setPillLastTakenDate(date)
+    }
+
     override suspend fun setCouplePairing(pairingCode: String?, partnerName: String?) {
         userPreferencesDataStore.setCouplePairingCode(pairingCode)
         val currentProfile = userProfileDao.getUserProfile().firstOrNull()

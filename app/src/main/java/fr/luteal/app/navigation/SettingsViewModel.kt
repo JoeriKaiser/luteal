@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -52,6 +53,7 @@ import fr.luteal.core.model.ImportSummary
 import fr.luteal.core.model.LutealBackupPayload
 import fr.luteal.core.model.LutealBackupPreview
 import java.io.ByteArrayInputStream
+import java.time.LocalDate
 
 /**
  * Settings tab view model.
@@ -156,6 +158,11 @@ class SettingsViewModel @Inject constructor(
             periodWindowLeadDays = preferences.periodWindowLeadDays,
             isLateCycleEnabled = preferences.isLateCycleEnabled,
             lateCycleGraceDays = preferences.lateCycleGraceDays,
+            isPillRegimenEnabled = preferences.isPillRegimenEnabled,
+            pillActiveDays = preferences.pillActiveDays,
+            pillPauseDays = preferences.pillPauseDays,
+            pillStartDate = preferences.pillStartDate,
+            pillReminderTime = preferences.pillReminderTime,
             notificationVisibilityMode = NotificationVisibility.fromName(preferences.notificationVisibilityMode),
             notificationCustomTitle = preferences.notificationCustomTitle,
             notificationCustomBody = preferences.notificationCustomBody,
@@ -607,6 +614,38 @@ class SettingsViewModel @Inject constructor(
             notificationScheduler.reconcileAllSchedules()
         }
     }
+    fun setPillRegimenEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            if (enabled && userPreferencesDataStore.userPreferencesFlow.first().pillStartDate == null) {
+                userPreferencesDataStore.setPillStartDate(LocalDate.now().toString())
+            }
+            userPreferencesDataStore.setPillRegimenEnabled(enabled)
+            notificationScheduler.reconcileAllSchedules()
+        }
+    }
+
+    fun setPillRegimenSchedule(activeDays: Int, pauseDays: Int) {
+        viewModelScope.launch {
+            userPreferencesDataStore.setPillActiveDays(activeDays)
+            userPreferencesDataStore.setPillPauseDays(pauseDays)
+            notificationScheduler.reconcileAllSchedules()
+        }
+    }
+
+    fun setPillStartDate(startDate: LocalDate) {
+        viewModelScope.launch {
+            userPreferencesDataStore.setPillStartDate(startDate.toString())
+            notificationScheduler.reconcileAllSchedules()
+        }
+    }
+
+    fun setPillReminderTime(time: String) {
+        viewModelScope.launch {
+            userPreferencesDataStore.setPillReminderTime(time)
+            notificationScheduler.reconcileAllSchedules()
+        }
+    }
+
     suspend fun verifyPin(pin: String): Boolean = pinCryptoManager.verifyPin(pin)
 }
 
@@ -675,6 +714,11 @@ data class SettingsSyncUiState(
     val periodWindowLeadDays: Int = 2,
     val isLateCycleEnabled: Boolean = false,
     val lateCycleGraceDays: Int = 1,
+    val isPillRegimenEnabled: Boolean = false,
+    val pillActiveDays: Int = 21,
+    val pillPauseDays: Int = 7,
+    val pillStartDate: String? = null,
+    val pillReminderTime: String = "20:00",
     val notificationVisibilityMode: NotificationVisibility = NotificationVisibility.CONCEALED,
     val notificationCustomTitle: String = "",
     val notificationCustomBody: String = "",

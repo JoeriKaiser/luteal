@@ -142,7 +142,13 @@ class DataExportManager @Inject constructor(
             trackPerimenopause = prefs.trackPerimenopause,
             trackThyroid = prefs.trackThyroid,
             ageBand = prefs.ageBand,
-            temperatureUnit = prefs.temperatureUnit
+            temperatureUnit = prefs.temperatureUnit,
+            isPillRegimenEnabled = prefs.isPillRegimenEnabled,
+            pillActiveDays = prefs.pillActiveDays,
+            pillPauseDays = prefs.pillPauseDays,
+            pillStartDate = prefs.pillStartDate,
+            pillReminderTime = prefs.pillReminderTime,
+            pillLastTakenDate = prefs.pillLastTakenDate
         )
 
         return LutealBackupPayload(
