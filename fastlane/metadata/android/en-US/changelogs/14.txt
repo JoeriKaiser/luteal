@@ -1,0 +1,5 @@
+- Pill tracking: optional pack tracking (21/7, 24/4, 28-day, or custom) with daily intake and local reminders.
+- Duo phase guide: cycle phase badges, hormone context, and an on-demand four-phase guide.
+- Duo controls: pre-pairing sharing toggles, clearer partner headers, and link revocation confirmation.
+- Today and widgets: symptom and biomarker chips on Today, and widget updates after biomarker logs.
+- UI polish: smooth log sheet scrolling and 200% font-scale navigation.

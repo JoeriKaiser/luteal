@@ -47,39 +47,40 @@ date_from_anchor() {
     date -u -d "${anchor_date} ${1} days" +%F
 }
 
-cycle1_start=$(date_from_anchor -58)
-cycle1_end=$(date_from_anchor -31)
-cycle1_day2=$(date_from_anchor -57)
-cycle1_day3=$(date_from_anchor -56)
-cycle1_day4=$(date_from_anchor -55)
+cycle1_start=$(date_from_anchor -60)
+cycle1_end=$(date_from_anchor -33)
+cycle1_day2=$(date_from_anchor -59)
+cycle1_day3=$(date_from_anchor -58)
+cycle1_day4=$(date_from_anchor -57)
 
-cycle2_start=$(date_from_anchor -30)
-cycle2_end=$(date_from_anchor -6)
-cycle2_day2=$(date_from_anchor -29)
-cycle2_day3=$(date_from_anchor -28)
-cycle2_day4=$(date_from_anchor -27)
-cycle2_day5=$(date_from_anchor -26)
+cycle2_start=$(date_from_anchor -32)
+cycle2_end=$(date_from_anchor -8)
+cycle2_day2=$(date_from_anchor -31)
+cycle2_day3=$(date_from_anchor -30)
+cycle2_day4=$(date_from_anchor -29)
+cycle2_day5=$(date_from_anchor -28)
 
-cycle3_start=$(date_from_anchor -5)
-cycle3_day2=$(date_from_anchor -4)
-cycle3_day3=$(date_from_anchor -3)
-cycle3_day4=$(date_from_anchor -2)
+cycle3_start=$(date_from_anchor -7)
+cycle3_day2=$(date_from_anchor -6)
+cycle3_day3=$(date_from_anchor -5)
+cycle3_day4=$(date_from_anchor -4)
+cycle3_day5=$(date_from_anchor -3)
 anchor_day=${anchor_date}
 
-c2_bbt0=$(date_from_anchor -23)
-c2_bbt1=$(date_from_anchor -22)
-c2_bbt2=$(date_from_anchor -21)
-c2_bbt3=$(date_from_anchor -20)
-c2_bbt4=$(date_from_anchor -19)
-c2_bbt5=$(date_from_anchor -18)
-c2_bbt6=$(date_from_anchor -17)
-c2_bbt7=$(date_from_anchor -16)
-c2_bbt8=$(date_from_anchor -15)
+c2_bbt0=$(date_from_anchor -25)
+c2_bbt1=$(date_from_anchor -24)
+c2_bbt2=$(date_from_anchor -23)
+c2_bbt3=$(date_from_anchor -22)
+c2_bbt4=$(date_from_anchor -21)
+c2_bbt5=$(date_from_anchor -20)
+c2_bbt6=$(date_from_anchor -19)
+c2_bbt7=$(date_from_anchor -18)
+c2_bbt8=$(date_from_anchor -17)
 c3_bbt0=${cycle3_start}
 c3_bbt1=${cycle3_day2}
 c3_bbt2=${cycle3_day3}
 c3_bbt3=${cycle3_day4}
-c3_bbt4=$(date_from_anchor  -1)
+c3_bbt4=$(date_from_anchor -1)
 c3_bbt5=${anchor_date}
 
 timestamp="${anchor_date}T12:00:00Z"
@@ -91,7 +92,7 @@ cat >"${backup_file}" <<EOF
 {
   "schema_version": 1,
   "exported_at": "${timestamp}",
-  "app_version": "1.4.1-demo",
+  "app_version": "1.9.0-demo",
   "cycles": [
     {
       "id": "demo-cycle-1",
@@ -128,9 +129,10 @@ cat >"${backup_file}" <<EOF
       "luteal_phase_length_days": 14,
       "period_days": [
         {"date": "${cycle3_start}", "bleeding_intensity": "HEAVY", "notes": "Current cycle", "symptom_ids": ["cramps"]},
-        {"date": "${cycle3_day2}", "bleeding_intensity": "MEDIUM", "notes": "", "symptom_ids": []},
-        {"date": "${cycle3_day3}", "bleeding_intensity": "LIGHT", "notes": "", "symptom_ids": []},
-        {"date": "${cycle3_day4}", "bleeding_intensity": "SPOTTING", "notes": "", "symptom_ids": []}
+        {"date": "${cycle3_day2}", "bleeding_intensity": "HEAVY", "notes": "", "symptom_ids": []},
+        {"date": "${cycle3_day3}", "bleeding_intensity": "MEDIUM", "notes": "", "symptom_ids": []},
+        {"date": "${cycle3_day4}", "bleeding_intensity": "LIGHT", "notes": "", "symptom_ids": []},
+        {"date": "${cycle3_day5}", "bleeding_intensity": "SPOTTING", "notes": "", "symptom_ids": []}
       ]
     }
   ],
@@ -140,7 +142,7 @@ cat >"${backup_file}" <<EOF
     {"date": "${cycle2_start}", "bleeding_intensity": "HEAVY", "pain_level": 4, "mood_level": 1, "energy_level": 1, "symptom_ids": ["cramps", "headache"], "notes": "Headache and intense cramps", "updated_at": "${timestamp}"},
     {"date": "${cycle2_day2}", "bleeding_intensity": null, "pain_level": 1, "mood_level": 5, "energy_level": 4, "symptom_ids": ["high_libido"], "notes": "High energy day", "updated_at": "${timestamp}"},
     {"date": "${cycle3_start}", "bleeding_intensity": "HEAVY", "pain_level": 3, "mood_level": 2, "energy_level": 2, "symptom_ids": ["cramps"], "notes": "Current period", "updated_at": "${timestamp}"},
-    {"date": "${anchor_day}", "bleeding_intensity": "SPOTTING", "pain_level": 1, "mood_level": 4, "energy_level": 3, "symptom_ids": ["headache"], "notes": "Light headache", "updated_at": "${timestamp}"}
+    {"date": "${anchor_day}", "bleeding_intensity": "NONE", "pain_level": 1, "mood_level": 4, "energy_level": 3, "symptom_ids": ["headache"], "notes": "", "updated_at": "${timestamp}"}
   ],
   "symptom_logs": [
     {"id": "demo-symptom-1", "timestamp": "${timestamp}", "date": "${cycle1_start}", "symptom_id": "cramps", "severity": 3, "notes": "Lower abdominal cramps"},

@@ -74,9 +74,9 @@ class TestDataSeederImpl @Inject constructor(
             )
         )
 
-        // Cycle 1: 58 days ago to 31 days ago (28 days)
-        val cycle1Start = anchorDate.minusDays(58)
-        val cycle1End = anchorDate.minusDays(31)
+        // Cycle 1: 60 days ago to 33 days ago (28 days)
+        val cycle1Start = anchorDate.minusDays(60)
+        val cycle1End = anchorDate.minusDays(33)
         val cycle1PeriodDays = listOf(
             PeriodDay(cycle1Start, BleedingIntensity.HEAVY, "Premières règles"),
             PeriodDay(cycle1Start.plusDays(1), BleedingIntensity.MEDIUM),
@@ -92,9 +92,9 @@ class TestDataSeederImpl @Inject constructor(
             lutealPhaseLengthDays = 14
         )
 
-        // Cycle 2: 30 days ago to 6 days ago (25 days)
-        val cycle2Start = anchorDate.minusDays(30)
-        val cycle2End = anchorDate.minusDays(6)
+        // Cycle 2: 32 days ago to 8 days ago (25 days)
+        val cycle2Start = anchorDate.minusDays(32)
+        val cycle2End = anchorDate.minusDays(8)
         val cycle2PeriodDays = listOf(
             PeriodDay(cycle2Start, BleedingIntensity.HEAVY, "Début du cycle"),
             PeriodDay(cycle2Start.plusDays(1), BleedingIntensity.HEAVY),
@@ -111,13 +111,14 @@ class TestDataSeederImpl @Inject constructor(
             lutealPhaseLengthDays = 14
         )
 
-        // Cycle 3: 5 days ago to present (ongoing)
-        val cycle3Start = anchorDate.minusDays(5)
+        // Cycle 3: 7 days ago to present (ongoing, Day 8 = Follicular)
+        val cycle3Start = anchorDate.minusDays(7)
         val cycle3PeriodDays = listOf(
             PeriodDay(cycle3Start, BleedingIntensity.HEAVY, "Flux abondant"),
-            PeriodDay(cycle3Start.plusDays(1), BleedingIntensity.MEDIUM),
-            PeriodDay(cycle3Start.plusDays(2), BleedingIntensity.LIGHT),
-            PeriodDay(cycle3Start.plusDays(3), BleedingIntensity.SPOTTING)
+            PeriodDay(cycle3Start.plusDays(1), BleedingIntensity.HEAVY),
+            PeriodDay(cycle3Start.plusDays(2), BleedingIntensity.MEDIUM),
+            PeriodDay(cycle3Start.plusDays(3), BleedingIntensity.LIGHT),
+            PeriodDay(cycle3Start.plusDays(4), BleedingIntensity.SPOTTING)
         )
         val cycle3Entity = CycleEntity(
             id = UUID.randomUUID().toString(),
@@ -360,9 +361,12 @@ class TestDataSeederImpl @Inject constructor(
             DuoWidgetCacheEntity(
                 linkId = linkId,
                 role = "PARTNER",
-                cycleDay = 6,
-                estimateStart = anchorDate.plusDays(15).toString(),
-                estimateEnd = anchorDate.plusDays(17).toString(),
+                cycleDay = 8,
+                estimateStart = anchorDate.plusDays(18).toString(),
+                estimateEnd = anchorDate.plusDays(22).toString(),
+                estimateCentral = anchorDate.plusDays(20).toString(),
+                estimateCycleCount = 2,
+                estimateVariabilityDays = 3,
                 cycleDayGranted = true,
                 estimateGranted = true,
                 status = "ACTIVE",

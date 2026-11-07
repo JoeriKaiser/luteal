@@ -980,8 +980,8 @@ private fun phaseIndeterminateSupport(reason: PhaseIndeterminateReason): String 
 )
 
 @Composable
-internal fun ScreenHeader(title: String, subtitle: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)) {
+internal fun ScreenHeader(title: String, subtitle: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)) {
         Text(text = title, style = MaterialTheme.typography.headlineMedium)
         Text(
             text = subtitle,
