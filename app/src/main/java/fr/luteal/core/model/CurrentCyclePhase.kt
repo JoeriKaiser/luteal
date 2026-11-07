@@ -17,7 +17,8 @@ enum class PhaseIndeterminateReason {
     INTERVALS_OUT_OF_RANGE,
     PHASE_TRANSITION,
     NEXT_PERIOD_WINDOW,
-    ESTIMATE_EXPIRED
+    ESTIMATE_EXPIRED,
+    ESTIMATE_NOT_SHARED
 }
 
 sealed interface CurrentCyclePhase {

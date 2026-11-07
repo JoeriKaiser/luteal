@@ -569,7 +569,17 @@ class DuoViewModel @Inject constructor(
                 projection
             }.onSuccess { projection ->
                 widgetCacheWriter.savePublished(linkId, projection, grants)
-                _uiState.update { it.copy(projection = projection) }
+                val partnerPhase = PartnerPhaseResolver.resolve(projection, LocalDate.now())
+                val partnerTip = (partnerPhase as? CurrentCyclePhase.Available)?.let { available ->
+                    PartnerPhaseTips.forDate(available.phase, LocalDate.now())
+                }
+                _uiState.update {
+                    it.copy(
+                        projection = projection,
+                        partnerPhase = partnerPhase,
+                        partnerTip = partnerTip
+                    )
+                }
             }.onFailure { err ->
                 _uiState.update { it.copy(error = err.message) }
             }
