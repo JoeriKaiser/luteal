@@ -3,6 +3,14 @@ package fr.luteal.app.navigation
 import android.content.Context
 import android.os.Build
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.text.font.FontWeight
+import fr.luteal.core.model.CyclePhase
+import fr.luteal.core.model.PartnerPhaseCapsules
+import fr.luteal.core.model.PhaseIndeterminateReason
+import fr.luteal.core.model.PhaseCertainty
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -13,6 +21,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.selection.toggleable
@@ -87,7 +97,7 @@ fun DuoScreen(
     viewModel: DuoViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
-
+    var showGuideSheet by remember { mutableStateOf(false) }
     // Reload every time the Duo tab is opened. The ViewModel is Activity-scoped
     // and survives tab switches, so without this it keeps showing whatever was
     // true when it was first created - notably "synchronisation requise" after
@@ -168,7 +178,8 @@ fun DuoScreen(
                 onAck = { viewModel.ackSupportRequest(it) },
                 supportDraft = state.supportDraft,
                 onSupportDraftChange = { viewModel.onSupportDraftChange(it) },
-                isSendingSupport = state.isSendingSupport
+                isSendingSupport = state.isSendingSupport,
+                onOpenGuideSheet = { showGuideSheet = true }
             )
             DuoPhase.PartnerActive -> PartnerActiveSection(
                 state = state,
@@ -178,8 +189,13 @@ fun DuoScreen(
                 onApplyNudge = { text, kind, send -> viewModel.applyQuickNudge(text, kind, send) },
                 supportDraft = state.supportDraft,
                 onSupportDraftChange = { viewModel.onSupportDraftChange(it) },
-                isSendingSupport = state.isSendingSupport
+                isSendingSupport = state.isSendingSupport,
+                onOpenGuideSheet = { showGuideSheet = true }
             )
+        }
+
+        if (showGuideSheet) {
+            CyclePhasesGuideSheet(onDismiss = { showGuideSheet = false })
         }
     }
 }
@@ -392,7 +408,8 @@ private fun TrackerActiveSection(
     onAck: (String) -> Unit,
     supportDraft: String,
     onSupportDraftChange: (String) -> Unit,
-    isSendingSupport: Boolean
+    isSendingSupport: Boolean,
+    onOpenGuideSheet: () -> Unit
 ) {
     LutealCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
@@ -412,17 +429,30 @@ private fun TrackerActiveSection(
     // projection that was sealed and published, not a parallel code path that
     // could drift from it.
     LutealCard(modifier = Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
-            Text(
-                text = stringResource(R.string.duo_preview_title),
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = stringResource(R.string.duo_preview_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
+            Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)) {
+                Text(
+                    text = stringResource(R.string.duo_preview_title),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = stringResource(R.string.duo_preview_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            val anyGranted = state.grants.values.any { it }
+            val partnerPhase = state.partnerPhase
+            if (!state.keyMissing && anyGranted && partnerPhase is CurrentCyclePhase.Available) {
+                PartnerPhaseBadge(phase = partnerPhase)
+            }
             SharedProjectionList(state = state)
+            TextButton(
+                onClick = onOpenGuideSheet,
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Text(text = stringResource(R.string.duo_guide_open_button))
+            }
         }
     }
 
@@ -524,7 +554,8 @@ private fun PartnerActiveSection(
     onApplyNudge: (String, SupportKind, Boolean) -> Unit,
     supportDraft: String,
     onSupportDraftChange: (String) -> Unit,
-    isSendingSupport: Boolean
+    isSendingSupport: Boolean,
+    onOpenGuideSheet: () -> Unit
 ) {
     LutealCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
@@ -540,7 +571,10 @@ private fun PartnerActiveSection(
         }
     }
 
-    PartnerGuidanceCard(state = state)
+    PartnerGuidanceCard(
+        state = state,
+        onOpenGuideSheet = onOpenGuideSheet
+    )
 
     LutealCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
@@ -853,38 +887,180 @@ private fun SupportThreadSection(
 }
 
 @Composable
-private fun PartnerGuidanceCard(state: DuoUiState) {
+internal fun PartnerPhaseBadge(
+    phase: CurrentCyclePhase.Available,
+    modifier: Modifier = Modifier
+) {
+    val tone = phaseTone(phase.phase)
+    val anchorText = phaseAnchorLabel(phase.phase)
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(tone.content, CircleShape)
+                )
+                Text(
+                    text = anchorText,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = tone.content
+                )
+            }
+            Spacer(Modifier.width(LutealSpacing.xs))
+            StatusPill(
+                text = stringResource(
+                    if (phase.certainty == PhaseCertainty.RECORDED) {
+                        R.string.recorded_label
+                    } else {
+                        R.string.duo_phase_badge_estimated
+                    }
+                ),
+                tone = if (phase.certainty == PhaseCertainty.RECORDED) {
+                    StatusTone.RECORDED
+                } else {
+                    StatusTone.ESTIMATED
+                }
+            )
+        }
+        if (phase.phase == CyclePhase.OVULATORY) {
+            Text(
+                text = stringResource(R.string.duo_phase_ovulatory_disclaimer),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun PartnerGuidanceCard(
+    state: DuoUiState,
+    onOpenGuideSheet: () -> Unit
+) {
     val uriHandler = LocalUriHandler.current
     val tip = state.partnerTip
+    val partnerPhase = state.partnerPhase
+
     LutealCard(modifier = Modifier.fillMaxWidth(), emphasis = LutealCardEmphasis.QUIET) {
-        Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
-            if (tip != null && state.partnerPhase is CurrentCyclePhase.Available) {
-                Text(
-                    text = partnerTipTitle(tip.id),
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = partnerTipMessage(tip.id),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = stringResource(R.string.fact_source_label, tip.source),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                TextButton(onClick = { uriHandler.openUri(tip.url) }) {
-                    Text(text = stringResource(R.string.fact_view_source))
+        Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
+            if (partnerPhase is CurrentCyclePhase.Available) {
+                PartnerPhaseBadge(phase = partnerPhase)
+
+                val capsule = PartnerPhaseCapsules.forPhase(partnerPhase.phase)
+                val capsuleDesc = phaseCapsuleDescription(partnerPhase.phase)
+
+                Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)) {
+                    Text(
+                        text = stringResource(R.string.duo_capsule_label),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = capsuleDesc,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.fact_source_label, capsule.source),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = { uriHandler.openUri(capsule.url) }) {
+                            Text(text = stringResource(R.string.fact_view_source))
+                        }
+                    }
+                }
+
+                if (tip != null) {
+                    Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)) {
+                        Text(
+                            text = partnerTipTitle(tip.id),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = partnerTipMessage(tip.id),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.fact_source_label, tip.source),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+                            TextButton(onClick = { uriHandler.openUri(tip.url) }) {
+                                Text(text = stringResource(R.string.fact_view_source))
+                            }
+                        }
+                    }
+                }
+
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    TextButton(onClick = onOpenGuideSheet) {
+                        Text(text = stringResource(R.string.duo_guide_open_button))
+                    }
                 }
             } else {
+                val reason = (partnerPhase as? CurrentCyclePhase.Indeterminate)?.reason
+                val titleRes = when (reason) {
+                    PhaseIndeterminateReason.ESTIMATE_NOT_SHARED -> R.string.partner_guidance_indeterminate_estimate_not_shared_title
+                    PhaseIndeterminateReason.EARLY_CYCLE_WITHOUT_BLEEDING_DETAIL -> R.string.partner_guidance_indeterminate_early_cycle_title
+                    PhaseIndeterminateReason.PHASE_TRANSITION -> R.string.partner_guidance_indeterminate_transition_title
+                    PhaseIndeterminateReason.NEXT_PERIOD_WINDOW -> R.string.partner_guidance_indeterminate_period_window_title
+                    else -> R.string.partner_guidance_indeterminate_title
+                }
+                val bodyRes = when (reason) {
+                    PhaseIndeterminateReason.ESTIMATE_NOT_SHARED -> R.string.partner_guidance_indeterminate_estimate_not_shared_body
+                    PhaseIndeterminateReason.EARLY_CYCLE_WITHOUT_BLEEDING_DETAIL -> R.string.partner_guidance_indeterminate_early_cycle_body
+                    PhaseIndeterminateReason.PHASE_TRANSITION -> R.string.partner_guidance_indeterminate_transition_body
+                    PhaseIndeterminateReason.NEXT_PERIOD_WINDOW -> R.string.partner_guidance_indeterminate_period_window_body
+                    else -> R.string.partner_guidance_indeterminate_body
+                }
                 Text(
-                    text = stringResource(R.string.partner_guidance_indeterminate_title),
-                    style = MaterialTheme.typography.titleMedium
+                    text = stringResource(titleRes),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = stringResource(R.string.partner_guidance_indeterminate_body),
+                    text = stringResource(bodyRes),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    TextButton(onClick = onOpenGuideSheet) {
+                        Text(text = stringResource(R.string.duo_guide_open_button))
+                    }
+                }
             }
         }
     }

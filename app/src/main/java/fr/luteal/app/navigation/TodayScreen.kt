@@ -776,7 +776,7 @@ private fun phaseLabel(phase: CyclePhase): String = stringResource(
 )
 
 @Composable
-private fun phaseTone(phase: CyclePhase): PhaseTone {
+internal fun phaseTone(phase: CyclePhase): PhaseTone {
     val colors = LocalPhaseColors.current
     return when (phase) {
         CyclePhase.MENSTRUAL -> colors.menstrual
@@ -806,6 +806,7 @@ private fun phaseIndeterminateSupport(reason: PhaseIndeterminateReason): String 
         PhaseIndeterminateReason.PHASE_TRANSITION -> R.string.phase_reason_transition
         PhaseIndeterminateReason.NEXT_PERIOD_WINDOW -> R.string.phase_reason_period_window
         PhaseIndeterminateReason.ESTIMATE_EXPIRED -> R.string.phase_reason_expired
+        PhaseIndeterminateReason.ESTIMATE_NOT_SHARED -> R.string.phase_reason_estimate_not_shared
     }
 )
 

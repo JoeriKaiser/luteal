@@ -78,6 +78,40 @@ object PartnerPhaseTips {
         return bestCandidates[index]
     }
 }
+data class PhaseContextCapsule(
+    val phase: CyclePhase,
+    val source: String,
+    val url: String
+)
+
+object PartnerPhaseCapsules {
+    val ALL: Map<CyclePhase, PhaseContextCapsule> = mapOf(
+        CyclePhase.MENSTRUAL to PhaseContextCapsule(
+            phase = CyclePhase.MENSTRUAL,
+            source = ClinicalSources.NHS_PERIODS,
+            url = ClinicalSources.NHS_PERIODS_URL
+        ),
+        CyclePhase.FOLLICULAR to PhaseContextCapsule(
+            phase = CyclePhase.FOLLICULAR,
+            source = ClinicalSources.MIHM,
+            url = ClinicalSources.MIHM_URL
+        ),
+        CyclePhase.OVULATORY to PhaseContextCapsule(
+            phase = CyclePhase.OVULATORY,
+            source = ClinicalSources.FEHRING,
+            url = ClinicalSources.FEHRING_URL
+        ),
+        CyclePhase.LUTEAL to PhaseContextCapsule(
+            phase = CyclePhase.LUTEAL,
+            source = ClinicalSources.NHS_PMS,
+            url = ClinicalSources.NHS_PMS_URL
+        )
+    )
+
+    fun forPhase(phase: CyclePhase): PhaseContextCapsule =
+        ALL.getValue(phase)
+}
+
 
 object PartnerPhaseResolver {
     fun resolve(projection: DuoProjection?, today: LocalDate): CurrentCyclePhase {
@@ -92,12 +126,19 @@ object PartnerPhaseResolver {
             id = "partner",
             startDate = today.minusDays((cycleDay - 1).toLong())
         )
-        return CurrentCyclePhaseCalculator.evaluate(
+        val calculated = CurrentCyclePhaseCalculator.evaluate(
             today = today,
             currentCycle = cycle,
             todayEntry = null,
             estimateResult = projection.toEstimateResult()
         )
+        if (calculated is CurrentCyclePhase.Indeterminate &&
+            calculated.reason == PhaseIndeterminateReason.NEEDS_MORE_HISTORY &&
+            projection.periodEstimate == null
+        ) {
+            return CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.ESTIMATE_NOT_SHARED)
+        }
+        return calculated
     }
 
     private fun DuoProjection.toEstimateResult(): CycleEstimateResult {

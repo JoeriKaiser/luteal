@@ -44,16 +44,32 @@ class PartnerPhaseGuidanceTest {
     }
 
     @Test
-    fun `resolver stays conservative and never assumes a 28-day cycle from day alone`() {
+    fun `day 1 resolves to menstrual recorded while days 2 to 7 remain conservative without bleeding logs`() {
         val today = LocalDate.parse("2026-08-19")
-        val early = PartnerPhaseResolver.resolve(DuoProjection(cycleDay = 3), today)
+        val day1 = PartnerPhaseResolver.resolve(DuoProjection(cycleDay = 1), today)
         assertEquals(
-            PhaseIndeterminateReason.EARLY_CYCLE_WITHOUT_BLEEDING_DETAIL,
-            (early as CurrentCyclePhase.Indeterminate).reason
+            CurrentCyclePhase.Available(CyclePhase.MENSTRUAL, PhaseCertainty.RECORDED),
+            day1
         )
 
+        (2..7).forEach { day ->
+            val result = PartnerPhaseResolver.resolve(DuoProjection(cycleDay = day), today)
+            assertEquals(
+                "Day $day without bleeding details must stay conservative",
+                CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.EARLY_CYCLE_WITHOUT_BLEEDING_DETAIL),
+                result
+            )
+        }
+    }
+
+    @Test
+    fun `resolver stays conservative and never assumes a 28-day cycle from day alone`() {
+        val today = LocalDate.parse("2026-08-19")
         val dayOnly = PartnerPhaseResolver.resolve(DuoProjection(cycleDay = 18), today)
-        assertTrue(dayOnly is CurrentCyclePhase.Indeterminate)
+        assertEquals(
+            PhaseIndeterminateReason.ESTIMATE_NOT_SHARED,
+            (dayOnly as CurrentCyclePhase.Indeterminate).reason
+        )
 
         val missingCentral = PartnerPhaseResolver.resolve(
             DuoProjection(
@@ -65,7 +81,33 @@ class PartnerPhaseGuidanceTest {
         assertTrue(missingCentral is CurrentCyclePhase.Indeterminate)
 
         val empty = PartnerPhaseResolver.resolve(null, today)
-        assertTrue(empty is CurrentCyclePhase.Indeterminate)
+        assertEquals(
+            PhaseIndeterminateReason.NO_CURRENT_CYCLE,
+            (empty as CurrentCyclePhase.Indeterminate).reason
+        )
+    }
+
+    @Test
+    fun `every capsule has a registered citation and localized copy`() {
+        val sourceRegister = File("../docs/research/SOURCE_REGISTER.md").readText()
+        val translations = File("src/main/res")
+            .listFiles { file -> file.isDirectory && file.name.startsWith("values") }
+            .orEmpty()
+            .map { File(it, "strings.xml") }
+            .filter(File::isFile)
+
+        CyclePhase.entries.forEach { phase ->
+            val capsule = PartnerPhaseCapsules.forPhase(phase)
+            assertTrue(capsule.url.startsWith("https://"))
+            assertTrue("Unregistered source for capsule $phase", capsule.url in sourceRegister)
+            val key = "duo_capsule_${phase.name.lowercase()}_desc"
+            translations.forEach { file ->
+                assertTrue(
+                    "${file.parentFile?.name} is missing $key",
+                    file.readText().contains("name=\"$key\"")
+                )
+            }
+        }
     }
 
     @Test
