@@ -269,7 +269,8 @@ fun JournalScreen(
             ) {
                 ScreenHeader(
                     title = stringResource(R.string.journal_title),
-                    subtitle = stringResource(R.string.journal_subtitle)
+                    subtitle = stringResource(R.string.journal_subtitle),
+                    modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = { showReportDialog = true }) {
                     Icon(

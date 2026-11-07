@@ -1,0 +1,5 @@
+- Suivi de pilule : plaquette optionnelle (21/7, 24/4, 28 jours ou sur mesure) avec prise du jour et rappels locaux.
+- Guide des phases Duo : badges de phase, repères hormonaux et guide des quatre phases.
+- Contrôles Duo : partage configurable avant connexion, en-têtes clarifiés et confirmation de révocation.
+- Aujourd'hui et widgets : symptômes et biomarqueurs sur la carte du jour et mise à jour du widget.
+- Ergonomie : saisie fluide et navigation adaptée au zoom 200 %.
