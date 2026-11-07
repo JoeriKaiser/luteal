@@ -256,6 +256,38 @@ class LutealScreensTest {
         assertEquals(today, openedDate)
     }
 
+
+    @Test
+    fun bottomNavigationPreservesAllDestinationSemanticsAtLargeText() {
+        var selected = LutealDestination.TODAY
+
+        composeRule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides Density(density.density, fontScale = 2f)
+            ) {
+                LutealTheme(darkTheme = false) {
+                    LutealBottomNavigationBar(
+                        selectedDestination = selected,
+                        onSelectDestination = { selected = it }
+                    )
+                }
+            }
+        }
+
+        // All four destinations retain their full accessible labels for TalkBack
+        composeRule.onNodeWithContentDescription(string(R.string.nav_today)).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(string(R.string.nav_journal)).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(string(R.string.nav_duo)).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(string(R.string.nav_settings)).assertIsDisplayed()
+
+        // Visible compact label for today at large font scale
+        composeRule.onNodeWithText(string(R.string.nav_today_compact)).assertIsDisplayed()
+        // Journal, Duo, and Settings visible labels are displayed
+        composeRule.onNodeWithText(string(R.string.nav_journal)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.nav_duo)).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.nav_settings)).assertIsDisplayed()
+    }
     // DuoScreen now uses hiltViewModel() internally and requires a Hilt
     // integration test setup; the former local-state toggle test is removed.
 }

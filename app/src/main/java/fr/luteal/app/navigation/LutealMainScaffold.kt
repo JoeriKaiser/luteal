@@ -21,6 +21,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.unit.Density
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -62,7 +64,6 @@ fun LutealMainScaffold(
     val context = LocalContext.current
     val saveError = stringResource(R.string.save_error)
     val saveSuccess = stringResource(R.string.save_success_local)
-    val useCompactNavigationLabels = LocalDensity.current.fontScale >= 1.5f
 
     LaunchedEffect(pendingImportJson, uiState.preferences.hasCompletedOnboarding) {
         val json = pendingImportJson ?: return@LaunchedEffect
@@ -124,46 +125,10 @@ fun LutealMainScaffold(
                 containerColor = MaterialTheme.colorScheme.background,
                 snackbarHost = { SnackbarHost(snackbarHostState) },
                 bottomBar = {
-                    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                        LutealDestination.entries.forEach { destination ->
-                            val visibleLabelRes = if (
-                                useCompactNavigationLabels && destination == LutealDestination.TODAY
-                            ) {
-                                R.string.nav_today_compact
-                            } else {
-                                destination.labelRes
-                            }
-                            NavigationBarItem(
-                                selected = destination == selectedDestination,
-                                onClick = { selectedDestination = destination },
-                                icon = {
-                                    Icon(
-                                        imageVector = destination.icon,
-                                        contentDescription = stringResource(destination.labelRes)
-                                    )
-                                },
-                                // A second line does not fit the navigation
-                                // bar's height, so wrapping pushed "Reglages"
-                                // out of the bar entirely at large font
-                                // scales. The icon and the unchanged
-                                // contentDescription still carry the meaning.
-                                label = {
-                                    Text(
-                                        text = stringResource(visibleLabelRes),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                },
-                                colors = NavigationBarItemDefaults.colors(
-                                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            )
-                        }
-                    }
+                    LutealBottomNavigationBar(
+                        selectedDestination = selectedDestination,
+                        onSelectDestination = { selectedDestination = it }
+                    )
                 }
             ) { contentPadding ->
                 Box(
@@ -257,12 +222,72 @@ fun LutealMainScaffold(
     }
 }
 
+@Composable
+internal fun LutealBottomNavigationBar(
+    selectedDestination: LutealDestination,
+    onSelectDestination: (LutealDestination) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val currentDensity = LocalDensity.current
+    val useCompactNavigationLabels = currentDensity.fontScale >= 1.5f
+
+    // Clamping the density fontScale inside the navigation bar to 1.3f
+    // ensures all 4 destination labels stay complete without ellipsis truncation
+    // at 200% Android system font scale. The icon contentDescription preserves
+    // the full accessible destination name for screen readers.
+    CompositionLocalProvider(
+        LocalDensity provides Density(
+            density = currentDensity.density,
+            fontScale = currentDensity.fontScale.coerceAtMost(1.3f)
+        )
+    ) {
+        NavigationBar(
+            containerColor = MaterialTheme.colorScheme.surface,
+            modifier = modifier
+        ) {
+            LutealDestination.entries.forEach { destination ->
+                val visibleLabelRes = if (
+                    useCompactNavigationLabels && destination == LutealDestination.TODAY
+                ) {
+                    R.string.nav_today_compact
+                } else {
+                    destination.labelRes
+                }
+                NavigationBarItem(
+                    selected = destination == selectedDestination,
+                    onClick = { onSelectDestination(destination) },
+                    icon = {
+                        Icon(
+                            imageVector = destination.icon,
+                            contentDescription = stringResource(destination.labelRes)
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = stringResource(visibleLabelRes),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+            }
+        }
+    }
+}
+
 private data class EditorRequest(
     val date: LocalDate,
     val startPeriodIntent: Boolean
 )
 
-private enum class LutealDestination(
+internal enum class LutealDestination(
     @StringRes val labelRes: Int,
     val icon: ImageVector
 ) {
