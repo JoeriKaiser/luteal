@@ -168,9 +168,10 @@ private fun CycleHeroCard(state: LutealUiState) {
             }
         } else {
             val day = state.dayOfCycle ?: 1
-            // The ring plus a column of facts does not survive side by side
-            // once the user scales text up, so the same content stacks.
-            val stackHero = LocalDensity.current.fontScale > 1.3f
+            // The ring plus facts column stacks on narrow viewports (<360dp) or
+            // when the user increases font scale, preserving status pill width.
+            val screenWidthDp = LocalConfiguration.current.screenWidthDp
+            val stackHero = screenWidthDp < 360 || LocalDensity.current.fontScale > 1.3f
             val ring: @Composable () -> Unit = {
                 CycleDayRing(
                     dayOfCycle = day,
@@ -219,10 +220,8 @@ private fun CycleHeroCard(state: LutealUiState) {
                         ) { facts() }
                     }
                 }
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 CurrentPhaseSummary(state.currentPhase)
                 state.todayEntry?.bleedingIntensity?.let { intensity ->
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Text(
                         text = stringResource(
                             R.string.today_bleeding_label,
@@ -852,9 +851,11 @@ private fun SourcedDailyCard(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        val a11ySource = stringResource(R.string.fact_view_source_named, source)
         TextButton(
             onClick = { uriHandler.openUri(url) },
-            contentPadding = PaddingValues(horizontal = 0.dp, vertical = LutealSpacing.xs)
+            contentPadding = PaddingValues(horizontal = 0.dp, vertical = LutealSpacing.xs),
+            modifier = Modifier.semantics { contentDescription = a11ySource }
         ) {
             Text(text = stringResource(R.string.fact_view_source))
             Spacer(Modifier.width(LutealSpacing.xxs))

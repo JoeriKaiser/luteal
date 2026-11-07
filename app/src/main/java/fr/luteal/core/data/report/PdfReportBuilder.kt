@@ -131,7 +131,9 @@ object PdfReportBuilder {
         } else {
             DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH)
         }
-        val periodText = "${if (isFr) "Période" else "Period"} : ${data.dateRangeStart.format(dateFormatter)} - ${data.dateRangeEnd.format(dateFormatter)}  |  ${if (isFr) "Émis le" else "Issued on"} : ${data.generatedAt.format(dateFormatter)}"
+        val u = if (isFr) "j" else "d"
+        val colon = if (isFr) "\u00A0: " else ": "
+        val periodText = "${if (isFr) "Période" else "Period"}$colon${data.dateRangeStart.format(dateFormatter)} - ${data.dateRangeEnd.format(dateFormatter)}  |  ${if (isFr) "Émis le" else "Issued on"}$colon${data.generatedAt.format(dateFormatter)}"
         canvas.drawText(periodText, MARGIN, y, secondaryPaint)
         y += 12f
         canvas.drawLine(MARGIN, y, MARGIN + CONTENT_WIDTH, y, linePaint)
@@ -145,13 +147,12 @@ object PdfReportBuilder {
         val stats = data.cycleStats
         val metrics = listOf(
             "${if (isFr) "Total cycles" else "Total cycles"}: ${stats.totalCyclesCount}",
-            "${if (isFr) "Durée moyenne" else "Mean length"}: ${stats.meanLengthDays?.let { "%.1f j".format(Locale.US, it) } ?: "--"}",
-            "${if (isFr) "Médiane" else "Median"}: ${stats.medianLengthDays?.let { "%.1f j".format(Locale.US, it) } ?: "--"}",
-            "${if (isFr) "Écart-type" else "Std Dev"}: ${stats.sampleStdDevDays?.let { "± %.1f j".format(Locale.US, it) } ?: "--"}",
-            "${if (isFr) "Étendue" else "Range"}: ${stats.minLengthDays ?: "--"} - ${stats.maxLengthDays ?: "--"} j",
-            "${if (isFr) "Durée règles" else "Bleeding duration"}: ${stats.meanBleedingDays?.let { "%.1f j".format(Locale.US, it) } ?: "--"}"
+            "${if (isFr) "Durée moyenne" else "Mean length"}: ${stats.meanLengthDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}",
+            "${if (isFr) "Médiane" else "Median"}: ${stats.medianLengthDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}",
+            "${if (isFr) "Écart-type" else "Std Dev"}: ${stats.sampleStdDevDays?.let { "± %.1f $u".format(Locale.US, it) } ?: "--"}",
+            "${if (isFr) "Étendue" else "Range"}: ${stats.minLengthDays ?: "--"} - ${stats.maxLengthDays ?: "--"} $u",
+            "${if (isFr) "Durée règles" else "Bleeding duration"}: ${stats.meanBleedingDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}"
         )
-
         val colWidth = CONTENT_WIDTH / 3
         for (i in metrics.indices) {
             val col = i % 3
@@ -170,11 +171,15 @@ object PdfReportBuilder {
 
         val b = data.bleedingDist
         val p = data.painDist
+        val spottingLabel = if (isFr) "Spotting" else "Spotting"
+        val heavyLabel = if (isFr) "Abondant" else "Heavy"
+        val dysmenorrheaLabel = if (isFr) "Dysménorrhée" else "Dysmenorrhea"
+        val nonMenstrualLabel = if (isFr) "Hors règles" else "Non-menstrual"
         val healthMetrics = listOf(
-            "${if (isFr) "Jours de saignements" else "Bleeding days"}: ${b.totalBleedingDays} j (Spotting: ${b.spottingDays}j, Abondant: ${b.heavyDays}j)",
-            "${if (isFr) "Saignements intermenstruels" else "Intermenstrual bleeding"}: ${b.intermenstrualBleedingDays} j",
-            "${if (isFr) "Jours de douleur" else "Pain days"}: ${p.totalPainDays} j (Dysménorrhée: ${p.dysmenorrheaDays}j, Hors règles: ${p.nonMenstrualPainDays}j)",
-            "${if (isFr) "Douleurs sévères (≥4/5)" else "Severe pain (≥4/5)"}: ${p.severePainDays} j | ${if (isFr) "Score moyen" else "Mean score"}: ${p.meanPainScore?.let { "%.1f/5".format(Locale.US, it) } ?: "--"}"
+            "${if (isFr) "Jours de saignements" else "Bleeding days"}: ${b.totalBleedingDays} $u ($spottingLabel: ${b.spottingDays}$u, $heavyLabel: ${b.heavyDays}$u)",
+            "${if (isFr) "Saignements intermenstruels" else "Intermenstrual bleeding"}: ${b.intermenstrualBleedingDays} $u",
+            "${if (isFr) "Jours de douleur" else "Pain days"}: ${p.totalPainDays} $u ($dysmenorrheaLabel: ${p.dysmenorrheaDays}$u, $nonMenstrualLabel: ${p.nonMenstrualPainDays}$u)",
+            "${if (isFr) "Douleurs sévères (≥4/5)" else "Severe pain (≥4/5)"}: ${p.severePainDays} $u | ${if (isFr) "Score moyen" else "Mean score"}: ${p.meanPainScore?.let { "%.1f/5".format(Locale.US, it) } ?: "--"}"
         )
 
         for (metric in healthMetrics) {
@@ -197,9 +202,9 @@ object PdfReportBuilder {
                 ensureSpace(14f, isTableContinuation = true)
                 val name = if (isFr) sym.symptomNameFr else sym.symptomNameEn
                 canvas.drawText(name, MARGIN + 6f, y, textPaint)
-                canvas.drawText("${sym.totalOccurrences} j", MARGIN + 220f, y, textPaint)
-                canvas.drawText("${sym.menstrualOccurrences} j", MARGIN + 310f, y, textPaint)
-                canvas.drawText("${sym.nonMenstrualOccurrences} j", MARGIN + 400f, y, textPaint)
+                canvas.drawText("${sym.totalOccurrences} $u", MARGIN + 220f, y, textPaint)
+                canvas.drawText("${sym.menstrualOccurrences} $u", MARGIN + 310f, y, textPaint)
+                canvas.drawText("${sym.nonMenstrualOccurrences} $u", MARGIN + 400f, y, textPaint)
                 y += 13f
             }
             y += 10f

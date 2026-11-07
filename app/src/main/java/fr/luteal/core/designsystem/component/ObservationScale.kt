@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import fr.luteal.core.designsystem.theme.tabular
 
 enum class ObservationScaleType {
     PAIN,
@@ -132,7 +133,7 @@ private fun ScaleStep(
             }
             Text(
                 text = option.toString(),
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelLarge.tabular(),
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                 color = labelColor
             )

@@ -19,6 +19,7 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fr.luteal.core.designsystem.theme.tabular
 import fr.luteal.core.model.BiomarkerObservation
 import fr.luteal.core.model.TemperatureUnit
 import fr.luteal.core.model.ThermalShiftResult
@@ -49,8 +50,7 @@ fun ThermalShiftChart(
     val locale = LocalConfiguration.current.locales[0]
     val dashEffect = remember { PathEffect.dashPathEffect(floatArrayOf(10f, 8f)) }
     val textMeasurer = rememberTextMeasurer()
-    val axisTextStyle = MaterialTheme.typography.labelSmall.copy(
-        fontSize = 10.sp,
+    val axisTextStyle = MaterialTheme.typography.labelSmall.tabular().copy(
         color = labelColor
     )
     val coverline = (shift as? ThermalShiftResult.Confirmed)?.coverlineCelsius?.let { celsius ->
@@ -70,11 +70,13 @@ fun ThermalShiftChart(
     ) {
         if (temps.isEmpty()) return@Canvas
 
-        val leftGutter = 46.dp.toPx()
-        val rightGutter = 16.dp.toPx()
+        val isRtl = layoutDirection == androidx.compose.ui.unit.LayoutDirection.Rtl
+        val startGutter = 46.dp.toPx()
+        val endGutter = 16.dp.toPx()
+        val leftGutter = if (isRtl) endGutter else startGutter
+        val rightGutter = if (isRtl) startGutter else endGutter
         val topGutter = 16.dp.toPx()
         val bottomGutter = 26.dp.toPx()
-
         val plotWidth = (size.width - leftGutter - rightGutter).coerceAtLeast(1f)
         val plotHeight = (size.height - topGutter - bottomGutter).coerceAtLeast(1f)
 
@@ -82,8 +84,14 @@ fun ThermalShiftChart(
         val maxTemp = (temps.maxOf { it.second } + 0.15).toFloat()
         val maxDay = temps.maxOf { it.first }.coerceAtLeast(2).toFloat()
 
-        fun xFor(day: Int): Float =
-            leftGutter + plotWidth * ((day - 1) / (maxDay - 1).coerceAtLeast(1f))
+        fun xFor(day: Int): Float {
+            val progress = ((day - 1) / (maxDay - 1).coerceAtLeast(1f))
+            return if (isRtl) {
+                size.width - rightGutter - plotWidth * progress
+            } else {
+                leftGutter + plotWidth * progress
+            }
+        }
 
         fun yFor(temp: Double): Float {
             val range = (maxTemp - minTemp).coerceAtLeast(0.1f)
@@ -105,11 +113,16 @@ fun ThermalShiftChart(
             )
             val tempStr = String.format(locale, "%.1f°", tempAtLine)
             val measure = textMeasurer.measure(tempStr, style = axisTextStyle)
+            val textX = if (isRtl) {
+                size.width - rightGutter + 6.dp.toPx()
+            } else {
+                leftGutter - measure.size.width - 6.dp.toPx()
+            }
             drawText(
                 textMeasurer = textMeasurer,
                 text = tempStr,
                 style = axisTextStyle,
-                topLeft = Offset(leftGutter - measure.size.width - 6.dp.toPx(), y - measure.size.height / 2f)
+                topLeft = Offset(textX, y - measure.size.height / 2f)
             )
         }
 
@@ -125,11 +138,16 @@ fun ThermalShiftChart(
             )
             val coverlineStr = String.format(locale, "%.2f", value)
             val measure = textMeasurer.measure(coverlineStr, style = axisTextStyle.copy(color = coverlineColor))
+            val coverlineX = if (isRtl) {
+                leftGutter + 4.dp.toPx()
+            } else {
+                size.width - rightGutter - measure.size.width
+            }
             drawText(
                 textMeasurer = textMeasurer,
                 text = coverlineStr,
                 style = axisTextStyle.copy(color = coverlineColor),
-                topLeft = Offset(size.width - rightGutter - measure.size.width, y - measure.size.height - 2.dp.toPx())
+                topLeft = Offset(coverlineX, y - measure.size.height - 2.dp.toPx())
             )
         }
 

@@ -1,5 +1,7 @@
 package fr.luteal.app.navigation
-
+import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -32,6 +34,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import fr.luteal.core.designsystem.theme.LocalReducedMotion
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -239,6 +242,17 @@ fun DailyEntrySheet(
 
     val moodDescriptions = scaleDescriptions(R.string.editor_mood_value_description)
     val energyDescriptions = scaleDescriptions(R.string.editor_energy_value_description)
+    val reducedMotion = LocalReducedMotion.current
+    val biomarkersRotation by animateFloatAsState(
+        targetValue = if (showBiomarkers) 180f else 0f,
+        animationSpec = tween(durationMillis = 150, easing = EaseOut),
+        label = "biomarkers_disclosure_rotation"
+    )
+    val optionalRotation by animateFloatAsState(
+        targetValue = if (showOptional) 180f else 0f,
+        animationSpec = tween(durationMillis = 150, easing = EaseOut),
+        label = "optional_disclosure_rotation"
+    )
 
     ModalBottomSheet(
         onDismissRequest = requestDismiss,
@@ -346,7 +360,8 @@ fun DailyEntrySheet(
                             stringResource(R.string.editor_biomarkers_show)
                         },
                         onClick = { showBiomarkers = !showBiomarkers },
-                        icon = if (showBiomarkers) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        trailingIcon = Icons.Rounded.ExpandMore,
+                        trailingIconRotation = if (reducedMotion) (if (showBiomarkers) 180f else 0f) else biomarkersRotation,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -387,7 +402,8 @@ fun DailyEntrySheet(
                             stringResource(R.string.editor_optional_show)
                         },
                         onClick = { showOptional = !showOptional },
-                        icon = if (showOptional) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        trailingIcon = Icons.Rounded.ExpandMore,
+                        trailingIconRotation = if (reducedMotion) (if (showOptional) 180f else 0f) else optionalRotation,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }

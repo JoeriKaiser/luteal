@@ -23,7 +23,7 @@ import fr.luteal.core.designsystem.theme.LutealSpacing
 @Composable
 fun LutealToggleRow(
     title: String,
-    description: String,
+    description: String? = null,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
@@ -46,11 +46,13 @@ fun LutealToggleRow(
             verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)
         ) {
             Text(text = title, style = MaterialTheme.typography.titleMedium)
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (!description.isNullOrBlank()) {
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
         Switch(checked = checked, onCheckedChange = null)
     }
