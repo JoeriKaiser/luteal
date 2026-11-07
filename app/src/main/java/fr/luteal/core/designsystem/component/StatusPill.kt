@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.DeviceThermostat
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
@@ -39,9 +41,10 @@ enum class ObservationTone {
     BLEEDING,
     PAIN,
     MOOD,
-    ENERGY
+    ENERGY,
+    SYMPTOM,
+    BIOMARKER
 }
-
 @Composable
 fun StatusPill(
     text: String,
@@ -107,6 +110,16 @@ fun ObservationPill(
             content = colors.onSurfaceVariant,
             container = colors.surfaceVariant,
             icon = Icons.Rounded.Speed
+        )
+        ObservationTone.SYMPTOM -> PillTreatment(
+            content = colors.onSurfaceVariant,
+            container = colors.surfaceVariant,
+            icon = Icons.Rounded.Check
+        )
+        ObservationTone.BIOMARKER -> PillTreatment(
+            content = colors.onSecondaryContainer,
+            container = colors.secondaryContainer,
+            icon = Icons.Rounded.DeviceThermostat
         )
     }
     Pill(text = text, treatment = treatment, modifier = modifier)

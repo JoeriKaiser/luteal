@@ -72,6 +72,9 @@ import fr.luteal.core.model.PillDayStatus
 import java.time.temporal.ChronoUnit
 import fr.luteal.core.model.TrackingContext
 import kotlin.math.roundToInt
+import fr.luteal.core.model.LhTestResult
+import fr.luteal.core.model.TemperatureUnit
+import java.util.Locale
 
 @Composable
 fun TodayScreen(
@@ -290,6 +293,11 @@ private fun TodayObservationCard(
     onEditToday: () -> Unit
 ) {
     val entry = state.todayEntry
+    val biomarker = state.todayBiomarker
+    val hasEntryData = entry != null && entry.hasObservations
+    val hasBiomarkerData = biomarker != null && !biomarker.isEmpty
+    val hasAnyObservations = hasEntryData || hasBiomarkerData
+
     LutealCard(
         modifier = Modifier.fillMaxWidth(),
         onClick = onEditToday
@@ -312,7 +320,7 @@ private fun TodayObservationCard(
 
         Spacer(Modifier.height(LutealSpacing.xs))
 
-        if (entry == null || !entry.hasObservations) {
+        if (!hasAnyObservations) {
             Text(
                 text = stringResource(R.string.today_summary_empty_body),
                 style = MaterialTheme.typography.bodyMedium,
@@ -324,35 +332,80 @@ private fun TodayObservationCard(
                 horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs),
                 verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
             ) {
-                entry.bleedingIntensity?.let { intensity ->
+                entry?.bleedingIntensity?.let { intensity ->
                     ObservationPill(
                         text = bleedingLabel(intensity),
                         tone = ObservationTone.BLEEDING
                     )
                 }
-                entry.painLevel?.let { level ->
+                entry?.painLevel?.let { level ->
                     ObservationPill(
                         text = stringResource(R.string.today_pain_label, level),
                         tone = ObservationTone.PAIN
                     )
                 }
-                entry.moodLevel?.let { level ->
+                entry?.moodLevel?.let { level ->
                     ObservationPill(
                         text = stringResource(R.string.today_mood_label, level),
                         tone = ObservationTone.MOOD
                     )
                 }
-                entry.energyLevel?.let { level ->
+                entry?.energyLevel?.let { level ->
                     ObservationPill(
                         text = stringResource(R.string.today_energy_label, level),
                         tone = ObservationTone.ENERGY
                     )
                 }
+                entry?.symptomIds?.forEach { symptomId ->
+                    ObservationPill(
+                        text = symptomDisplayName(symptomId),
+                        tone = ObservationTone.SYMPTOM
+                    )
+                }
+                biomarker?.bbt?.let { bbt ->
+                    val unit = TemperatureUnit.entries.firstOrNull {
+                        it.name == state.preferences.temperatureUnit
+                    } ?: TemperatureUnit.CELSIUS
+                    val formatted = String.format(Locale.US, "%.2f", bbt.valueInUnit(unit))
+                    val unitSymbol = if (unit == TemperatureUnit.CELSIUS) {
+                        stringResource(R.string.bbt_unit_celsius)
+                    } else {
+                        stringResource(R.string.bbt_unit_fahrenheit)
+                    }
+                    ObservationPill(
+                        text = "$formatted $unitSymbol",
+                        tone = ObservationTone.BIOMARKER
+                    )
+                }
+                biomarker?.rapidTests?.lhTest?.let { lh ->
+                    val label = when (lh) {
+                        LhTestResult.PEAK_POSITIVE -> stringResource(R.string.inspection_lh_positive)
+                        else -> stringResource(R.string.inspection_lh_negative)
+                    }
+                    ObservationPill(
+                        text = stringResource(R.string.inspection_biomarker_lh, label),
+                        tone = ObservationTone.BIOMARKER
+                    )
+                }
+                biomarker?.cervicalFluid?.takeIf { it.hasObservation }?.let { fluid ->
+                    val parts = listOfNotNull(
+                        fluid.sensation?.let { sensationLabel(it) },
+                        fluid.texture?.let { textureLabel(it) }
+                    )
+                    if (parts.isNotEmpty()) {
+                        ObservationPill(
+                            text = parts.joinToString(", "),
+                            tone = ObservationTone.BIOMARKER
+                        )
+                    }
+                }
             }
-            if (entry.notes.isNotBlank()) {
+            val notes = entry?.notes?.takeIf { it.isNotBlank() }
+                ?: biomarker?.notes?.takeIf { it.isNotBlank() }
+            if (!notes.isNullOrBlank()) {
                 Spacer(Modifier.height(LutealSpacing.xs))
                 Text(
-                    text = stringResource(R.string.today_notes_label, entry.notes),
+                    text = stringResource(R.string.today_notes_label, notes),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 3

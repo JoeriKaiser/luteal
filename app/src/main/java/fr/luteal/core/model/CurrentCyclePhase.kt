@@ -83,7 +83,8 @@ object CurrentCyclePhaseCalculator {
         val canonicalPeriodDay = cycle.periodDays.firstOrNull { it.date == today }
         val observedFlow = canonicalPeriodDay?.bleedingIntensity ?: todayEntry?.bleedingIntensity
 
-        if (dayIndex == 0 || observedFlow?.isPeriodFlow() == true) {
+        val isExplicitNonPeriodFlow = observedFlow == BleedingIntensity.NONE || observedFlow == BleedingIntensity.SPOTTING
+        if ((dayIndex == 0 && !isExplicitNonPeriodFlow) || observedFlow?.isPeriodFlow() == true) {
             return CurrentCyclePhase.Available(CyclePhase.MENSTRUAL, PhaseCertainty.RECORDED)
         }
 
@@ -94,7 +95,7 @@ object CurrentCyclePhaseCalculator {
         }
 
         if (dayIndex < EARLY_CYCLE_DAYS) {
-            if (observedFlow == null || observedFlow == BleedingIntensity.SPOTTING) {
+            if (observedFlow == null || isExplicitNonPeriodFlow) {
                 return CurrentCyclePhase.Indeterminate(
                     PhaseIndeterminateReason.EARLY_CYCLE_WITHOUT_BLEEDING_DETAIL
                 )

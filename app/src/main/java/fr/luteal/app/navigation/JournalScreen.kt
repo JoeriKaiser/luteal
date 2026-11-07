@@ -1523,26 +1523,6 @@ private fun ObservationPatternsCard(state: LutealUiState) {
 }
 
 @Composable
-private fun symptomDisplayName(id: String): String = when (id) {
-    "cramps" -> stringResource(R.string.symptom_cramps)
-    "headache" -> stringResource(R.string.symptom_headache)
-    "abdominal_pain" -> stringResource(R.string.symptom_abdominal_pain)
-    "backache" -> stringResource(R.string.symptom_backache)
-    "muscle_aches" -> stringResource(R.string.symptom_muscle_aches)
-    "fatigue" -> stringResource(R.string.symptom_fatigue)
-    "sleep_issue" -> stringResource(R.string.symptom_sleep_issue)
-    "bloating" -> stringResource(R.string.symptom_bloating)
-    "nausea" -> stringResource(R.string.symptom_nausea)
-    "digestive_changes" -> stringResource(R.string.symptom_digestive_changes)
-    "breast_tenderness" -> stringResource(R.string.symptom_breast_tenderness)
-    "mood_changes" -> stringResource(R.string.symptom_mood_changes)
-    "anxiety" -> stringResource(R.string.symptom_anxiety)
-    "acne" -> stringResource(R.string.symptom_acne)
-    "pelvic_pain_outside_period" -> stringResource(R.string.symptom_pelvic_pain_outside_period)
-    else -> id
-}
-
-@Composable
 private fun journalPhaseLabel(phase: CyclePhase): String = stringResource(
     when (phase) {
         CyclePhase.MENSTRUAL -> R.string.phase_menstrual
@@ -1552,22 +1532,3 @@ private fun journalPhaseLabel(phase: CyclePhase): String = stringResource(
     }
 )
 
-@Composable
-private fun sensationLabel(sensation: CervicalMucusSensation): String = stringResource(
-    when (sensation) {
-        CervicalMucusSensation.DRY -> R.string.sensation_dry
-        CervicalMucusSensation.DAMP -> R.string.sensation_damp
-        CervicalMucusSensation.WET -> R.string.sensation_wet
-        CervicalMucusSensation.SLIPPERY -> R.string.sensation_slippery
-    }
-)
-
-@Composable
-private fun textureLabel(texture: CervicalMucusTexture): String = stringResource(
-    when (texture) {
-        CervicalMucusTexture.STICKY -> R.string.texture_sticky
-        CervicalMucusTexture.CREAMY -> R.string.texture_creamy
-        CervicalMucusTexture.EGG_WHITE -> R.string.texture_egg_white
-        CervicalMucusTexture.WATERY -> R.string.texture_watery
-    }
-)

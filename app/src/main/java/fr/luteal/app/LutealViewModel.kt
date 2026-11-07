@@ -86,6 +86,7 @@ class LutealViewModel @Inject constructor(
         todayFlow
     ) { records, operation, today ->
         val todayEntry = records.entries.firstOrNull { it.date == today }
+        val todayBiomarker = records.biomarkers.firstOrNull { it.date == today }
         val dayOfCycle = records.currentCycle?.takeIf { !today.isBefore(it.startDate) }?.let {
             ChronoUnit.DAYS.between(it.startDate, today).toInt() + 1
         }
@@ -115,6 +116,7 @@ class LutealViewModel @Inject constructor(
             operationFailed = operation.failed,
             isInitializing = false,
             todayEntry = todayEntry,
+            todayBiomarker = todayBiomarker,
             dayOfCycle = dayOfCycle,
             estimate = estimate,
             pillStatus = pillStatus,
@@ -281,6 +283,7 @@ data class LutealUiState(
     val operationFailed: Boolean = false,
     val isInitializing: Boolean = false,
     val todayEntry: DailyEntry? = entries.firstOrNull { it.date == today },
+    val todayBiomarker: BiomarkerObservation? = biomarkers.firstOrNull { it.date == today },
     val dayOfCycle: Int? = currentCycle
         ?.takeIf { !today.isBefore(it.startDate) }
         ?.let { ChronoUnit.DAYS.between(it.startDate, today).toInt() + 1 },

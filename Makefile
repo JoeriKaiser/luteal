@@ -17,7 +17,7 @@ ADB          ?= adb
 DEVICE       ?=
 ANCHOR_DATE  ?= $(shell date -u +%F)
 
-.PHONY: help dev dev-install release-seed release-build release-check bump test lint clean
+.PHONY: help dev dev-install release-seed release-build release-check bump test lint check-strings clean
 
 help:
 	@echo "Luteal Build & Release Targets:"
@@ -29,6 +29,7 @@ help:
 	@echo "  make bump VERSION=1.x.y CODE=n - Update versionName and versionCode in build.gradle.kts"
 	@echo "  make test            - Run unit test suite"
 	@echo "  make lint            - Run Android Lint on debug variant"
+	@echo "  make check-strings   - Validate string resource parity between locales"
 	@echo "  make clean           - Clean Gradle build outputs and $(DIST_DIR)/"
 
 # --- Development ---
@@ -54,6 +55,10 @@ test:
 lint:
 	@echo "==> Running Android Lint..."
 	./gradlew lintDebug
+
+check-strings:
+	@echo "==> Checking string resource parity..."
+	@./scripts/check-string-parity.py
 # --- Release ---
 
 release-build:

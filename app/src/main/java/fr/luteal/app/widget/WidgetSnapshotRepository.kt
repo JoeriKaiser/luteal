@@ -8,6 +8,7 @@ import dagger.hilt.components.SingletonComponent
 import fr.luteal.core.data.repository.CycleRepository
 import fr.luteal.core.data.repository.DailyEntryRepository
 import fr.luteal.core.data.repository.DuoRepository
+import fr.luteal.core.data.repository.BiomarkerRepository
 import fr.luteal.core.data.repository.DuoWidgetCacheRepository
 import fr.luteal.core.data.repository.UserRepository
 import java.time.Clock
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.first
 class WidgetSnapshotRepository @Inject constructor(
     private val cycleRepository: CycleRepository,
     private val dailyEntryRepository: DailyEntryRepository,
+    private val biomarkerRepository: BiomarkerRepository,
     private val userRepository: UserRepository,
     private val duoRepository: DuoRepository,
     private val duoCacheRepository: DuoWidgetCacheRepository,
@@ -33,7 +35,8 @@ class WidgetSnapshotRepository @Inject constructor(
         factory.personal(
             cycles = cycleRepository.getCyclesOnce(),
             preferences = userRepository.getUserPreferences().first(),
-            hasTodayObservation = dailyEntryRepository.getEntryOnce(today)?.hasObservations == true,
+            hasTodayObservation = (dailyEntryRepository.getEntryOnce(today)?.hasObservations == true) ||
+                (biomarkerRepository.getObservationOnce(today)?.let { !it.isEmpty } == true),
             today = today
         )
     }.getOrDefault(PersonalWidgetSnapshot.ReadFailure)

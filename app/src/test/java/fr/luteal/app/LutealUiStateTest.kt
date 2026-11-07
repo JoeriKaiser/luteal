@@ -2,6 +2,7 @@ package fr.luteal.app
 
 import fr.luteal.core.model.Cycle
 import fr.luteal.core.model.CycleEstimate
+import fr.luteal.core.model.BiomarkerObservation
 import fr.luteal.core.model.CycleEstimateResult
 import fr.luteal.core.model.CurrentCyclePhase
 import fr.luteal.core.model.DailyEntry
@@ -23,6 +24,7 @@ class LutealUiStateTest {
 
         assertFalse(defaultState.isInitializing)
         assertNull(defaultState.todayEntry)
+        assertNull(defaultState.todayBiomarker)
         assertNull(defaultState.dayOfCycle)
         assertNull(defaultState.estimate)
         assertEquals(
@@ -84,5 +86,20 @@ class LutealUiStateTest {
 
         assertEquals(todayEntry, state.todayEntry)
         assertEquals(5, state.dayOfCycle)
+    }
+
+    @Test
+    fun todayBiomarkerIsDerivedFromBiomarkersList() {
+        val today = LocalDate.of(2026, 9, 2)
+        val yesterday = today.minusDays(1)
+        val todayBiomarker = BiomarkerObservation(date = today, notes = "Morning BBT 36.65")
+        val pastBiomarker = BiomarkerObservation(date = yesterday, notes = "Past note")
+
+        val state = LutealUiState(
+            today = today,
+            biomarkers = listOf(pastBiomarker, todayBiomarker)
+        )
+
+        assertEquals(todayBiomarker, state.todayBiomarker)
     }
 }
