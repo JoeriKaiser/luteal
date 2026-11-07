@@ -184,7 +184,8 @@ fun LutealMainScaffold(
                                     viewModel.clearEntrySaveState()
                                     editorRequest = EditorRequest(uiState.today, startPeriodIntent = false)
                                 },
-                                onBackfillCycle = { showBackfillDialog = true }
+                                onBackfillCycle = { showBackfillDialog = true },
+                                onTogglePillTakenToday = viewModel::setPillTakenToday
                             )
                             LutealDestination.JOURNAL -> JournalScreen(
                                 state = uiState,

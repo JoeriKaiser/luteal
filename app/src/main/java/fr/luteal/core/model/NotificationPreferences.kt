@@ -15,7 +15,8 @@ enum class NotificationVisibility {
 enum class NotificationType {
     DAILY_CHECK_IN,
     PERIOD_WINDOW,
-    LATE_CYCLE
+    LATE_CYCLE,
+    PILL_REMINDER
 }
 
 data class NotificationPreferences(

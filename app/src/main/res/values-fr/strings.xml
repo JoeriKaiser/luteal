@@ -786,4 +786,37 @@
     <string name="inspection_biomarker_lh">Test LH : %1$s</string>
     <string name="inspection_lh_positive">Positif (pic détecté)</string>
     <string name="inspection_lh_negative">Négatif</string>
+
+    <!-- Suivi de pilule et rappels -->
+    <string name="notif_channel_pill_title">Rappel de pilule</string>
+    <string name="notif_channel_pill_desc">Rappels quotidiens selon le calendrier de votre plaquette</string>
+    <string name="notif_pill_descriptive_title">Rappel de prise</string>
+    <string name="notif_pill_descriptive_body">Pensez à prendre votre pilule et à valider la prise du jour.</string>
+    <string name="notif_pill_action_taken_concealed">Fait</string>
+    <string name="notif_pill_action_taken_descriptive">Marquer comme prise</string>
+    <string name="notif_pill_action_snooze">Plus tard (30 min)</string>
+    <string name="settings_notif_pill_title">Suivi de pilule &amp; rappel</string>
+    <string name="settings_notif_pill_desc">Suivez vos jours de prise et de pause sur Aujourd’hui et recevez un rappel les jours actifs</string>
+    <string name="settings_pill_regimen_label">Schéma de plaquette (jours actifs / pause)</string>
+    <string name="settings_pill_preset_21_7">21 actifs / 7 pause</string>
+    <string name="settings_pill_preset_24_4">24 actifs / 4 pause</string>
+    <string name="settings_pill_preset_28_0">28 en continu</string>
+    <string name="settings_pill_preset_custom">Personnalisé (%1$d / %2$d)</string>
+    <string name="settings_pill_custom_dialog_title">Schéma de plaquette personnalisé</string>
+    <string name="settings_pill_active_days_label">Jours de prise active (1–90)</string>
+    <string name="settings_pill_pause_days_label">Jours de pause (0–30)</string>
+    <string name="settings_pill_start_date_label">Début de plaquette : %1$s</string>
+    <string name="settings_pill_start_date_unset">Aujourd’hui</string>
+    <string name="settings_pill_time_label">Heure du rappel de prise : %1$s</string>
+    <string name="today_pill_card_title">Suivi de plaquette</string>
+    <string name="today_pill_active_day_title">Jour %1$d sur %2$d · Prise active</string>
+    <string name="today_pill_active_continuous_title">Jour %1$d sur %2$d · Prise continue</string>
+    <string name="today_pill_pause_day_title">Jour %1$d sur %2$d · Pause</string>
+    <string name="today_pill_taken_badge">Prise enregistrée</string>
+    <string name="today_pill_pending_badge">Prise prévue</string>
+    <string name="today_pill_pause_badge">Pause</string>
+    <string name="today_pill_action_mark_taken">Marquer comme prise aujourd’hui</string>
+    <string name="today_pill_action_undo_taken">Annuler la prise du jour</string>
+    <string name="today_pill_pause_support">Aucune prise active prévue aujourd’hui. Prochaine plaquette dans %1$d j.</string>
+    <string name="phase_reason_hormonal_contraception">Les estimations de phase ovulatoire et lutéale sont désactivées pendant le suivi de pilule.</string>
 </resources>

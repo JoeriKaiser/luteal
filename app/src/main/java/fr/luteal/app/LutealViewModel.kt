@@ -33,6 +33,8 @@ import fr.luteal.core.model.BiomarkerObservation
 import fr.luteal.core.model.DailyEntry
 import fr.luteal.core.model.DuoSharingField
 import fr.luteal.core.model.UserRole
+import fr.luteal.core.model.PillDayStatus
+import fr.luteal.core.model.PillRegimenCalculator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -93,11 +95,13 @@ class LutealViewModel @Inject constructor(
             hasTimingContext = records.preferences.hasTimingContext
         )
         val estimate = (estimateResult as? CycleEstimateResult.Available)?.estimate
+        val pillStatus = PillRegimenCalculator.evaluate(records.preferences.pillRegimenConfig, today)
         val currentPhase = CurrentCyclePhaseCalculator.evaluate(
             today = today,
             currentCycle = records.currentCycle,
             todayEntry = todayEntry,
-            estimateResult = estimateResult
+            estimateResult = estimateResult,
+            isPillRegimenActive = pillStatus !is PillDayStatus.Disabled
         )
         LutealUiState(
             today = today,
@@ -113,6 +117,7 @@ class LutealViewModel @Inject constructor(
             todayEntry = todayEntry,
             dayOfCycle = dayOfCycle,
             estimate = estimate,
+            pillStatus = pillStatus,
             currentPhase = currentPhase
         )
     }.stateIn(
@@ -139,6 +144,13 @@ class LutealViewModel @Inject constructor(
 
     fun clearEntrySaveState() {
         operationState.update { it.copy(entrySaveState = EntrySaveState.IDLE) }
+    }
+    fun setPillTakenToday(taken: Boolean) {
+        viewModelScope.launch {
+            val today = clock.instant().atZone(ZoneId.systemDefault()).toLocalDate()
+            userRepository.setPillLastTakenDate(if (taken) today.toString() else null)
+            notificationScheduler.reconcileAllSchedules()
+        }
     }
 
     fun exportClinicalReport(context: Context, uri: Uri, config: ClinicalReportConfig) {
@@ -273,11 +285,13 @@ data class LutealUiState(
         ?.takeIf { !today.isBefore(it.startDate) }
         ?.let { ChronoUnit.DAYS.between(it.startDate, today).toInt() + 1 },
     val estimate: CycleEstimate? = (estimateResult as? CycleEstimateResult.Available)?.estimate,
+    val pillStatus: PillDayStatus = PillRegimenCalculator.evaluate(preferences.pillRegimenConfig, today),
     val currentPhase: CurrentCyclePhase = CurrentCyclePhaseCalculator.evaluate(
         today = today,
         currentCycle = currentCycle,
         todayEntry = todayEntry,
-        estimateResult = estimateResult
+        estimateResult = estimateResult,
+        isPillRegimenActive = pillStatus !is PillDayStatus.Disabled
     )
 )
 

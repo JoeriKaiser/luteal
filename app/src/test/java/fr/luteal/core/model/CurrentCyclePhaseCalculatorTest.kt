@@ -215,6 +215,93 @@ class CurrentCyclePhaseCalculatorTest {
         )
     }
 
+    @Test
+    fun `when pill regimen is active, recorded bleeding days return menstrual phase`() {
+        val day1Phase = CurrentCyclePhaseCalculator.evaluate(
+            today = start,
+            currentCycle = cycle,
+            todayEntry = null,
+            estimateResult = result(5),
+            isPillRegimenActive = true
+        )
+        assertEquals(
+            CurrentCyclePhase.Available(CyclePhase.MENSTRUAL, PhaseCertainty.RECORDED),
+            day1Phase
+        )
+
+        val day3Date = start.plusDays(3)
+        val day3Phase = CurrentCyclePhaseCalculator.evaluate(
+            today = day3Date,
+            currentCycle = cycle,
+            todayEntry = DailyEntry(day3Date, bleedingIntensity = BleedingIntensity.MEDIUM),
+            estimateResult = result(5),
+            isPillRegimenActive = true
+        )
+        assertEquals(
+            CurrentCyclePhase.Available(CyclePhase.MENSTRUAL, PhaseCertainty.RECORDED),
+            day3Phase
+        )
+    }
+
+    @Test
+    fun `when pill regimen is active, non-bleeding days return hormonal contraception indeterminate reason`() {
+        // Follicular window date
+        val follicularDate = start.plusDays(8)
+        val follicularPhase = CurrentCyclePhaseCalculator.evaluate(
+            today = follicularDate,
+            currentCycle = cycle,
+            todayEntry = DailyEntry(follicularDate, bleedingIntensity = BleedingIntensity.NONE),
+            estimateResult = result(5),
+            isPillRegimenActive = true
+        )
+        assertEquals(
+            CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.HORMONAL_CONTRACEPTION),
+            follicularPhase
+        )
+
+        // Ovulatory window date
+        val ovulatoryDate = LocalDate.parse("2026-07-16")
+        val ovulatoryPhase = CurrentCyclePhaseCalculator.evaluate(
+            today = ovulatoryDate,
+            currentCycle = cycle,
+            todayEntry = null,
+            estimateResult = result(5),
+            isPillRegimenActive = true
+        )
+        assertEquals(
+            CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.HORMONAL_CONTRACEPTION),
+            ovulatoryPhase
+        )
+
+        // Luteal window date
+        val lutealDate = LocalDate.parse("2026-07-22")
+        val lutealPhase = CurrentCyclePhaseCalculator.evaluate(
+            today = lutealDate,
+            currentCycle = cycle,
+            todayEntry = null,
+            estimateResult = result(5),
+            isPillRegimenActive = true
+        )
+        assertEquals(
+            CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.HORMONAL_CONTRACEPTION),
+            lutealPhase
+        )
+
+        // Spotting date
+        val spottingDate = start.plusDays(3)
+        val spottingPhase = CurrentCyclePhaseCalculator.evaluate(
+            today = spottingDate,
+            currentCycle = cycle,
+            todayEntry = DailyEntry(spottingDate, bleedingIntensity = BleedingIntensity.SPOTTING),
+            estimateResult = result(5),
+            isPillRegimenActive = true
+        )
+        assertEquals(
+            CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.HORMONAL_CONTRACEPTION),
+            spottingPhase
+        )
+    }
+
     private fun assertPhase(
         today: LocalDate,
         phase: CyclePhase,

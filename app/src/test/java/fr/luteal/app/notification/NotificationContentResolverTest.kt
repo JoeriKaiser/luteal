@@ -8,6 +8,7 @@ import fr.luteal.core.model.NotificationVisibility
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -72,5 +73,44 @@ class NotificationContentResolverTest {
         assertEquals("Mon moment calme", content.title)
         assertEquals("Prendre soin de moi ce soir.", content.body)
         assertEquals(context.getString(R.string.notif_default_public_title), content.publicTitle)
+    }
+
+    @Test
+    fun pillReminderConcealedModeProvidesConcealedActionsAndChannel() {
+        val content = resolver.resolve(
+            type = NotificationType.PILL_REMINDER,
+            visibility = NotificationVisibility.CONCEALED
+        )
+
+        assertEquals(NotificationChannelManager.CHANNEL_PILL_REMINDER, content.channelId)
+        assertEquals(context.getString(R.string.notif_default_concealed_title), content.title)
+        assertEquals(context.getString(R.string.notif_default_concealed_body), content.body)
+        assertEquals(context.getString(R.string.notif_pill_action_taken_concealed), content.actionTakenLabel)
+        assertEquals(context.getString(R.string.notif_pill_action_snooze), content.actionSnoozeLabel)
+        assertEquals(context.getString(R.string.notif_default_public_title), content.publicTitle)
+    }
+
+    @Test
+    fun pillReminderDescriptiveModeProvidesDescriptiveActionsAndCopy() {
+        val content = resolver.resolve(
+            type = NotificationType.PILL_REMINDER,
+            visibility = NotificationVisibility.DESCRIPTIVE
+        )
+
+        assertEquals(NotificationChannelManager.CHANNEL_PILL_REMINDER, content.channelId)
+        assertEquals(context.getString(R.string.notif_pill_descriptive_title), content.title)
+        assertEquals(context.getString(R.string.notif_pill_descriptive_body), content.body)
+        assertEquals(context.getString(R.string.notif_pill_action_taken_descriptive), content.actionTakenLabel)
+        assertEquals(context.getString(R.string.notif_pill_action_snooze), content.actionSnoozeLabel)
+    }
+
+    @Test
+    fun nonPillNotificationsDoNotExposePillActions() {
+        val content = resolver.resolve(
+            type = NotificationType.DAILY_CHECK_IN,
+            visibility = NotificationVisibility.DESCRIPTIVE
+        )
+        assertNull(content.actionTakenLabel)
+        assertNull(content.actionSnoozeLabel)
     }
 }

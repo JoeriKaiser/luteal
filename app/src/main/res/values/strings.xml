@@ -782,4 +782,37 @@
     <string name="inspection_biomarker_lh">LH test: %1$s</string>
     <string name="inspection_lh_positive">Positive (surge)</string>
     <string name="inspection_lh_negative">Negative</string>
+
+    <!-- Pill tracking and reminders -->
+    <string name="notif_channel_pill_title">Pill &amp; regimen reminder</string>
+    <string name="notif_channel_pill_desc">Daily reminders for your configured pill pack schedule</string>
+    <string name="notif_pill_descriptive_title">Pill reminder</string>
+    <string name="notif_pill_descriptive_body">Remember to take and log your pill for today.</string>
+    <string name="notif_pill_action_taken_concealed">Done</string>
+    <string name="notif_pill_action_taken_descriptive">Mark as taken</string>
+    <string name="notif_pill_action_snooze">Snooze 30m</string>
+    <string name="settings_notif_pill_title">Pill tracking &amp; reminder</string>
+    <string name="settings_notif_pill_desc">Track active and pause days on Today and receive a daily reminder on active pack days</string>
+    <string name="settings_pill_regimen_label">Pack schedule (active / pause days)</string>
+    <string name="settings_pill_preset_21_7">21 active / 7 pause</string>
+    <string name="settings_pill_preset_24_4">24 active / 4 pause</string>
+    <string name="settings_pill_preset_28_0">28 continuous</string>
+    <string name="settings_pill_preset_custom">Custom (%1$d / %2$d)</string>
+    <string name="settings_pill_custom_dialog_title">Custom pack schedule</string>
+    <string name="settings_pill_active_days_label">Active pill days (1–90)</string>
+    <string name="settings_pill_pause_days_label">Pause days (0–30)</string>
+    <string name="settings_pill_start_date_label">Pack start date: %1$s</string>
+    <string name="settings_pill_start_date_unset">Today</string>
+    <string name="settings_pill_time_label">Pill reminder time: %1$s</string>
+    <string name="today_pill_card_title">Pill pack</string>
+    <string name="today_pill_active_day_title">Day %1$d of %2$d · Active pack</string>
+    <string name="today_pill_active_continuous_title">Day %1$d of %2$d · Continuous pack</string>
+    <string name="today_pill_pause_day_title">Day %1$d of %2$d · Pause</string>
+    <string name="today_pill_taken_badge">Taken today</string>
+    <string name="today_pill_pending_badge">Scheduled today</string>
+    <string name="today_pill_pause_badge">Pause</string>
+    <string name="today_pill_action_mark_taken">Mark as taken today</string>
+    <string name="today_pill_action_undo_taken">Undo today’s intake</string>
+    <string name="today_pill_pause_support">No active pill scheduled today. Next pack starts in %1$d d.</string>
+    <string name="phase_reason_hormonal_contraception">Ovulatory and luteal phase estimates are disabled while pill tracking is active.</string>
 </resources>

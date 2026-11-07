@@ -31,6 +31,10 @@ import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -83,6 +87,7 @@ import fr.luteal.core.model.TrackingContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.Locale
 
 @Composable
@@ -324,6 +329,10 @@ fun SettingsScreen(
             onToggleWindow = viewModel::setPeriodWindowNotificationEnabled,
             onWindowLeadDaysChange = viewModel::setPeriodWindowLeadDays,
             onToggleLate = viewModel::setLateCycleNotificationEnabled,
+            onTogglePillRegimen = viewModel::setPillRegimenEnabled,
+            onPillScheduleChange = viewModel::setPillRegimenSchedule,
+            onPillStartDateChange = viewModel::setPillStartDate,
+            onPillTimeChange = viewModel::setPillReminderTime,
             onVisibilityChange = viewModel::setNotificationVisibilityMode,
             onCustomTitleChange = viewModel::setNotificationCustomTitle,
             onCustomBodyChange = viewModel::setNotificationCustomBody
@@ -568,11 +577,19 @@ private fun NotificationSettingsCard(
     onToggleWindow: (Boolean) -> Unit,
     onWindowLeadDaysChange: (Int) -> Unit,
     onToggleLate: (Boolean) -> Unit,
+    onTogglePillRegimen: (Boolean) -> Unit,
+    onPillScheduleChange: (Int, Int) -> Unit,
+    onPillStartDateChange: (LocalDate) -> Unit,
+    onPillTimeChange: (String) -> Unit,
     onVisibilityChange: (NotificationVisibility) -> Unit,
     onCustomTitleChange: (String) -> Unit,
     onCustomBodyChange: (String) -> Unit
 ) {
+    val locale = LocalConfiguration.current.locales[0]
     var showTimeDialog by remember { mutableStateOf(false) }
+    var showPillTimeDialog by remember { mutableStateOf(false) }
+    var showPillDatePicker by remember { mutableStateOf(false) }
+    var showCustomScheduleDialog by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
         SettingsSectionHeader(title = stringResource(R.string.settings_notifications_title))
@@ -644,7 +661,87 @@ private fun NotificationSettingsCard(
                         checked = state.isLateCycleEnabled,
                         onCheckedChange = onToggleLate
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
+                    // Pill Tracking & Reminder
+                    LutealToggleRow(
+                        title = stringResource(R.string.settings_notif_pill_title),
+                        description = stringResource(R.string.settings_notif_pill_desc),
+                        checked = state.isPillRegimenEnabled,
+                        onCheckedChange = onTogglePillRegimen
+                    )
+
+                    if (state.isPillRegimenEnabled) {
+                        Text(
+                            text = stringResource(R.string.settings_pill_regimen_label),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+
+                        val isPreset21_7 = state.pillActiveDays == 21 && state.pillPauseDays == 7
+                        val isPreset24_4 = state.pillActiveDays == 24 && state.pillPauseDays == 4
+                        val isPreset28_0 = state.pillActiveDays == 28 && state.pillPauseDays == 0
+                        val isCustom = !isPreset21_7 && !isPreset24_4 && !isPreset28_0
+
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs),
+                            verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                        ) {
+                            FilterChip(
+                                selected = isPreset21_7,
+                                onClick = { onPillScheduleChange(21, 7) },
+                                label = { Text(stringResource(R.string.settings_pill_preset_21_7)) }
+                            )
+                            FilterChip(
+                                selected = isPreset24_4,
+                                onClick = { onPillScheduleChange(24, 4) },
+                                label = { Text(stringResource(R.string.settings_pill_preset_24_4)) }
+                            )
+                            FilterChip(
+                                selected = isPreset28_0,
+                                onClick = { onPillScheduleChange(28, 0) },
+                                label = { Text(stringResource(R.string.settings_pill_preset_28_0)) }
+                            )
+                            FilterChip(
+                                selected = isCustom,
+                                onClick = { showCustomScheduleDialog = true },
+                                label = {
+                                    Text(
+                                        stringResource(
+                                            R.string.settings_pill_preset_custom,
+                                            state.pillActiveDays,
+                                            state.pillPauseDays
+                                        )
+                                    )
+                                }
+                            )
+                        }
+
+                        val parsedStartDate = remember(state.pillStartDate) {
+                            state.pillStartDate?.takeIf { it.isNotBlank() }?.let {
+                                runCatching { LocalDate.parse(it) }.getOrNull()
+                            }
+                        }
+                        val startDateText = if (parsedStartDate != null) {
+                            stringResource(
+                                R.string.settings_pill_start_date_label,
+                                LocalizedDateFormatter.formatShortDate(parsedStartDate, locale)
+                            )
+                        } else {
+                            stringResource(R.string.settings_pill_start_date_unset)
+                        }
+
+                        LutealSecondaryButton(
+                            text = startDateText,
+                            onClick = { showPillDatePicker = true },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        LutealSecondaryButton(
+                            text = stringResource(R.string.settings_pill_time_label, state.pillReminderTime),
+                            onClick = { showPillTimeDialog = true },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                     // Visibility selector
@@ -705,33 +802,185 @@ private fun NotificationSettingsCard(
             onDismiss = { showTimeDialog = false }
         )
     }
+
+    if (showPillTimeDialog) {
+        TimeSelectionDialog(
+            currentTime = state.pillReminderTime,
+            onTimeSelected = {
+                onPillTimeChange(it)
+                showPillTimeDialog = false
+            },
+            onDismiss = { showPillTimeDialog = false },
+            title = stringResource(R.string.settings_notif_pill_title)
+        )
+    }
+
+    if (showPillDatePicker) {
+        val parsedStartDate = remember(state.pillStartDate) {
+            state.pillStartDate?.takeIf { it.isNotBlank() }?.let {
+                runCatching { LocalDate.parse(it) }.getOrNull()
+            }
+        }
+        PillStartDatePickerDialog(
+            initialDate = parsedStartDate ?: LocalDate.now(),
+            onDateSelected = {
+                onPillStartDateChange(it)
+                showPillDatePicker = false
+            },
+            onDismiss = { showPillDatePicker = false }
+        )
+    }
+
+    if (showCustomScheduleDialog) {
+        PillCustomScheduleDialog(
+            initialActiveDays = state.pillActiveDays,
+            initialPauseDays = state.pillPauseDays,
+            onConfirm = { active, pause ->
+                onPillScheduleChange(active, pause)
+                showCustomScheduleDialog = false
+            },
+            onDismiss = { showCustomScheduleDialog = false }
+        )
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TimeSelectionDialog(
     currentTime: String,
     onTimeSelected: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    title: String = stringResource(R.string.settings_notif_daily_title)
 ) {
-    val times = listOf("08:00", "09:00", "12:00", "20:00", "20:30", "21:00", "21:30", "22:00", "22:30")
+    val parsed = remember(currentTime) {
+        runCatching { java.time.LocalTime.parse(currentTime) }.getOrDefault(java.time.LocalTime.of(20, 0))
+    }
+    val timePickerState = androidx.compose.material3.rememberTimePickerState(
+        initialHour = parsed.hour,
+        initialMinute = parsed.minute,
+        is24Hour = true
+    )
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_notif_daily_title)) },
+        title = { Text(title) },
         text = {
             Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                times.forEach { t ->
-                    LutealRadioRow(
-                        title = t,
-                        selected = t == currentTime,
-                        onClick = { onTimeSelected(t) }
-                    )
-                }
+                androidx.compose.material3.TimeInput(state = timePickerState)
             }
         },
-        confirmButton = {},
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val formatted = String.format(
+                        java.util.Locale.ROOT,
+                        "%02d:%02d",
+                        timePickerState.hour,
+                        timePickerState.minute
+                    )
+                    onTimeSelected(formatted)
+                }
+            ) {
+                Text(stringResource(R.string.dialog_change_pin_action))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PillStartDatePickerDialog(
+    initialDate: LocalDate,
+    onDateSelected: (LocalDate) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val zone = ZoneOffset.UTC
+    val state = rememberDatePickerState(
+        initialSelectedDateMillis = initialDate.atStartOfDay(zone).toInstant().toEpochMilli()
+    )
+
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    state.selectedDateMillis?.let { millis ->
+                        onDateSelected(Instant.ofEpochMilli(millis).atZone(zone).toLocalDate())
+                    }
+                },
+                enabled = state.selectedDateMillis != null
+            ) {
+                Text(stringResource(R.string.cycle_edit_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        }
+    ) {
+        DatePicker(state = state)
+    }
+}
+
+@Composable
+private fun PillCustomScheduleDialog(
+    initialActiveDays: Int,
+    initialPauseDays: Int,
+    onConfirm: (Int, Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var activeText by remember { mutableStateOf(initialActiveDays.toString()) }
+    var pauseText by remember { mutableStateOf(initialPauseDays.toString()) }
+
+    val activeInt = activeText.toIntOrNull()
+    val pauseInt = pauseText.toIntOrNull()
+    val isValid = activeInt != null && activeInt in 1..90 && pauseInt != null && pauseInt in 0..30
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_pill_custom_dialog_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
+                OutlinedTextField(
+                    value = activeText,
+                    onValueChange = { activeText = it.filter { ch -> ch.isDigit() } },
+                    label = { Text(stringResource(R.string.settings_pill_active_days_label)) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    isError = activeText.isNotEmpty() && (activeInt == null || activeInt !in 1..90),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = pauseText,
+                    onValueChange = { pauseText = it.filter { ch -> ch.isDigit() } },
+                    label = { Text(stringResource(R.string.settings_pill_pause_days_label)) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    isError = pauseText.isNotEmpty() && (pauseInt == null || pauseInt !in 0..30),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (activeInt != null && activeInt in 1..90 && pauseInt != null && pauseInt in 0..30) {
+                        onConfirm(activeInt, pauseInt)
+                    }
+                },
+                enabled = isValid
+            ) {
+                Text(stringResource(R.string.dialog_change_pin_action))
+            }
+        },
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.action_cancel))
