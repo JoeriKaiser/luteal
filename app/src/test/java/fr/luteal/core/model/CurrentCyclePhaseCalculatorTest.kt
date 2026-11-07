@@ -15,6 +15,24 @@ class CurrentCyclePhaseCalculatorTest {
     }
 
     @Test
+    fun `cycle start with explicitly recorded no bleeding stays indeterminate`() {
+        assertReason(
+            start,
+            PhaseIndeterminateReason.EARLY_CYCLE_WITHOUT_BLEEDING_DETAIL,
+            DailyEntry(start, bleedingIntensity = BleedingIntensity.NONE)
+        )
+    }
+
+    @Test
+    fun `cycle start with explicitly recorded spotting stays indeterminate`() {
+        assertReason(
+            start,
+            PhaseIndeterminateReason.EARLY_CYCLE_WITHOUT_BLEEDING_DETAIL,
+            DailyEntry(start, bleedingIntensity = BleedingIntensity.SPOTTING)
+        )
+    }
+
+    @Test
     fun `recorded full flow in early cycle is menstrual phase`() {
         val today = start.plusDays(3)
         assertPhase(
