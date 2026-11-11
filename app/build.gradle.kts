@@ -26,12 +26,13 @@ android {
             useSupportLibrary = true
         }
 
-        // Ship French and English only. French lives in res/values-fr/; the
+        // Ship French, Spanish and English only. French lives in res/values-fr/
+        // and Spanish in res/values-es/; the
         // default res/values/ is English, so devices in any other locale fall
         // back to English. AndroidX and Material would bring translations for
         // 84 locales (most of resources.arsc); keep this in step with
         // res/xml/locales_config.xml and the values-* folders.
-        androidResources.localeFilters += listOf("fr", "en")
+        androidResources.localeFilters += listOf("fr", "es", "en")
         // Default folicular base URL for online sync. The debug/dev build
         // targets the local trial server (emulator loopback); the release
         // build overrides this with the production API (see buildTypes).
