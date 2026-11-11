@@ -1,0 +1,2 @@
+- Correction des sauts de curseur et de texte lors de la saisie des messages de notification personnalisés, de l'adresse du serveur et de la récupération de compte.
+- Amélioration de la fluidité et persistance optimisée des paramètres de saisie.

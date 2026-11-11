@@ -1,0 +1,2 @@
+- Fix text jumping and cursor jitter when typing in notification custom message, server address, or account recovery fields.
+- Improve input smoothness and optimize settings text persistence.
