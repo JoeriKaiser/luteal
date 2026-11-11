@@ -22,16 +22,28 @@ object LocalizedDateFormatter {
     private val dayNumberFormatters = ConcurrentHashMap<Locale, DateTimeFormatter>()
 
     fun formatFullDate(date: LocalDate, locale: Locale): String =
-        date.format(formatter(fullDateFormatters, "EEEE d MMMM yyyy", locale)).sentenceCase(locale)
+        date.format(formatter(fullDateFormatters, fullDatePattern(locale), locale)).sentenceCase(locale)
 
     fun formatShortDate(date: LocalDate, locale: Locale): String =
         date.format(formatter(shortDateFormatters, "d MMM", locale))
 
     fun formatMonthYear(date: LocalDate, locale: Locale): String =
-        date.format(formatter(monthYearFormatters, "MMMM yyyy", locale)).sentenceCase(locale)
+        date.format(formatter(monthYearFormatters, monthYearPattern(locale), locale)).sentenceCase(locale)
 
     fun formatDayNumber(date: LocalDate, locale: Locale): String =
         date.format(formatter(dayNumberFormatters, "d", locale))
+
+    // Spanish links the day, month and year with "de" ("sábado, 15 de agosto
+    // de 2026"); the bare pattern would read "sábado 15 agosto 2026".
+    private fun fullDatePattern(locale: Locale): String = when (locale.language) {
+        "es" -> "EEEE, d 'de' MMMM 'de' yyyy"
+        else -> "EEEE d MMMM yyyy"
+    }
+
+    private fun monthYearPattern(locale: Locale): String = when (locale.language) {
+        "es" -> "MMMM 'de' yyyy"
+        else -> "MMMM yyyy"
+    }
 
     private fun formatter(
         cache: ConcurrentHashMap<Locale, DateTimeFormatter>,
