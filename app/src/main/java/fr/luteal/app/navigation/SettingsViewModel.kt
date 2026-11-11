@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 
 import android.content.Context
 import android.net.Uri
@@ -113,8 +115,8 @@ class SettingsViewModel @Inject constructor(
         }
 
     private val drafts: Flow<Drafts> =
-        combine(baseUrlDraft, recoveryCodeDraft, fileOps, _syncUiState) { base, recovery, files, syncUi ->
-            Drafts(base, recovery, files.export, files.wipe, files.importOp, files.report, syncUi)
+        combine(fileOps, _syncUiState) { files, syncUi ->
+            Drafts(files.export, files.wipe, files.importOp, files.report, syncUi)
         }
     val uiState: StateFlow<SettingsSyncUiState> = combine(
         userRepository.getUserPreferences(),
@@ -127,13 +129,13 @@ class SettingsViewModel @Inject constructor(
         val isLinked = creds != null
         SettingsSyncUiState(
             onlineSyncEnabled = preferences.syncMode == SyncMode.ONLINE_CLOUD.name,
-            baseUrlDraft = draft.baseUrl,
+            baseUrlDraft = syncPreferences.baseUrl.orEmpty(),
             storedBaseUrl = syncPreferences.baseUrl.orEmpty(),
             inProgress = syncPreferences.inProgress,
             lastSyncedEpochMillis = syncPreferences.lastSyncedEpochMillis,
             lastError = syncPreferences.lastError,
             testDataState = actionState,
-            recoveryCodeDraft = draft.recoveryCode,
+            recoveryCodeDraft = "",
             recoveryState = recovery,
             exportState = draft.exportState,
             wipeState = draft.wipeState,
@@ -205,8 +207,8 @@ class SettingsViewModel @Inject constructor(
     }
 
     /** Persists the custom sync server base URL. */
-    fun saveSyncSettings() {
-        val base = baseUrlDraft.value.trim()
+    fun saveSyncSettings(url: String? = null) {
+        val base = (url ?: baseUrlDraft.value).trim()
         viewModelScope.launch {
             val previous = cursorStore.getBaseUrl()
             syncDataStore.setBaseUrl(base.ifBlank { null })
@@ -597,21 +599,34 @@ class SettingsViewModel @Inject constructor(
     fun setNotificationVisibilityMode(mode: NotificationVisibility) {
         viewModelScope.launch {
             userPreferencesDataStore.setNotificationVisibilityMode(mode.name)
-            notificationScheduler.reconcileAllSchedules()
         }
     }
 
+    private var customTitleJob: Job? = null
+    private var customBodyJob: Job? = null
+
     fun setNotificationCustomTitle(title: String) {
-        viewModelScope.launch {
+        customTitleJob?.cancel()
+        customTitleJob = viewModelScope.launch {
+            delay(300)
             userPreferencesDataStore.setNotificationCustomTitle(title)
-            notificationScheduler.reconcileAllSchedules()
         }
     }
 
     fun setNotificationCustomBody(body: String) {
-        viewModelScope.launch {
+        customBodyJob?.cancel()
+        customBodyJob = viewModelScope.launch {
+            delay(300)
             userPreferencesDataStore.setNotificationCustomBody(body)
-            notificationScheduler.reconcileAllSchedules()
+        }
+    }
+
+    fun flushCustomNotificationStrings(title: String, body: String) {
+        customTitleJob?.cancel()
+        customBodyJob?.cancel()
+        viewModelScope.launch {
+            userPreferencesDataStore.setNotificationCustomTitle(title)
+            userPreferencesDataStore.setNotificationCustomBody(body)
         }
     }
     fun setPillRegimenEnabled(enabled: Boolean) {
@@ -734,8 +749,6 @@ private data class FileOps(
 )
 
 private data class Drafts(
-    val baseUrl: String,
-    val recoveryCode: String,
     val exportState: DataExportState,
     val wipeState: DataWipeState,
     val importState: DataImportState,

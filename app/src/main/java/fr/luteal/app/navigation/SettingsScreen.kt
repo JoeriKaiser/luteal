@@ -45,11 +45,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
@@ -285,11 +288,9 @@ fun SettingsScreen(
         SyncCard(
             state = syncState,
             onToggleOnline = viewModel::setOnlineSyncEnabled,
-            onBaseUrlChange = viewModel::onBaseUrlChange,
             onSave = viewModel::saveSyncSettings,
             onSyncNow = viewModel::syncNow,
             getAccountCode = viewModel::getAccountCode,
-            onRecoveryCodeChange = viewModel::onRecoveryCodeChange,
             onRecoverAccount = viewModel::recoverAccount,
             onDismissRecoveryMessage = viewModel::clearRecoveryState,
             onUnlinkSync = viewModel::unlinkSync
@@ -336,7 +337,8 @@ fun SettingsScreen(
             onPillTimeChange = viewModel::setPillReminderTime,
             onVisibilityChange = viewModel::setNotificationVisibilityMode,
             onCustomTitleChange = viewModel::setNotificationCustomTitle,
-            onCustomBodyChange = viewModel::setNotificationCustomBody
+            onCustomBodyChange = viewModel::setNotificationCustomBody,
+            onFlushCustomStrings = viewModel::flushCustomNotificationStrings
         )
 
         SettingsSectionHeader(title = stringResource(R.string.settings_data_management_title))
@@ -584,7 +586,8 @@ private fun NotificationSettingsCard(
     onPillTimeChange: (String) -> Unit,
     onVisibilityChange: (NotificationVisibility) -> Unit,
     onCustomTitleChange: (String) -> Unit,
-    onCustomBodyChange: (String) -> Unit
+    onCustomBodyChange: (String) -> Unit,
+    onFlushCustomStrings: (String, String) -> Unit
 ) {
     val locale = LocalConfiguration.current.locales[0]
     var showTimeDialog by remember { mutableStateOf(false) }
@@ -773,16 +776,46 @@ private fun NotificationSettingsCard(
                     )
 
                     if (state.notificationVisibilityMode == NotificationVisibility.CUSTOM) {
+                        var customTitle by rememberSaveable { mutableStateOf<String?>(null) }
+                        var customBody by rememberSaveable { mutableStateOf<String?>(null) }
+
+                        LaunchedEffect(state.notificationCustomTitle) {
+                            if (customTitle != null && customTitle == state.notificationCustomTitle) {
+                                customTitle = null
+                            }
+                        }
+
+                        LaunchedEffect(state.notificationCustomBody) {
+                            if (customBody != null && customBody == state.notificationCustomBody) {
+                                customBody = null
+                            }
+                        }
+
+                        val effectiveTitle = customTitle ?: state.notificationCustomTitle
+                        val effectiveBody = customBody ?: state.notificationCustomBody
+
+                        DisposableEffect(effectiveTitle, effectiveBody) {
+                            onDispose {
+                                onFlushCustomStrings(effectiveTitle, effectiveBody)
+                            }
+                        }
+
                         OutlinedTextField(
-                            value = state.notificationCustomTitle,
-                            onValueChange = onCustomTitleChange,
+                            value = effectiveTitle,
+                            onValueChange = {
+                                customTitle = it
+                                onCustomTitleChange(it)
+                            },
                             label = { Text(stringResource(R.string.settings_notif_custom_title_label)) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
-                            value = state.notificationCustomBody,
-                            onValueChange = onCustomBodyChange,
+                            value = effectiveBody,
+                            onValueChange = {
+                                customBody = it
+                                onCustomBodyChange(it)
+                            },
                             label = { Text(stringResource(R.string.settings_notif_custom_body_label)) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
@@ -1751,12 +1784,10 @@ private fun TestDataCard(
 private fun SyncCard(
     state: SettingsSyncUiState,
     onToggleOnline: (Boolean) -> Unit,
-    onBaseUrlChange: (String) -> Unit,
-    onSave: () -> Unit,
+    onSave: (String) -> Unit,
     onSyncNow: () -> Unit,
     getAccountCode: () -> String?,
-    onRecoveryCodeChange: (String) -> Unit,
-    onRecoverAccount: () -> Unit,
+    onRecoverAccount: (String) -> Unit,
     onDismissRecoveryMessage: () -> Unit,
     onUnlinkSync: () -> Unit
 ) {
@@ -1791,9 +1822,13 @@ private fun SyncCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
+                    var baseUrlDraft by rememberSaveable(state.storedBaseUrl) {
+                        mutableStateOf(state.storedBaseUrl)
+                    }
+
                     OutlinedTextField(
-                        value = state.baseUrlDraft,
-                        onValueChange = onBaseUrlChange,
+                        value = baseUrlDraft,
+                        onValueChange = { baseUrlDraft = it },
                         label = { Text(stringResource(R.string.settings_sync_base_url_label)) },
                         placeholder = { Text(BuildConfig.SYNC_BASE_URL) },
                         singleLine = true,
@@ -1815,7 +1850,7 @@ private fun SyncCard(
                     ) {
                         LutealSecondaryButton(
                             text = stringResource(R.string.settings_sync_save),
-                            onClick = onSave,
+                            onClick = { onSave(baseUrlDraft) },
                             modifier = Modifier.weight(1f)
                         )
 
@@ -1848,7 +1883,6 @@ private fun SyncCard(
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     AccountRecoverySection(
                         state = state,
-                        onCodeChange = onRecoveryCodeChange,
                         onRecover = onRecoverAccount,
                         onDismissMessage = onDismissRecoveryMessage
                     )
@@ -1920,11 +1954,18 @@ private fun AccountCodeSection(state: SettingsSyncUiState, getAccountCode: () ->
 @Composable
 private fun AccountRecoverySection(
     state: SettingsSyncUiState,
-    onCodeChange: (String) -> Unit,
-    onRecover: () -> Unit,
+    onRecover: (String) -> Unit,
     onDismissMessage: () -> Unit
 ) {
     if (state.hasAccount) return
+
+    var recoveryCode by rememberSaveable { mutableStateOf("") }
+
+    LaunchedEffect(state.recoveryState) {
+        if (state.recoveryState is RecoveryState.Success) {
+            recoveryCode = ""
+        }
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
         Text(
@@ -1937,8 +1978,8 @@ private fun AccountRecoverySection(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         OutlinedTextField(
-            value = state.recoveryCodeDraft,
-            onValueChange = onCodeChange,
+            value = recoveryCode,
+            onValueChange = { recoveryCode = it },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             label = { Text(stringResource(R.string.settings_recovery_label)) },
@@ -1946,9 +1987,9 @@ private fun AccountRecoverySection(
         )
         LutealSecondaryButton(
             text = stringResource(R.string.settings_recovery_action),
-            onClick = onRecover,
+            onClick = { onRecover(recoveryCode) },
             modifier = Modifier.fillMaxWidth(),
-            enabled = state.recoveryCodeDraft.isNotBlank() &&
+            enabled = recoveryCode.isNotBlank() &&
                 state.recoveryState !is RecoveryState.Loading
         )
 
