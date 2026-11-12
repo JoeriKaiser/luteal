@@ -12,8 +12,7 @@ enum class ReportLanguage(val languageTag: String) {
     FRENCH("fr"),
     ENGLISH("en");
 
-    val locale: Locale
-        get() = Locale.forLanguageTag(languageTag)
+    val locale: Locale = Locale.forLanguageTag(languageTag)
 }
 
 enum class ReportDateRangePreset {

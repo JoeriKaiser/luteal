@@ -73,7 +73,8 @@ object ClinicalSymptomNames {
 
     fun getName(symptomId: String, language: ReportLanguage): String {
         val map = namesFor(language)
-        return map[symptomId] ?: symptomId.replace('_', ' ').replaceFirstChar { it.uppercase() }
+        return map[symptomId]
+            ?: symptomId.replace('_', ' ').replaceFirstChar { it.uppercase(language.locale) }
     }
 }
 

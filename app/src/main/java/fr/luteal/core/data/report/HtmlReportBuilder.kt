@@ -128,7 +128,7 @@ object HtmlReportBuilder {
                 appendLine("    <tbody>")
                 for (sym in data.symptomFrequencies) {
                     appendLine("      <tr>")
-                    appendLine("        <td><strong>${sym.symptomName}</strong></td>")
+                    appendLine("        <td><strong>${escapeHtml(sym.symptomName)}</strong></td>")
                     appendLine("        <td>${sym.totalOccurrences} $u</td>")
                     appendLine("        <td>${sym.menstrualOccurrences} $u</td>")
                     appendLine("        <td>${sym.nonMenstrualOccurrences} $u</td>")

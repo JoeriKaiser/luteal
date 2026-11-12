@@ -15,6 +15,7 @@ import fr.luteal.core.model.ReportLanguage
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -128,7 +129,9 @@ class ClinicalReportAggregatorTest {
         // HTML rendering
         val html = HtmlReportBuilder.buildHtml(data)
         assertTrue(html.contains("<html lang=\"fr\">"))
+        assertTrue(html.contains("Période d'observation\u00A0:"))
         assertTrue(html.contains("Synthèse des cycles"))
+        assertTrue(html.contains("28.0 j"))
         assertTrue(html.contains("Crampes utérines"))
         assertTrue(html.contains("Heavy pain"))
 
@@ -138,9 +141,71 @@ class ClinicalReportAggregatorTest {
         )
         val englishHtml = HtmlReportBuilder.buildHtml(englishData)
         assertTrue(englishHtml.contains("<html lang=\"en\">"))
+        assertTrue(englishHtml.contains("Observation period:"))
         assertTrue(englishHtml.contains("1. Cycle Overview"))
+        assertTrue(englishHtml.contains("28.0 d"))
         assertTrue(englishHtml.contains("Uterine cramps"))
         assertTrue(englishHtml.contains("Heavy pain"))
+    }
+
+    @Test
+    fun htmlEscapesUnknownSymptomIdsAndFormatsExclusionStatus() = runTest {
+        database.cycleDao().insertCycle(
+            CycleEntity(
+                id = "c1",
+                startDate = "2026-05-01",
+                endDate = "2026-05-28",
+                averageLengthDays = 28,
+                lutealPhaseLengthDays = 14,
+                periodDaysJson = "[]",
+                isExcludedFromEstimates = true,
+                exclusionReason = "ILLNESS"
+            )
+        )
+        database.cycleDao().insertCycle(
+            CycleEntity(
+                id = "c2",
+                startDate = "2026-05-29",
+                endDate = "2026-06-25",
+                averageLengthDays = 28,
+                lutealPhaseLengthDays = 14,
+                periodDaysJson = "[]",
+                isExcludedFromEstimates = true,
+                exclusionReason = null
+            )
+        )
+        database.dailyEntryDao().upsert(
+            DailyEntryEntity(
+                date = "2026-05-02",
+                bleedingIntensity = "LIGHT",
+                painLevel = 2,
+                moodLevel = 3,
+                energyLevel = 3,
+                symptomIdsJson = "[\"custom_<script>\"]",
+                notes = "",
+                updatedAtEpochMillis = 1000L
+            )
+        )
+
+        val frHtml = HtmlReportBuilder.buildHtml(
+            aggregator.aggregate(
+                ClinicalReportConfig(preset = ReportDateRangePreset.ALL_CYCLES, language = ReportLanguage.FRENCH),
+                now = LocalDate.of(2026, 7, 1)
+            )
+        )
+        assertTrue(frHtml.contains("<td>Exclu (ILLNESS)</td>"))
+        assertTrue(frHtml.contains("<td>Exclu</td>"))
+        assertTrue(frHtml.contains("Custom &lt;script&gt;"))
+        assertFalse(frHtml.contains("<script>"))
+
+        val enHtml = HtmlReportBuilder.buildHtml(
+            aggregator.aggregate(
+                ClinicalReportConfig(preset = ReportDateRangePreset.ALL_CYCLES, language = ReportLanguage.ENGLISH),
+                now = LocalDate.of(2026, 7, 1)
+            )
+        )
+        assertTrue(enHtml.contains("<td>Excluded (ILLNESS)</td>"))
+        assertTrue(enHtml.contains("<td>Excluded</td>"))
     }
 
     @Test

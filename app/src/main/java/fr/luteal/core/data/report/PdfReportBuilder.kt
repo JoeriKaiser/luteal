@@ -138,12 +138,12 @@ object PdfReportBuilder {
 
         val stats = data.cycleStats
         val metrics = listOf(
-            "${strings.totalCyclesLabel}: ${stats.totalCyclesCount}",
-            "${strings.meanLengthLabel}: ${stats.meanLengthDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}",
-            "${strings.medianLabel}: ${stats.medianLengthDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}",
-            "${strings.pdfStdDevLabel}: ${stats.sampleStdDevDays?.let { "± %.1f $u".format(Locale.US, it) } ?: "--"}",
-            "${strings.pdfRangeLabel}: ${stats.minLengthDays ?: "--"} - ${stats.maxLengthDays ?: "--"} $u",
-            "${strings.pdfBleedingDurationLabel}: ${stats.meanBleedingDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}"
+            "${strings.totalCyclesLabel}$colon${stats.totalCyclesCount}",
+            "${strings.meanLengthLabel}$colon${stats.meanLengthDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}",
+            "${strings.medianLabel}$colon${stats.medianLengthDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}",
+            "${strings.pdfStdDevLabel}$colon${stats.sampleStdDevDays?.let { "± %.1f $u".format(Locale.US, it) } ?: "--"}",
+            "${strings.pdfRangeLabel}$colon${stats.minLengthDays ?: "--"} - ${stats.maxLengthDays ?: "--"} $u",
+            "${strings.pdfBleedingDurationLabel}$colon${stats.meanBleedingDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}"
         )
         val colWidth = CONTENT_WIDTH / 3
         for (i in metrics.indices) {
@@ -164,10 +164,10 @@ object PdfReportBuilder {
         val b = data.bleedingDist
         val p = data.painDist
         val healthMetrics = listOf(
-            "${strings.pdfBleedingDaysLabel}: ${b.totalBleedingDays} $u (${strings.pdfSpottingLabel}: ${b.spottingDays}$u, ${strings.pdfHeavyLabel}: ${b.heavyDays}$u)",
-            "${strings.intermenstrualBleedingLabel}: ${b.intermenstrualBleedingDays} $u",
-            "${strings.pdfPainDaysLabel}: ${p.totalPainDays} $u (${strings.pdfDysmenorrheaLabel}: ${p.dysmenorrheaDays}$u, ${strings.pdfNonMenstrualLabel}: ${p.nonMenstrualPainDays}$u)",
-            "${strings.pdfSeverePainLabel}: ${p.severePainDays} $u | ${strings.pdfMeanScoreLabel}: ${p.meanPainScore?.let { "%.1f/5".format(Locale.US, it) } ?: "--"}"
+            "${strings.pdfBleedingDaysLabel}$colon${b.totalBleedingDays} $u (${strings.pdfSpottingLabel}$colon${b.spottingDays}$u, ${strings.pdfHeavyLabel}$colon${b.heavyDays}$u)",
+            "${strings.intermenstrualBleedingLabel}$colon${b.intermenstrualBleedingDays} $u",
+            "${strings.pdfPainDaysLabel}$colon${p.totalPainDays} $u (${strings.pdfDysmenorrheaLabel}$colon${p.dysmenorrheaDays}$u, ${strings.pdfNonMenstrualLabel}$colon${p.nonMenstrualPainDays}$u)",
+            "${strings.pdfSeverePainLabel}$colon${p.severePainDays} $u | ${strings.pdfMeanScoreLabel}$colon${p.meanPainScore?.let { "%.1f/5".format(Locale.US, it) } ?: "--"}"
         )
 
         for (metric in healthMetrics) {
@@ -206,7 +206,7 @@ object PdfReportBuilder {
             for (note in data.notes) {
                 ensureSpace(14f)
                 val truncatedNote = if (note.notes.length > 70) note.notes.take(67) + "…" else note.notes
-                canvas.drawText("${note.date} : $truncatedNote", MARGIN + 4f, y, textPaint)
+                canvas.drawText("${note.date}$colon$truncatedNote", MARGIN + 4f, y, textPaint)
                 y += 12f
             }
             y += 10f

@@ -2,6 +2,7 @@ package fr.luteal.core.data.report
 
 import fr.luteal.core.data.ClinicalSymptomNames
 import fr.luteal.core.model.ReportLanguage
+import fr.luteal.core.model.Symptom
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -14,13 +15,18 @@ class ReportStringsTest {
     @Test
     fun everyReportLanguageHasValidStringsAndDatePattern() {
         val sampleDate = LocalDate.of(2026, 8, 15)
+        val stringFields = ReportStrings::class.java.declaredFields
+            .filter { it.type == String::class.java }
+            .onEach { it.isAccessible = true }
+
+        assertTrue(stringFields.isNotEmpty())
 
         for (language in ReportLanguage.entries) {
             val strings = ReportStrings.forLanguage(language)
-            assertTrue(strings.title.isNotBlank())
-            assertTrue(strings.dayUnit.isNotBlank())
-            assertTrue(strings.htmlDisclaimer.isNotBlank())
-            assertTrue(strings.pdfDisclaimer.isNotBlank())
+            for (field in stringFields) {
+                val value = field.get(strings) as String
+                assertTrue("${language.name}.${field.name} must not be blank", value.isNotBlank())
+            }
 
             val formatted = sampleDate.format(DateTimeFormatter.ofPattern(strings.datePattern, language.locale))
             assertTrue(formatted.isNotBlank())
@@ -28,27 +34,11 @@ class ReportStringsTest {
     }
 
     @Test
-    fun everyReportLanguageTranslatesAllKnownSymptoms() {
-        val knownIds = listOf(
-            "cramps",
-            "headache",
-            "abdominal_pain",
-            "backache",
-            "muscle_aches",
-            "pelvic_pain_outside_period",
-            "mood_changes",
-            "anxiety",
-            "fatigue",
-            "sleep_issue",
-            "bloating",
-            "nausea",
-            "digestive_changes",
-            "acne",
-            "breast_tenderness"
-        )
+    fun everyReportLanguageTranslatesAllDefaultSymptoms() {
+        val defaultIds = Symptom.DEFAULT_SYMPTOMS.map { it.id }
 
         for (language in ReportLanguage.entries) {
-            for (id in knownIds) {
+            for (id in defaultIds) {
                 val translated = ClinicalSymptomNames.getName(id, language)
                 assertTrue(translated.isNotBlank())
                 assertNotEquals(id, translated)
