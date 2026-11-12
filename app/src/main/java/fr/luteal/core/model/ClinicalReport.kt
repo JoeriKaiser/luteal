@@ -1,15 +1,19 @@
 package fr.luteal.core.model
 
 import java.time.LocalDate
+import java.util.Locale
 
 enum class ReportFormat {
     PDF,
     HTML
 }
 
-enum class ReportLanguage {
-    FRENCH,
-    ENGLISH
+enum class ReportLanguage(val languageTag: String) {
+    FRENCH("fr"),
+    ENGLISH("en");
+
+    val locale: Locale
+        get() = Locale.forLanguageTag(languageTag)
 }
 
 enum class ReportDateRangePreset {
@@ -75,8 +79,7 @@ data class PainDistribution(
 
 data class SymptomFrequencyEntry(
     val symptomId: String,
-    val symptomNameFr: String,
-    val symptomNameEn: String,
+    val symptomName: String,
     val totalOccurrences: Int,
     val menstrualOccurrences: Int,
     val nonMenstrualOccurrences: Int

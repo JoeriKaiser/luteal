@@ -127,9 +127,20 @@ class ClinicalReportAggregatorTest {
 
         // HTML rendering
         val html = HtmlReportBuilder.buildHtml(data)
+        assertTrue(html.contains("<html lang=\"fr\">"))
         assertTrue(html.contains("Synthèse des cycles"))
         assertTrue(html.contains("Crampes utérines"))
         assertTrue(html.contains("Heavy pain"))
+
+        val englishData = aggregator.aggregate(
+            config.copy(language = ReportLanguage.ENGLISH),
+            now = LocalDate.of(2026, 8, 15)
+        )
+        val englishHtml = HtmlReportBuilder.buildHtml(englishData)
+        assertTrue(englishHtml.contains("<html lang=\"en\">"))
+        assertTrue(englishHtml.contains("1. Cycle Overview"))
+        assertTrue(englishHtml.contains("Uterine cramps"))
+        assertTrue(englishHtml.contains("Heavy pain"))
     }
 
     @Test

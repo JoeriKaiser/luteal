@@ -6,7 +6,6 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import fr.luteal.core.model.ClinicalReportData
-import fr.luteal.core.model.ReportLanguage
 import java.io.OutputStream
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -20,7 +19,8 @@ object PdfReportBuilder {
 
     fun writePdfToStream(data: ClinicalReportData, outputStream: OutputStream) {
         val document = PdfDocument()
-        val isFr = data.config.language == ReportLanguage.FRENCH
+        val language = data.config.language
+        val strings = ReportStrings.forLanguage(language)
 
         val titlePaint = Paint().apply {
             color = Color.parseColor("#235B4E")
@@ -67,13 +67,9 @@ object PdfReportBuilder {
             style = Paint.Style.FILL
         }
 
-        val title = if (isFr) "Récapitulatif de consultation médicale" else "Clinical Consultation Summary Report"
+        val title = strings.title
         val footerY = PAGE_HEIGHT - MARGIN - 15f
-        val disclaimerText = if (isFr) {
-            "Document purement descriptif établi à partir des observations saisies par la personne. Ne constitue pas un diagnostic médical."
-        } else {
-            "Descriptive document generated from user observations. Does not constitute a clinical diagnosis or interpretation."
-        }
+        val disclaimerText = strings.pdfDisclaimer
 
         var pageNumber = 1
         var page = document.startPage(PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNumber).create())
@@ -89,10 +85,10 @@ object PdfReportBuilder {
 
         fun drawTableHeader(c: Canvas, atY: Float) {
             c.drawRect(MARGIN, atY - 10f, MARGIN + CONTENT_WIDTH, atY + 4f, boxPaint)
-            c.drawText(if (isFr) "Symptôme" else "Symptom", MARGIN + 6f, atY, boldPaint)
-            c.drawText(if (isFr) "Total" else "Total", MARGIN + 220f, atY, boldPaint)
-            c.drawText(if (isFr) "Règles" else "Menses", MARGIN + 310f, atY, boldPaint)
-            c.drawText(if (isFr) "Hors règles" else "Non-menses", MARGIN + 400f, atY, boldPaint)
+            c.drawText(strings.colSymptom, MARGIN + 6f, atY, boldPaint)
+            c.drawText(strings.pdfColTotal, MARGIN + 220f, atY, boldPaint)
+            c.drawText(strings.pdfColMenses, MARGIN + 310f, atY, boldPaint)
+            c.drawText(strings.pdfColNonMenses, MARGIN + 400f, atY, boldPaint)
         }
 
         fun newPage(isTableContinuation: Boolean = false) {
@@ -126,14 +122,10 @@ object PdfReportBuilder {
         canvas.drawText(title, MARGIN, y, titlePaint)
         y += 14f
 
-        val dateFormatter = if (isFr) {
-            DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.FRENCH)
-        } else {
-            DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH)
-        }
-        val u = if (isFr) "j" else "d"
-        val colon = if (isFr) "\u00A0: " else ": "
-        val periodText = "${if (isFr) "Période" else "Period"}$colon${data.dateRangeStart.format(dateFormatter)} - ${data.dateRangeEnd.format(dateFormatter)}  |  ${if (isFr) "Émis le" else "Issued on"}$colon${data.generatedAt.format(dateFormatter)}"
+        val dateFormatter = DateTimeFormatter.ofPattern(strings.datePattern, language.locale)
+        val u = strings.dayUnit
+        val colon = "${strings.colonSeparator} "
+        val periodText = "${strings.pdfPeriodLabel}$colon${data.dateRangeStart.format(dateFormatter)} - ${data.dateRangeEnd.format(dateFormatter)}  |  ${strings.pdfIssuedLabel}$colon${data.generatedAt.format(dateFormatter)}"
         canvas.drawText(periodText, MARGIN, y, secondaryPaint)
         y += 12f
         canvas.drawLine(MARGIN, y, MARGIN + CONTENT_WIDTH, y, linePaint)
@@ -141,17 +133,17 @@ object PdfReportBuilder {
 
         // Section 1: Cycle Statistics
         ensureSpace(60f)
-        canvas.drawText(if (isFr) "1. Synthèse des cycles" else "1. Cycle Overview", MARGIN, y, headerPaint)
+        canvas.drawText(strings.cycleSectionHeading, MARGIN, y, headerPaint)
         y += 14f
 
         val stats = data.cycleStats
         val metrics = listOf(
-            "${if (isFr) "Total cycles" else "Total cycles"}: ${stats.totalCyclesCount}",
-            "${if (isFr) "Durée moyenne" else "Mean length"}: ${stats.meanLengthDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}",
-            "${if (isFr) "Médiane" else "Median"}: ${stats.medianLengthDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}",
-            "${if (isFr) "Écart-type" else "Std Dev"}: ${stats.sampleStdDevDays?.let { "± %.1f $u".format(Locale.US, it) } ?: "--"}",
-            "${if (isFr) "Étendue" else "Range"}: ${stats.minLengthDays ?: "--"} - ${stats.maxLengthDays ?: "--"} $u",
-            "${if (isFr) "Durée règles" else "Bleeding duration"}: ${stats.meanBleedingDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}"
+            "${strings.totalCyclesLabel}: ${stats.totalCyclesCount}",
+            "${strings.meanLengthLabel}: ${stats.meanLengthDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}",
+            "${strings.medianLabel}: ${stats.medianLengthDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}",
+            "${strings.pdfStdDevLabel}: ${stats.sampleStdDevDays?.let { "± %.1f $u".format(Locale.US, it) } ?: "--"}",
+            "${strings.pdfRangeLabel}: ${stats.minLengthDays ?: "--"} - ${stats.maxLengthDays ?: "--"} $u",
+            "${strings.pdfBleedingDurationLabel}: ${stats.meanBleedingDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}"
         )
         val colWidth = CONTENT_WIDTH / 3
         for (i in metrics.indices) {
@@ -166,20 +158,16 @@ object PdfReportBuilder {
 
         // Section 2: Bleeding & Pain summary
         ensureSpace(80f)
-        canvas.drawText(if (isFr) "2. Saignements et Douleurs" else "2. Bleeding & Pain Dynamics", MARGIN, y, headerPaint)
+        canvas.drawText(strings.pdfBleedingPainSectionHeading, MARGIN, y, headerPaint)
         y += 14f
 
         val b = data.bleedingDist
         val p = data.painDist
-        val spottingLabel = if (isFr) "Spotting" else "Spotting"
-        val heavyLabel = if (isFr) "Abondant" else "Heavy"
-        val dysmenorrheaLabel = if (isFr) "Dysménorrhée" else "Dysmenorrhea"
-        val nonMenstrualLabel = if (isFr) "Hors règles" else "Non-menstrual"
         val healthMetrics = listOf(
-            "${if (isFr) "Jours de saignements" else "Bleeding days"}: ${b.totalBleedingDays} $u ($spottingLabel: ${b.spottingDays}$u, $heavyLabel: ${b.heavyDays}$u)",
-            "${if (isFr) "Saignements intermenstruels" else "Intermenstrual bleeding"}: ${b.intermenstrualBleedingDays} $u",
-            "${if (isFr) "Jours de douleur" else "Pain days"}: ${p.totalPainDays} $u ($dysmenorrheaLabel: ${p.dysmenorrheaDays}$u, $nonMenstrualLabel: ${p.nonMenstrualPainDays}$u)",
-            "${if (isFr) "Douleurs sévères (≥4/5)" else "Severe pain (≥4/5)"}: ${p.severePainDays} $u | ${if (isFr) "Score moyen" else "Mean score"}: ${p.meanPainScore?.let { "%.1f/5".format(Locale.US, it) } ?: "--"}"
+            "${strings.pdfBleedingDaysLabel}: ${b.totalBleedingDays} $u (${strings.pdfSpottingLabel}: ${b.spottingDays}$u, ${strings.pdfHeavyLabel}: ${b.heavyDays}$u)",
+            "${strings.intermenstrualBleedingLabel}: ${b.intermenstrualBleedingDays} $u",
+            "${strings.pdfPainDaysLabel}: ${p.totalPainDays} $u (${strings.pdfDysmenorrheaLabel}: ${p.dysmenorrheaDays}$u, ${strings.pdfNonMenstrualLabel}: ${p.nonMenstrualPainDays}$u)",
+            "${strings.pdfSeverePainLabel}: ${p.severePainDays} $u | ${strings.pdfMeanScoreLabel}: ${p.meanPainScore?.let { "%.1f/5".format(Locale.US, it) } ?: "--"}"
         )
 
         for (metric in healthMetrics) {
@@ -192,7 +180,7 @@ object PdfReportBuilder {
         // Section 3: Symptom Frequency Matrix
         if (data.symptomFrequencies.isNotEmpty()) {
             ensureSpace(40f)
-            canvas.drawText(if (isFr) "3. Fréquence des symptômes" else "3. Symptom Frequencies", MARGIN, y, headerPaint)
+            canvas.drawText(strings.pdfSymptomSectionHeading, MARGIN, y, headerPaint)
             y += 14f
 
             drawTableHeader(canvas, y)
@@ -200,8 +188,7 @@ object PdfReportBuilder {
 
             for (sym in data.symptomFrequencies) {
                 ensureSpace(14f, isTableContinuation = true)
-                val name = if (isFr) sym.symptomNameFr else sym.symptomNameEn
-                canvas.drawText(name, MARGIN + 6f, y, textPaint)
+                canvas.drawText(sym.symptomName, MARGIN + 6f, y, textPaint)
                 canvas.drawText("${sym.totalOccurrences} $u", MARGIN + 220f, y, textPaint)
                 canvas.drawText("${sym.menstrualOccurrences} $u", MARGIN + 310f, y, textPaint)
                 canvas.drawText("${sym.nonMenstrualOccurrences} $u", MARGIN + 400f, y, textPaint)
@@ -213,7 +200,7 @@ object PdfReportBuilder {
         // Section 4: Notes (if included)
         if (data.notes.isNotEmpty()) {
             ensureSpace(30f)
-            canvas.drawText(if (isFr) "4. Notes et observations" else "4. Notes & Observations", MARGIN, y, headerPaint)
+            canvas.drawText(strings.pdfNotesSectionHeading, MARGIN, y, headerPaint)
             y += 14f
 
             for (note in data.notes) {

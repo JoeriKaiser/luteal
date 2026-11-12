@@ -66,8 +66,13 @@ object ClinicalSymptomNames {
         "breast_tenderness" to "Breast tenderness"
     )
 
+    private fun namesFor(language: ReportLanguage): Map<String, String> = when (language) {
+        ReportLanguage.FRENCH -> namesFr
+        ReportLanguage.ENGLISH -> namesEn
+    }
+
     fun getName(symptomId: String, language: ReportLanguage): String {
-        val map = if (language == ReportLanguage.FRENCH) namesFr else namesEn
+        val map = namesFor(language)
         return map[symptomId] ?: symptomId.replace('_', ' ').replaceFirstChar { it.uppercase() }
     }
 }
@@ -370,8 +375,7 @@ class ClinicalReportAggregator @Inject constructor(
             val symptomFrequencies = symptomMap.map { (id, counts) ->
                 SymptomFrequencyEntry(
                     symptomId = id,
-                    symptomNameFr = ClinicalSymptomNames.getName(id, ReportLanguage.FRENCH),
-                    symptomNameEn = ClinicalSymptomNames.getName(id, ReportLanguage.ENGLISH),
+                    symptomName = ClinicalSymptomNames.getName(id, config.language),
                     totalOccurrences = counts.first,
                     menstrualOccurrences = counts.second,
                     nonMenstrualOccurrences = counts.third
