@@ -1,0 +1,1 @@
+Seguimiento del ciclo privado y sin conexión que separa datos y estimaciones

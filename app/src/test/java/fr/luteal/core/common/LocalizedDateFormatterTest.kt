@@ -20,6 +20,11 @@ class LocalizedDateFormatterTest {
     }
 
     @Test
+    fun formatsFullDateInSpanish() {
+        assertEquals("Sábado, 15 de agosto de 2026", LocalizedDateFormatter.formatFullDate(date, Locale.forLanguageTag("es")))
+    }
+
+    @Test
     fun formatsShortDatePerLocale() {
         assertEquals("15 août", LocalizedDateFormatter.formatShortDate(date, Locale.FRENCH))
         assertEquals("15 Aug", LocalizedDateFormatter.formatShortDate(date, Locale.ENGLISH))
@@ -29,6 +34,7 @@ class LocalizedDateFormatterTest {
     fun formatsMonthYearPerLocale() {
         assertEquals("Août 2026", LocalizedDateFormatter.formatMonthYear(date, Locale.FRENCH))
         assertEquals("August 2026", LocalizedDateFormatter.formatMonthYear(date, Locale.ENGLISH))
+        assertEquals("Agosto de 2026", LocalizedDateFormatter.formatMonthYear(date, Locale.forLanguageTag("es")))
     }
 
     @Test

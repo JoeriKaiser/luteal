@@ -1,0 +1,12 @@
+Luteal es una app privada y sin conexión para seguir el ciclo menstrual que distingue con claridad los datos registrados de las estimaciones calculadas.
+
+Funciones principales:
+- Sin conexión por defecto: tus datos se guardan en una base de datos local en tu dispositivo, sin necesidad de cuenta.
+- Seguimiento honesto: separa las observaciones registradas de los intervalos estimados con estadística. Sin afirmaciones médicas ni diagnósticos automáticos.
+- Registro completo de observaciones: anota la intensidad del sangrado, el dolor, el ánimo, la energía, los síntomas físicos y notas privadas.
+- Seguimiento de biomarcadores: registra la temperatura basal (°C y °F) con factores que la alteran y cálculo del cambio térmico.
+- Historial e informes: calendario interactivo, análisis de la variabilidad de los ciclos y exportación de un resumen para la consulta médica (PDF/HTML).
+- Privacidad y seguridad: bloqueo de la app con PIN o biometría y ocultación de la pantalla.
+- Duo: comparte con tu pareja solo lo que elijas, con peticiones de apoyo cifradas de extremo a extremo y consejos según el momento del ciclo.
+- Sincronización opcional: sincronización cifrada de extremo a extremo con servidores propios o comunitarios.
+- Sin anuncios, analítica ni rastreadores: software 100 % libre y de código abierto (GPLv3).

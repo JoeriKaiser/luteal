@@ -34,48 +34,60 @@ def parse_resources(path: Path) -> tuple[set[str], dict[str, list[str]]]:
     return names, signatures
 
 
-def main() -> int:
-    root = Path(__file__).resolve().parent.parent
-    en_file = root / "app" / "src" / "main" / "res" / "values" / "strings.xml"
-    fr_file = root / "app" / "src" / "main" / "res" / "values-fr" / "strings.xml"
+TRANSLATED_LOCALES = ("fr", "es")
 
-    en_names, en_sigs = parse_resources(en_file)
-    fr_names, fr_sigs = parse_resources(fr_file)
 
-    missing_in_fr = sorted(en_names - fr_names)
-    missing_in_en = sorted(fr_names - en_names)
+def check_locale(en_names: set[str], en_sigs: dict[str, list[str]], locale: str, path: Path) -> int:
+    folder = f"values-{locale}/"
+    names, sigs = parse_resources(path)
+
+    missing = sorted(en_names - names)
+    extra = sorted(names - en_names)
 
     sig_mismatches = []
     for name, expected in en_sigs.items():
-        actual = fr_sigs.get(name, [])
+        actual = sigs.get(name, [])
         if expected != actual:
-            sig_mismatches.append(f"  {name}: values/ has {expected}, but values-fr/ has {actual}")
+            sig_mismatches.append(f"  {name}: values/ has {expected}, but {folder} has {actual}")
 
-    for name, actual in fr_sigs.items():
+    for name, actual in sigs.items():
         if name not in en_sigs:
-            sig_mismatches.append(f"  {name}: values-fr/ has unexpected format specifiers {actual}")
+            sig_mismatches.append(f"  {name}: {folder} has unexpected format specifiers {actual}")
 
     errors = 0
-    if missing_in_fr:
-        errors += len(missing_in_fr)
-        print(f"Missing in values-fr/strings.xml ({len(missing_in_fr)}):", file=sys.stderr)
-        for name in missing_in_fr:
+    if missing:
+        errors += len(missing)
+        print(f"Missing in {folder}strings.xml ({len(missing)}):", file=sys.stderr)
+        for name in missing:
             print(f"  {name}", file=sys.stderr)
 
-    if missing_in_en:
-        errors += len(missing_in_en)
-        print(f"Missing in values/strings.xml ({len(missing_in_en)}):", file=sys.stderr)
-        for name in missing_in_en:
+    if extra:
+        errors += len(extra)
+        print(f"Missing in values/strings.xml, present in {folder} ({len(extra)}):", file=sys.stderr)
+        for name in extra:
             print(f"  {name}", file=sys.stderr)
 
     if sig_mismatches:
         errors += len(sig_mismatches)
-        print(f"Format specifier mismatches ({len(sig_mismatches)}):", file=sys.stderr)
+        print(f"Format specifier mismatches in {folder} ({len(sig_mismatches)}):", file=sys.stderr)
         for mismatch in sig_mismatches:
             print(mismatch, file=sys.stderr)
 
+    return errors
+
+
+def main() -> int:
+    root = Path(__file__).resolve().parent.parent
+    res = root / "app" / "src" / "main" / "res"
+    en_names, en_sigs = parse_resources(res / "values" / "strings.xml")
+
+    errors = 0
+    for locale in TRANSLATED_LOCALES:
+        errors += check_locale(en_names, en_sigs, locale, res / f"values-{locale}" / "strings.xml")
+
     if errors == 0:
-        print(f"OK: {len(en_names)} string resources in full parity across values/ and values-fr/.")
+        locales = ", ".join(f"values-{locale}/" for locale in TRANSLATED_LOCALES)
+        print(f"OK: {len(en_names)} string resources in full parity across values/ and {locales}.")
         return 0
 
     return 1
