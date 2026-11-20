@@ -120,6 +120,11 @@ fun ClinicalReportDialog(
                         onClick = { selectedLanguage = ReportLanguage.ENGLISH },
                         label = { Text(stringResource(R.string.report_language_en)) }
                     )
+                    FilterChip(
+                        selected = selectedLanguage == ReportLanguage.SPANISH,
+                        onClick = { selectedLanguage = ReportLanguage.SPANISH },
+                        label = { Text(stringResource(R.string.report_language_es)) }
+                    )
                 }
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

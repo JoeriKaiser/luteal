@@ -606,6 +606,7 @@
     <string name="report_language_label">Langue du rapport</string>
     <string name="report_language_fr">Français</string>
     <string name="report_language_en">English</string>
+    <string name="report_language_es">Español</string>
     <string name="report_include_notes_title">Inclure mes notes privées</string>
     <string name="report_include_notes_desc">Ajoute vos notes textuelles et détails de traitements.</string>
     <string name="report_export_action">Générer et exporter</string>

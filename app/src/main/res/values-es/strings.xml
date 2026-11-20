@@ -612,6 +612,7 @@
     <string name="report_language_label">Idioma del informe</string>
     <string name="report_language_fr">Français</string>
     <string name="report_language_en">English</string>
+    <string name="report_language_es">Español</string>
     <string name="report_include_notes_title">Incluir notas privadas</string>
     <string name="report_include_notes_desc">Añade tus notas escritas y los detalles de tratamientos.</string>
     <string name="report_export_action">Generar y exportar</string>
