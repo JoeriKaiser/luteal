@@ -856,4 +856,26 @@
     <string name="today_pill_action_undo_taken">Annuler la prise du jour</string>
     <string name="today_pill_pause_support">Aucune prise active prévue aujourd’hui. Prochaine plaquette dans %1$d j.</string>
     <string name="phase_reason_hormonal_contraception">Les estimations de phase ovulatoire et lutéale sont désactivées pendant le suivi de pilule.</string>
+    <string name="calendar_legend_pill_taken">Pilule prise (enregistrée)</string>
+    <string name="calendar_legend_pill_scheduled">Pilule prévue (jour actif)</string>
+    <string name="calendar_legend_pill_pause">Jour de pause de plaquette</string>
+    <string name="inspection_pill_taken_badge">Pilule prise</string>
+    <string name="inspection_pill_scheduled_badge">Pilule prévue</string>
+    <string name="inspection_pill_pause_badge">Pause plaquette</string>
+    <string name="inspection_pill_action_mark_taken">Marquer la pilule comme prise</string>
+    <string name="inspection_pill_action_undo_taken">Annuler la prise de pilule</string>
+    <string name="duo_share_pill_status">Suivi de plaquette</string>
+    <string name="duo_share_pill_status_desc">Partager les jours actifs ou de pause et si la pilule du jour a été prise.</string>
+    <string name="duo_view_pill_taken">Plaquette&#160;: Jour %1$d sur %2$d (prise enregistrée)</string>
+    <string name="duo_view_pill_pending">Plaquette&#160;: Jour %1$d sur %2$d (prise prévue aujourd’hui)</string>
+    <string name="duo_view_pill_pause">Plaquette&#160;: Jour %1$d sur %2$d (pause)</string>
+    <string name="duo_partner_pill_card_title">Suivi de plaquette partagé</string>
+    <string name="duo_partner_pill_reminder_toggle_title">Me rappeler si la prise n’est pas validée</string>
+    <string name="duo_partner_pill_reminder_toggle_desc">Recevoir un rappel les jours actifs si la pilule n’est toujours pas marquée comme prise après l’heure prévue.</string>
+    <string name="duo_partner_pill_taken_alert_toggle_title">M’alerter quand la pilule est prise</string>
+    <string name="duo_partner_pill_taken_alert_toggle_desc">Recevoir une notification lorsqu’une synchronisation Duo confirme la prise du jour.</string>
+    <string name="notif_duo_partner_pill_pending_title">Rappel Duo de pilule</string>
+    <string name="notif_duo_partner_pill_pending_body">La pilule du jour n’a pas encore été marquée comme prise par votre partenaire.</string>
+    <string name="notif_duo_partner_pill_taken_title">Pilule marquée comme prise</string>
+    <string name="notif_duo_partner_pill_taken_body">Votre partenaire a marqué la pilule du jour comme prise.</string>
 </resources>

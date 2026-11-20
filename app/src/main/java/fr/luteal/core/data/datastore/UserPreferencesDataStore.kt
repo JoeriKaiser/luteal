@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import fr.luteal.core.model.ContextGroup
@@ -66,7 +67,12 @@ data class UserPreferences(
     val pillPauseDays: Int = 7,
     val pillStartDate: String? = null,
     val pillReminderTime: String = "20:00",
-    val pillLastTakenDate: String? = null
+    val pillLastTakenDate: String? = null,
+    val pillTakenDates: Set<String> = emptySet(),
+    val isDuoPartnerPillReminderEnabled: Boolean = false,
+    val isDuoPartnerPillTakenAlertEnabled: Boolean = false,
+    val duoPartnerSharedPillJson: String? = null,
+    val duoPartnerNotifiedTakenDate: String? = null
 ) {
     /** Contexts the user declared during onboarding. */
     val declaredContexts: Set<TrackingContext>
@@ -90,14 +96,26 @@ data class UserPreferences(
         get() = declaredContexts.any { it.group == ContextGroup.TIMING }
 
     val pillRegimenConfig: PillRegimenConfig
-        get() = PillRegimenConfig(
-            isEnabled = isPillRegimenEnabled,
-            activeDays = pillActiveDays,
-            pauseDays = pillPauseDays,
-            startDate = pillStartDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
-            reminderTime = pillReminderTime,
-            lastTakenDate = pillLastTakenDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-        )
+        get() {
+            val parsedLastTaken = pillLastTakenDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            val parsedTakenSet = buildSet {
+                pillTakenDates.forEach { raw ->
+                    runCatching { LocalDate.parse(raw) }.getOrNull()?.let { add(it) }
+                }
+                if (parsedLastTaken != null) {
+                    add(parsedLastTaken)
+                }
+            }
+            return PillRegimenConfig(
+                isEnabled = isPillRegimenEnabled,
+                activeDays = pillActiveDays,
+                pauseDays = pillPauseDays,
+                startDate = pillStartDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
+                reminderTime = pillReminderTime,
+                lastTakenDate = parsedLastTaken ?: parsedTakenSet.maxOrNull(),
+                takenDates = parsedTakenSet
+            )
+        }
 }
 
 @Singleton
@@ -122,6 +140,11 @@ class UserPreferencesDataStore @Inject constructor(
         val SHARE_MOOD = booleanPreferencesKey("share_mood")
         val SHARE_ENERGY = booleanPreferencesKey("share_energy")
         val SHARE_SUPPORT_REQUESTS = booleanPreferencesKey("share_support_requests")
+        val SHARE_PILL_STATUS = booleanPreferencesKey("share_pill_status")
+        val DUO_PARTNER_PILL_REMINDER_ENABLED = booleanPreferencesKey("duo_partner_pill_reminder_enabled")
+        val DUO_PARTNER_PILL_TAKEN_ALERT_ENABLED = booleanPreferencesKey("duo_partner_pill_taken_alert_enabled")
+        val DUO_PARTNER_SHARED_PILL_JSON = stringPreferencesKey("duo_partner_shared_pill_json")
+        val DUO_PARTNER_NOTIFIED_TAKEN_DATE = stringPreferencesKey("duo_partner_notified_taken_date")
         val IS_APP_LOCK_ENABLED = booleanPreferencesKey("is_app_lock_enabled")
         val IS_BIOMETRIC_ENABLED = booleanPreferencesKey("is_biometric_enabled")
         val AUTO_LOCK_TIMEOUT = stringPreferencesKey("auto_lock_timeout")
@@ -146,6 +169,7 @@ class UserPreferencesDataStore @Inject constructor(
         val PILL_START_DATE = stringPreferencesKey("pill_start_date")
         val PILL_REMINDER_TIME = stringPreferencesKey("pill_reminder_time")
         val PILL_LAST_TAKEN_DATE = stringPreferencesKey("pill_last_taken_date")
+        val PILL_TAKEN_DATES = stringSetPreferencesKey("pill_taken_dates")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -175,7 +199,8 @@ class UserPreferencesDataStore @Inject constructor(
                     sharePeriodEstimate = preferences[SHARE_PERIOD_ESTIMATE] ?: false,
                     shareMood = preferences[SHARE_MOOD] ?: false,
                     shareEnergy = preferences[SHARE_ENERGY] ?: false,
-                    shareSupportRequests = preferences[SHARE_SUPPORT_REQUESTS] ?: false
+                    shareSupportRequests = preferences[SHARE_SUPPORT_REQUESTS] ?: false,
+                    sharePillStatus = preferences[SHARE_PILL_STATUS] ?: false
                 ),
                 isAppLockEnabled = preferences[IS_APP_LOCK_ENABLED] ?: false,
                 isBiometricEnabled = preferences[IS_BIOMETRIC_ENABLED] ?: false,
@@ -200,7 +225,12 @@ class UserPreferencesDataStore @Inject constructor(
                 pillPauseDays = preferences[PILL_PAUSE_DAYS] ?: 7,
                 pillStartDate = preferences[PILL_START_DATE],
                 pillReminderTime = preferences[PILL_REMINDER_TIME] ?: "20:00",
-                pillLastTakenDate = preferences[PILL_LAST_TAKEN_DATE]
+                pillLastTakenDate = preferences[PILL_LAST_TAKEN_DATE],
+                pillTakenDates = preferences[PILL_TAKEN_DATES] ?: emptySet(),
+                isDuoPartnerPillReminderEnabled = preferences[DUO_PARTNER_PILL_REMINDER_ENABLED] ?: false,
+                isDuoPartnerPillTakenAlertEnabled = preferences[DUO_PARTNER_PILL_TAKEN_ALERT_ENABLED] ?: false,
+                duoPartnerSharedPillJson = preferences[DUO_PARTNER_SHARED_PILL_JSON],
+                duoPartnerNotifiedTakenDate = preferences[DUO_PARTNER_NOTIFIED_TAKEN_DATE]
             )
         }
 
@@ -277,8 +307,51 @@ class UserPreferencesDataStore @Inject constructor(
     }
     suspend fun setPillReminderTime(time: String) = edit { it[PILL_REMINDER_TIME] = time }
     suspend fun setPillLastTakenDate(date: String?) = edit { preferences ->
-        if (date == null) preferences.remove(PILL_LAST_TAKEN_DATE)
-        else preferences[PILL_LAST_TAKEN_DATE] = date
+        if (date == null) {
+            val prev = preferences[PILL_LAST_TAKEN_DATE]
+            preferences.remove(PILL_LAST_TAKEN_DATE)
+            if (prev != null) {
+                val updated = (preferences[PILL_TAKEN_DATES] ?: emptySet()) - prev
+                preferences[PILL_TAKEN_DATES] = updated
+                val latest = updated.maxOrNull()
+                if (latest != null) preferences[PILL_LAST_TAKEN_DATE] = latest
+            }
+        } else {
+            preferences[PILL_LAST_TAKEN_DATE] = date
+            val current = preferences[PILL_TAKEN_DATES] ?: emptySet()
+            preferences[PILL_TAKEN_DATES] = current + date
+        }
+    }
+    suspend fun setPillTakenOnDate(date: String, taken: Boolean) = edit { preferences ->
+        val existingSet = buildSet {
+            (preferences[PILL_TAKEN_DATES] ?: emptySet()).forEach { add(it) }
+            preferences[PILL_LAST_TAKEN_DATE]?.let { add(it) }
+        }
+        val updated = if (taken) existingSet + date else existingSet - date
+        preferences[PILL_TAKEN_DATES] = updated
+        val latest = updated.maxOrNull()
+        if (latest == null) preferences.remove(PILL_LAST_TAKEN_DATE)
+        else preferences[PILL_LAST_TAKEN_DATE] = latest
+    }
+    suspend fun setPillTakenDates(dates: Set<String>) = edit { preferences ->
+        preferences[PILL_TAKEN_DATES] = dates
+        val latest = dates.maxOrNull()
+        if (latest == null) preferences.remove(PILL_LAST_TAKEN_DATE)
+        else preferences[PILL_LAST_TAKEN_DATE] = latest
+    }
+    suspend fun setDuoPartnerPillReminderEnabled(enabled: Boolean) = edit {
+        it[DUO_PARTNER_PILL_REMINDER_ENABLED] = enabled
+    }
+    suspend fun setDuoPartnerPillTakenAlertEnabled(enabled: Boolean) = edit {
+        it[DUO_PARTNER_PILL_TAKEN_ALERT_ENABLED] = enabled
+    }
+    suspend fun setDuoPartnerSharedPillJson(json: String?) = edit { preferences ->
+        if (json == null) preferences.remove(DUO_PARTNER_SHARED_PILL_JSON)
+        else preferences[DUO_PARTNER_SHARED_PILL_JSON] = json
+    }
+    suspend fun setDuoPartnerNotifiedTakenDate(date: String?) = edit { preferences ->
+        if (date == null) preferences.remove(DUO_PARTNER_NOTIFIED_TAKEN_DATE)
+        else preferences[DUO_PARTNER_NOTIFIED_TAKEN_DATE] = date
     }
     suspend fun clear() = edit { it.clear() }
 
@@ -292,5 +365,6 @@ class UserPreferencesDataStore @Inject constructor(
         DuoSharingField.MOOD -> SHARE_MOOD
         DuoSharingField.ENERGY -> SHARE_ENERGY
         DuoSharingField.SUPPORT_REQUESTS -> SHARE_SUPPORT_REQUESTS
+        DuoSharingField.PILL_STATUS -> SHARE_PILL_STATUS
     }
 }

@@ -108,6 +108,7 @@ import fr.luteal.core.model.CervicalMucusSensation
 import fr.luteal.core.model.CervicalMucusTexture
 import fr.luteal.core.model.LhTestResult
 import fr.luteal.core.model.PhaseCertainty
+import fr.luteal.core.model.PillDayStatus
 import fr.luteal.core.model.BleedingIntensity
 import fr.luteal.core.model.DailyEntry
 import fr.luteal.core.model.TemperatureUnit
@@ -139,6 +140,7 @@ fun JournalScreen(
     onToggleCycleExclusion: (cycleId: String, isExcluded: Boolean, reason: CycleExclusionReason?) -> Unit = { _, _, _ -> },
     onExportClinicalReport: (Context, android.net.Uri, ClinicalReportConfig) -> Unit = { _, _, _ -> },
     onStartPeriod: () -> Unit = {},
+    onTogglePillTakenOnDate: (LocalDate, Boolean) -> Unit = { _, _ -> },
     initialViewMode: JournalViewMode = JournalViewMode.CALENDAR
 ) {
     val context = LocalContext.current
@@ -206,7 +208,9 @@ fun JournalScreen(
         state.entries.associateBy(DailyEntry::date)
     }
 
-    val calendarProjection = remember(currentMonth, state.today, state.cycles, state.entries, state.biomarkers, state.estimateResult, locale) {
+    val pillConfig = remember(state.preferences) { state.preferences.pillRegimenConfig }
+
+    val calendarProjection = remember(currentMonth, state.today, state.cycles, state.entries, state.biomarkers, state.estimateResult, locale, pillConfig) {
         MonthCalendarProjectionCalculator.project(
             targetMonth = currentMonth,
             today = state.today,
@@ -214,7 +218,8 @@ fun JournalScreen(
             entries = state.entries,
             estimateResult = state.estimateResult,
             biomarkers = state.biomarkers,
-            firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek
+            firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek,
+            pillRegimenConfig = pillConfig
         )
     }
     val biomarkersByDate = remember(state.biomarkers) {
@@ -224,7 +229,7 @@ fun JournalScreen(
         TemperatureUnit.entries.firstOrNull { it.name == state.preferences.temperatureUnit } ?: TemperatureUnit.CELSIUS
     }
     val selectedMonth = remember(selectedDate) { YearMonth.from(selectedDate) }
-    val selectedDayProjection = remember(selectedDate, selectedMonth, currentMonth, calendarProjection, state.cycles, state.entries, state.biomarkers, state.estimateResult, locale) {
+    val selectedDayProjection = remember(selectedDate, selectedMonth, currentMonth, calendarProjection, state.cycles, state.entries, state.biomarkers, state.estimateResult, locale, pillConfig) {
         if (selectedMonth == currentMonth) {
             calendarProjection.weeks.flatten().firstOrNull { it.date == selectedDate }
         } else {
@@ -235,7 +240,8 @@ fun JournalScreen(
                 entries = state.entries,
                 estimateResult = state.estimateResult,
                 biomarkers = state.biomarkers,
-                firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek
+                firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek,
+                pillRegimenConfig = pillConfig
             ).weeks.flatten().firstOrNull { it.date == selectedDate }
         }
     }
@@ -427,7 +433,7 @@ fun JournalScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) { page ->
                     val pageMonth = baseMonth.plusMonths((page - 1200).toLong())
-                    val pageProjection = remember(pageMonth, state.today, state.cycles, state.entries, state.biomarkers, state.estimateResult, locale) {
+                    val pageProjection = remember(pageMonth, state.today, state.cycles, state.entries, state.biomarkers, state.estimateResult, locale, pillConfig) {
                         MonthCalendarProjectionCalculator.project(
                             targetMonth = pageMonth,
                             today = state.today,
@@ -435,7 +441,8 @@ fun JournalScreen(
                             entries = state.entries,
                             estimateResult = state.estimateResult,
                             biomarkers = state.biomarkers,
-                            firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek
+                            firstDayOfWeek = WeekFields.of(locale).firstDayOfWeek,
+                            pillRegimenConfig = pillConfig
                         )
                     }
                     MonthCalendarGrid(
@@ -456,7 +463,7 @@ fun JournalScreen(
             }
 
             item {
-                CalendarLegendCard()
+                CalendarLegendCard(showPillLegend = calendarProjection.isPillRegimenEnabled)
             }
 
             val cycleStart = state.cycles.firstOrNull { it.startDate == selectedDate }
@@ -470,12 +477,15 @@ fun JournalScreen(
                     cycleDayNumber = selectedDayProjection?.cycleDayNumber,
                     phase = selectedDayProjection?.cyclePhase,
                     phaseCertainty = selectedDayProjection?.phaseCertainty,
+                    pillStatus = selectedDayProjection?.pillStatus ?: PillDayStatus.Disabled,
                     isToday = selectedDate == state.today,
+                    isFuture = selectedDate.isAfter(state.today),
                     cycleStart = cycleStart,
                     temperatureUnit = temperatureUnit,
                     onEditCycle = { cycleToEdit = it },
                     onDeleteCycle = { cycleToDelete = it },
-                    onEditOrAdd = { onSelectDate(selectedDate) }
+                    onEditOrAdd = { onSelectDate(selectedDate) },
+                    onTogglePillTaken = { taken -> onTogglePillTakenOnDate(selectedDate, taken) }
                 )
             }
         } else if (viewMode == JournalViewMode.TIMELINE) {
@@ -820,16 +830,20 @@ private fun SelectedDayInspectionCard(
     cycleDayNumber: Int?,
     phase: CyclePhase?,
     phaseCertainty: PhaseCertainty?,
+    pillStatus: PillDayStatus,
     isToday: Boolean,
+    isFuture: Boolean,
     cycleStart: Cycle?,
     temperatureUnit: TemperatureUnit,
     onEditCycle: (Cycle) -> Unit,
     onDeleteCycle: (Cycle) -> Unit,
     onEditOrAdd: () -> Unit,
+    onTogglePillTaken: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val hasEntryObservations = entry?.hasObservations == true
     val hasBiomarkerObservations = biomarker != null && !biomarker.isEmpty
+    val hasPillStatus = pillStatus !is PillDayStatus.Disabled
     val locale = LocalConfiguration.current.locales[0]
 
     LutealCard(modifier = modifier.fillMaxWidth()) {
@@ -865,8 +879,8 @@ private fun SelectedDayInspectionCard(
                 }
             }
 
-            // Badges row: cycle day number and phase badge
-            if (cycleDayNumber != null || phase != null) {
+            // Badges row: cycle day number, phase badge, and optional pill badge
+            if (cycleDayNumber != null || phase != null || hasPillStatus) {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs),
                     verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
@@ -894,7 +908,70 @@ private fun SelectedDayInspectionCard(
                             tone = tone
                         )
                     }
+                    when (pillStatus) {
+                        is PillDayStatus.ActiveDay -> {
+                            StatusPill(
+                                text = stringResource(
+                                    if (pillStatus.isTakenToday) R.string.inspection_pill_taken_badge
+                                    else R.string.inspection_pill_scheduled_badge
+                                ),
+                                tone = if (pillStatus.isTakenToday) StatusTone.RECORDED else StatusTone.ESTIMATED
+                            )
+                        }
+                        is PillDayStatus.PauseDay -> {
+                            StatusPill(
+                                text = stringResource(R.string.inspection_pill_pause_badge),
+                                tone = StatusTone.PRIVATE
+                            )
+                        }
+                        PillDayStatus.Disabled -> Unit
+                    }
                 }
+            }
+
+            when (pillStatus) {
+                is PillDayStatus.ActiveDay -> {
+                    val packSummary = if (pillStatus.pauseDays > 0) {
+                        stringResource(
+                            R.string.today_pill_active_day_title,
+                            pillStatus.dayOfPack,
+                            pillStatus.activeDays
+                        )
+                    } else {
+                        stringResource(
+                            R.string.today_pill_active_continuous_title,
+                            pillStatus.dayOfPack,
+                            pillStatus.activeDays
+                        )
+                    }
+                    Text(
+                        text = packSummary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (!isFuture) {
+                        LutealSecondaryButton(
+                            text = stringResource(
+                                if (pillStatus.isTakenToday) R.string.inspection_pill_action_undo_taken
+                                else R.string.inspection_pill_action_mark_taken
+                            ),
+                            onClick = { onTogglePillTaken(!pillStatus.isTakenToday) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+                is PillDayStatus.PauseDay -> {
+                    Text(
+                        text = stringResource(
+                            R.string.today_pill_pause_day_title,
+                            pillStatus.dayOfPause,
+                            pillStatus.pauseDays
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                PillDayStatus.Disabled -> Unit
             }
 
             if (cycleStart != null) {
@@ -1064,7 +1141,7 @@ private fun SelectedDayInspectionCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            } else if (!hasBiomarkerObservations && (entry?.bleedingIntensity == null || entry.bleedingIntensity == BleedingIntensity.NONE)) {
+            } else if (!hasBiomarkerObservations && !hasPillStatus && (entry?.bleedingIntensity == null || entry.bleedingIntensity == BleedingIntensity.NONE)) {
                 Text(
                     text = stringResource(R.string.calendar_day_empty_inspection),
                     style = MaterialTheme.typography.bodyMedium,

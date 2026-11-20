@@ -5,7 +5,8 @@ data class DuoSharingPreferences(
     val sharePeriodEstimate: Boolean = false,
     val shareMood: Boolean = false,
     val shareEnergy: Boolean = false,
-    val shareSupportRequests: Boolean = false
+    val shareSupportRequests: Boolean = false,
+    val sharePillStatus: Boolean = false
 )
 
 enum class DuoSharingField {
@@ -13,5 +14,6 @@ enum class DuoSharingField {
     PERIOD_ESTIMATE,
     MOOD,
     ENERGY,
-    SUPPORT_REQUESTS
+    SUPPORT_REQUESTS,
+    PILL_STATUS
 }

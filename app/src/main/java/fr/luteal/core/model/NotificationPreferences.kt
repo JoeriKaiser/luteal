@@ -16,7 +16,8 @@ enum class NotificationType {
     DAILY_CHECK_IN,
     PERIOD_WINDOW,
     LATE_CYCLE,
-    PILL_REMINDER
+    PILL_REMINDER,
+    DUO_PARTNER_PILL_REMINDER
 }
 
 data class NotificationPreferences(

@@ -32,7 +32,8 @@ class NotificationContentResolver @Inject constructor(
             NotificationType.DAILY_CHECK_IN -> NotificationChannelManager.CHANNEL_DAILY_CHECKIN
             NotificationType.PERIOD_WINDOW -> NotificationChannelManager.CHANNEL_PERIOD_WINDOW
             NotificationType.LATE_CYCLE -> NotificationChannelManager.CHANNEL_LATE_CYCLE
-            NotificationType.PILL_REMINDER -> NotificationChannelManager.CHANNEL_PILL_REMINDER
+            NotificationType.PILL_REMINDER,
+            NotificationType.DUO_PARTNER_PILL_REMINDER -> NotificationChannelManager.CHANNEL_PILL_REMINDER
         }
 
         val defaultPublicTitle = context.getString(R.string.notif_default_public_title)
@@ -73,6 +74,10 @@ class NotificationContentResolver @Inject constructor(
                     NotificationType.PILL_REMINDER -> Pair(
                         context.getString(R.string.notif_pill_descriptive_title),
                         context.getString(R.string.notif_pill_descriptive_body)
+                    )
+                    NotificationType.DUO_PARTNER_PILL_REMINDER -> Pair(
+                        context.getString(R.string.notif_duo_partner_pill_pending_title),
+                        context.getString(R.string.notif_duo_partner_pill_pending_body)
                     )
                 }
                 ResolvedNotificationContent(

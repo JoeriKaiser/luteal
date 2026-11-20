@@ -170,12 +170,14 @@ fun DuoScreen(
             DuoPhase.InvitationPending -> InvitationPendingSection(
                 state = state,
                 onToggleGrant = { field, granted -> viewModel.toggleGrant(field, granted) },
+                onTogglePillSharing = { granted -> viewModel.togglePillStatusSharing(granted) },
                 pairingCode = state.shareableUrl ?: state.invitation?.pairingCode,
                 onCancel = { viewModel.revokeLink() }
             )
             DuoPhase.TrackerActive -> TrackerActiveSection(
                 state = state,
                 onToggleGrant = { field, granted -> viewModel.toggleGrant(field, granted) },
+                onTogglePillSharing = { granted -> viewModel.togglePillStatusSharing(granted) },
                 onRevoke = { viewModel.revokeLink() },
                 onSendSupport = { kind, msg -> viewModel.sendSupportRequest(kind, msg) },
                 onAck = { viewModel.ackSupportRequest(it) },
@@ -186,6 +188,8 @@ fun DuoScreen(
             )
             DuoPhase.PartnerActive -> PartnerActiveSection(
                 state = state,
+                onTogglePartnerPillReminder = { viewModel.togglePartnerPillReminder(it) },
+                onTogglePartnerPillTakenAlert = { viewModel.togglePartnerPillTakenAlert(it) },
                 onRevoke = { viewModel.revokeLink() },
                 onSendSupport = { kind, msg -> viewModel.sendSupportRequest(kind, msg) },
                 onAck = { viewModel.ackSupportRequest(it) },
@@ -330,6 +334,7 @@ private fun NoLinkSection(
 private fun InvitationPendingSection(
     state: DuoUiState,
     onToggleGrant: (GrantField, Boolean) -> Unit,
+    onTogglePillSharing: (Boolean) -> Unit,
     pairingCode: String?,
     onCancel: () -> Unit
 ) {
@@ -396,7 +401,8 @@ private fun InvitationPendingSection(
 
     DuoGrantsSection(
         state = state,
-        onToggleGrant = onToggleGrant
+        onToggleGrant = onToggleGrant,
+        onTogglePillSharing = onTogglePillSharing
     )
 }
 
@@ -406,6 +412,7 @@ private fun InvitationPendingSection(
 private fun TrackerActiveSection(
     state: DuoUiState,
     onToggleGrant: (GrantField, Boolean) -> Unit,
+    onTogglePillSharing: (Boolean) -> Unit,
     onRevoke: () -> Unit,
     onSendSupport: (SupportKind, String) -> Unit,
     onAck: (String) -> Unit,
@@ -452,7 +459,8 @@ private fun TrackerActiveSection(
 
     DuoGrantsSection(
         state = state,
-        onToggleGrant = onToggleGrant
+        onToggleGrant = onToggleGrant,
+        onTogglePillSharing = onTogglePillSharing
     )
 
     // Exact preview of what the partner receives: rendered from the same
@@ -471,7 +479,7 @@ private fun TrackerActiveSection(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            val anyGranted = state.grants.values.any { it }
+            val anyGranted = state.grants.values.any { it } || state.sharePillStatus
             val partnerPhase = state.partnerPhase
             if (!state.keyMissing && anyGranted && partnerPhase is CurrentCyclePhase.Available) {
                 PartnerPhaseBadge(phase = partnerPhase)
@@ -573,11 +581,54 @@ private fun GrantToggle(
     }
 }
 
+@Composable
+private fun BooleanGrantToggle(
+    checked: Boolean,
+    titleRes: Int,
+    descRes: Int,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    val title = stringResource(titleRes)
+    val description = stringResource(descRes)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(
+                value = checked,
+                role = Role.Switch,
+                onValueChange = onCheckedChange
+            ),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clearAndSetSemantics { contentDescription = "$title. $description" },
+            verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)
+        ) {
+            Text(text = title, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = null
+        )
+    }
+}
+
 // --- Partner: the received projection ---------------------------------------
 
 @Composable
 private fun PartnerActiveSection(
     state: DuoUiState,
+    onTogglePartnerPillReminder: (Boolean) -> Unit,
+    onTogglePartnerPillTakenAlert: (Boolean) -> Unit,
     onRevoke: () -> Unit,
     onSendSupport: (SupportKind, String) -> Unit,
     onAck: (String) -> Unit,
@@ -643,6 +694,76 @@ private fun PartnerActiveSection(
         }
     }
 
+    val sharedPill = state.projection?.pillStatus
+    if (sharedPill != null) {
+        LutealCard(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.duo_partner_pill_card_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    StatusPill(
+                        text = stringResource(
+                            when {
+                                !sharedPill.isActiveDay -> R.string.today_pill_pause_badge
+                                sharedPill.isTaken -> R.string.inspection_pill_taken_badge
+                                else -> R.string.inspection_pill_scheduled_badge
+                            }
+                        ),
+                        tone = when {
+                            !sharedPill.isActiveDay -> StatusTone.PRIVATE
+                            sharedPill.isTaken -> StatusTone.RECORDED
+                            else -> StatusTone.ESTIMATED
+                        }
+                    )
+                }
+
+                val subtitle = when {
+                    !sharedPill.isActiveDay -> stringResource(
+                        R.string.today_pill_pause_day_title,
+                        sharedPill.dayInPhase,
+                        sharedPill.totalPhaseDays
+                    )
+                    sharedPill.pauseDays > 0 -> stringResource(
+                        R.string.today_pill_active_day_title,
+                        sharedPill.dayInPhase,
+                        sharedPill.totalPhaseDays
+                    )
+                    else -> stringResource(
+                        R.string.today_pill_active_continuous_title,
+                        sharedPill.dayInPhase,
+                        sharedPill.totalPhaseDays
+                    )
+                }
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                BooleanGrantToggle(
+                    checked = state.isPartnerPillReminderEnabled,
+                    titleRes = R.string.duo_partner_pill_reminder_toggle_title,
+                    descRes = R.string.duo_partner_pill_reminder_toggle_desc,
+                    onCheckedChange = onTogglePartnerPillReminder
+                )
+
+                BooleanGrantToggle(
+                    checked = state.isPartnerPillTakenAlertEnabled,
+                    titleRes = R.string.duo_partner_pill_taken_alert_toggle_title,
+                    descRes = R.string.duo_partner_pill_taken_alert_toggle_desc,
+                    onCheckedChange = onTogglePartnerPillTakenAlert
+                )
+            }
+        }
+    }
+
     SupportThreadSection(
         requests = state.duoView?.supportRequests,
         messages = state.supportMessages,
@@ -678,7 +799,7 @@ private fun PartnerActiveSection(
 private fun SharedProjectionList(state: DuoUiState) {
     val projection = state.projection
     val locale = LocalConfiguration.current.locales[0]
-    val anyGranted = state.grants.values.any { it }
+    val anyGranted = state.grants.values.any { it } || state.sharePillStatus || projection?.pillStatus != null
     val isTracker = state.phase == DuoPhase.TrackerActive
 
     when {
@@ -725,6 +846,26 @@ private fun SharedProjectionList(state: DuoUiState) {
                 projection.energy?.let {
                     add(stringResource(R.string.duo_view_energy, it.level))
                 }
+                projection.pillStatus?.let { pill ->
+                    val line = when {
+                        !pill.isActiveDay -> stringResource(
+                            R.string.duo_view_pill_pause,
+                            pill.dayInPhase,
+                            pill.totalPhaseDays
+                        )
+                        pill.isTaken -> stringResource(
+                            R.string.duo_view_pill_taken,
+                            pill.dayInPhase,
+                            pill.totalPhaseDays
+                        )
+                        else -> stringResource(
+                            R.string.duo_view_pill_pending,
+                            pill.dayInPhase,
+                            pill.totalPhaseDays
+                        )
+                    }
+                    add(line)
+                }
             }
 
             if (items.isEmpty()) {
@@ -755,7 +896,8 @@ private fun SharedProjectionList(state: DuoUiState) {
 @Composable
 private fun DuoGrantsSection(
     state: DuoUiState,
-    onToggleGrant: (GrantField, Boolean) -> Unit
+    onToggleGrant: (GrantField, Boolean) -> Unit,
+    onTogglePillSharing: (Boolean) -> Unit
 ) {
     LutealCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
@@ -787,6 +929,14 @@ private fun DuoGrantsSection(
                 state = state,
                 onToggleGrant = onToggleGrant
             )
+            if (state.isPillRegimenEnabled || state.sharePillStatus) {
+                BooleanGrantToggle(
+                    checked = state.sharePillStatus,
+                    titleRes = R.string.duo_share_pill_status,
+                    descRes = R.string.duo_share_pill_status_desc,
+                    onCheckedChange = onTogglePillSharing
+                )
+            }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 

@@ -53,6 +53,7 @@ import fr.luteal.core.model.CalendarDayProjection
 import fr.luteal.core.model.CyclePhase
 import fr.luteal.core.model.MonthCalendarProjection
 import fr.luteal.core.model.PhaseCertainty
+import fr.luteal.core.model.PillDayStatus
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.time.temporal.WeekFields
@@ -215,6 +216,21 @@ fun CalendarDayCell(
             append(", ")
             append(stringResource(R.string.calendar_legend_biomarkers))
         }
+        when (val pill = day.pillStatus) {
+            is PillDayStatus.ActiveDay -> {
+                append(", ")
+                if (pill.isTakenToday) {
+                    append(stringResource(R.string.calendar_legend_pill_taken))
+                } else {
+                    append(stringResource(R.string.calendar_legend_pill_scheduled))
+                }
+            }
+            is PillDayStatus.PauseDay -> {
+                append(", ")
+                append(stringResource(R.string.calendar_legend_pill_pause))
+            }
+            PillDayStatus.Disabled -> Unit
+        }
     }
 
     Box(
@@ -273,6 +289,21 @@ fun CalendarDayCell(
                     if (day.hasBiomarkers) {
                         CalendarDot(color = MaterialTheme.colorScheme.tertiary, size = 5.dp)
                     }
+                    when (val pill = day.pillStatus) {
+                        is PillDayStatus.ActiveDay -> {
+                            CalendarPillCapsule(
+                                color = MaterialTheme.colorScheme.primary,
+                                filled = pill.isTakenToday
+                            )
+                        }
+                        is PillDayStatus.PauseDay -> {
+                            CalendarPillCapsule(
+                                color = MaterialTheme.colorScheme.outline,
+                                filled = false
+                            )
+                        }
+                        PillDayStatus.Disabled -> Unit
+                    }
                 }
             }
         }
@@ -289,9 +320,29 @@ private fun CalendarDot(color: Color, size: Dp) {
     )
 }
 
+@Composable
+private fun CalendarPillCapsule(color: Color, filled: Boolean) {
+    val capsuleShape = RoundedCornerShape(percent = 50)
+    Box(
+        modifier = Modifier
+            .size(width = 8.dp, height = 4.dp)
+            .clip(capsuleShape)
+            .then(
+                if (filled) {
+                    Modifier.background(color)
+                } else {
+                    Modifier.border(1.dp, color, capsuleShape)
+                }
+            )
+    )
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CalendarLegendCard(modifier: Modifier = Modifier) {
+fun CalendarLegendCard(
+    showPillLegend: Boolean = false,
+    modifier: Modifier = Modifier
+) {
     val phaseColors = LocalPhaseColors.current
     var isExpanded by remember { mutableStateOf(false) }
 
@@ -550,6 +601,56 @@ fun CalendarLegendCard(modifier: Modifier = Modifier) {
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+
+                    if (showPillLegend) {
+                        // Pill taken
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                        ) {
+                            CalendarPillCapsule(
+                                color = MaterialTheme.colorScheme.primary,
+                                filled = true
+                            )
+                            Text(
+                                text = stringResource(R.string.calendar_legend_pill_taken),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // Pill scheduled
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                        ) {
+                            CalendarPillCapsule(
+                                color = MaterialTheme.colorScheme.primary,
+                                filled = false
+                            )
+                            Text(
+                                text = stringResource(R.string.calendar_legend_pill_scheduled),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // Pill pause
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)
+                        ) {
+                            CalendarPillCapsule(
+                                color = MaterialTheme.colorScheme.outline,
+                                filled = false
+                            )
+                            Text(
+                                text = stringResource(R.string.calendar_legend_pill_pause),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }

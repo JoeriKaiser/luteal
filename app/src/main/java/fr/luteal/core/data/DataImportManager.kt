@@ -395,7 +395,11 @@ class DataImportManager @Inject constructor(
                     userPreferencesDataStore.setPillPauseDays(prefs.pillPauseDays)
                     userPreferencesDataStore.setPillStartDate(prefs.pillStartDate)
                     userPreferencesDataStore.setPillReminderTime(prefs.pillReminderTime)
-                    userPreferencesDataStore.setPillLastTakenDate(prefs.pillLastTakenDate)
+                    val restoredTakenDates = buildSet {
+                        prefs.pillTakenDates.forEach { if (it.isNotBlank()) add(it) }
+                        prefs.pillLastTakenDate?.takeIf { it.isNotBlank() }?.let { add(it) }
+                    }
+                    userPreferencesDataStore.setPillTakenDates(restoredTakenDates)
                     userPreferencesDataStore.setCompletedOnboarding(true)
                     preferencesRestored = true
                 }
@@ -434,5 +438,6 @@ class DataImportManager @Inject constructor(
         payload.biomarkerObservations.forEach { requireDate(it.date, "biomarker ${it.date}") }
         requireDate(payload.preferences.pillStartDate, "pillStartDate")
         requireDate(payload.preferences.pillLastTakenDate, "pillLastTakenDate")
+        payload.preferences.pillTakenDates.forEach { requireDate(it, "pillTakenDates") }
     }
 }

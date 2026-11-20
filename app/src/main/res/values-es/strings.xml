@@ -865,4 +865,26 @@
     <string name="today_pill_action_undo_taken">Deshacer la toma de hoy</string>
     <string name="today_pill_pause_support">Hoy no toca ninguna píldora activa. El próximo blíster empieza dentro de %1$d&#160;d.</string>
     <string name="phase_reason_hormonal_contraception">Las estimaciones de las fases ovulatoria y lútea están desactivadas mientras el seguimiento de la píldora esté activo.</string>
+    <string name="calendar_legend_pill_taken">Píldora tomada (registrada)</string>
+    <string name="calendar_legend_pill_scheduled">Píldora prevista (día de toma)</string>
+    <string name="calendar_legend_pill_pause">Día de descanso del blíster</string>
+    <string name="inspection_pill_taken_badge">Píldora tomada</string>
+    <string name="inspection_pill_scheduled_badge">Píldora prevista</string>
+    <string name="inspection_pill_pause_badge">Descanso del blíster</string>
+    <string name="inspection_pill_action_mark_taken">Marcar píldora como tomada</string>
+    <string name="inspection_pill_action_undo_taken">Deshacer toma de la píldora</string>
+    <string name="duo_share_pill_status">Seguimiento del blíster</string>
+    <string name="duo_share_pill_status_desc">Compartir los días de toma o descanso y si se ha registrado la píldora de hoy.</string>
+    <string name="duo_view_pill_taken">Blíster: Día %1$d de %2$d (tomada hoy)</string>
+    <string name="duo_view_pill_pending">Blíster: Día %1$d de %2$d (prevista hoy)</string>
+    <string name="duo_view_pill_pause">Blíster: Día %1$d de %2$d (descanso)</string>
+    <string name="duo_partner_pill_card_title">Blíster compartido</string>
+    <string name="duo_partner_pill_reminder_toggle_title">Recordarme si no se ha marcado como tomada</string>
+    <string name="duo_partner_pill_reminder_toggle_desc">Recibir un recordatorio los días de toma si la píldora sigue sin marcarse después de la hora prevista.</string>
+    <string name="duo_partner_pill_taken_alert_toggle_title">Avisarme cuando se marque como tomada</string>
+    <string name="duo_partner_pill_taken_alert_toggle_desc">Recibir una notificación cuando la sincronización Duo confirme la toma de hoy.</string>
+    <string name="notif_duo_partner_pill_pending_title">Recordatorio Duo de la píldora</string>
+    <string name="notif_duo_partner_pill_pending_body">La píldora de hoy aún no se ha marcado como tomada.</string>
+    <string name="notif_duo_partner_pill_taken_title">Píldora marcada como tomada</string>
+    <string name="notif_duo_partner_pill_taken_body">Tu pareja ha marcado la píldora de hoy como tomada.</string>
 </resources>

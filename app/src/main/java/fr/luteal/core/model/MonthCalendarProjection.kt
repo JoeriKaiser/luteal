@@ -23,7 +23,8 @@ data class CalendarDayProjection(
     val bbtCelsius: Double? = null,
     val hasCervicalFluid: Boolean = false,
     val hasPositiveLh: Boolean = false,
-    val biomarker: BiomarkerObservation? = null
+    val biomarker: BiomarkerObservation? = null,
+    val pillStatus: PillDayStatus = PillDayStatus.Disabled
 ) {
     val hasBleeding: Boolean
         get() = bleedingIntensity != null && bleedingIntensity != BleedingIntensity.NONE
@@ -36,7 +37,8 @@ data class MonthCalendarProjection(
     val yearMonth: YearMonth,
     val weeks: List<List<CalendarDayProjection>>,
     val recordedPeriodDaysCount: Int,
-    val hasEstimatedPeriodInMonth: Boolean
+    val hasEstimatedPeriodInMonth: Boolean,
+    val isPillRegimenEnabled: Boolean = false
 )
 
 object MonthCalendarProjectionCalculator {
@@ -48,7 +50,8 @@ object MonthCalendarProjectionCalculator {
         entries: List<DailyEntry>,
         estimateResult: CycleEstimateResult,
         biomarkers: List<BiomarkerObservation> = emptyList(),
-        firstDayOfWeek: DayOfWeek = DayOfWeek.MONDAY
+        firstDayOfWeek: DayOfWeek = DayOfWeek.MONDAY,
+        pillRegimenConfig: PillRegimenConfig = PillRegimenConfig()
     ): MonthCalendarProjection {
         val entriesByDate = entries.associateBy(DailyEntry::date)
         val biomarkersByDate = biomarkers.associateBy(BiomarkerObservation::date)
@@ -70,6 +73,8 @@ object MonthCalendarProjectionCalculator {
         val days = mutableListOf<CalendarDayProjection>()
         var recordedPeriodCount = 0
         var hasEstimateInMonth = false
+
+        val isPillRegimenActive = pillRegimenConfig.isEnabled && pillRegimenConfig.startDate != null
 
         var cur = gridStart
         while (!cur.isAfter(gridEnd)) {
@@ -125,6 +130,11 @@ object MonthCalendarProjectionCalculator {
                     if (hasFlow) {
                         cyclePhase = CyclePhase.MENSTRUAL
                         phaseCertainty = PhaseCertainty.RECORDED
+                    } else if (isPillRegimenActive && !cur.isBefore(pillRegimenConfig.startDate)) {
+                        if (isFutureOrToday && (isEstimatedTarget || isEstimatedWindow)) {
+                            cyclePhase = CyclePhase.MENSTRUAL
+                            phaseCertainty = PhaseCertainty.ESTIMATED
+                        }
                     } else if (isCompletedCycle) {
                         val completedLength = if (cycle.endDate != null) {
                             ChronoUnit.DAYS.between(cycle.startDate, cycle.endDate).toInt() + 1
@@ -191,6 +201,7 @@ object MonthCalendarProjectionCalculator {
             val bbtCelsius = bm?.bbt?.valueCelsius
             val hasCervicalFluid = bm?.cervicalFluid != null
             val hasPositiveLh = bm?.rapidTests?.lhTest == LhTestResult.PEAK_POSITIVE
+            val pillStatus = PillRegimenCalculator.evaluate(pillRegimenConfig, cur)
 
             days.add(
                 CalendarDayProjection(
@@ -211,7 +222,8 @@ object MonthCalendarProjectionCalculator {
                     bbtCelsius = bbtCelsius,
                     hasCervicalFluid = hasCervicalFluid,
                     hasPositiveLh = hasPositiveLh,
-                    biomarker = bm
+                    biomarker = bm,
+                    pillStatus = pillStatus
                 )
             )
 
@@ -224,7 +236,8 @@ object MonthCalendarProjectionCalculator {
             yearMonth = targetMonth,
             weeks = weeks,
             recordedPeriodDaysCount = recordedPeriodCount,
-            hasEstimatedPeriodInMonth = hasEstimateInMonth
+            hasEstimatedPeriodInMonth = hasEstimateInMonth,
+            isPillRegimenEnabled = pillRegimenConfig.isEnabled && pillRegimenConfig.startDate != null
         )
     }
 }

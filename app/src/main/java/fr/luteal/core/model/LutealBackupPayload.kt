@@ -89,7 +89,8 @@ data class UserPreferencesBackupDto(
     @SerialName("pill_pause_days") val pillPauseDays: Int = 7,
     @SerialName("pill_start_date") val pillStartDate: String? = null,
     @SerialName("pill_reminder_time") val pillReminderTime: String = "20:00",
-    @SerialName("pill_last_taken_date") val pillLastTakenDate: String? = null
+    @SerialName("pill_last_taken_date") val pillLastTakenDate: String? = null,
+    @SerialName("pill_taken_dates") val pillTakenDates: List<String> = emptyList()
 )
 
 enum class ImportStrategy {

@@ -22,7 +22,8 @@ data class DuoProjection(
     @SerialName("cycle_day") val cycleDay: Int? = null,
     @SerialName("period_estimate") val periodEstimate: SharedEstimate? = null,
     @SerialName("mood") val mood: SharedLevel? = null,
-    @SerialName("energy") val energy: SharedLevel? = null
+    @SerialName("energy") val energy: SharedLevel? = null,
+    @SerialName("pill_status") val pillStatus: SharedPillStatus? = null
 ) {
     companion object {
         const val CURRENT_VERSION = 1
@@ -42,4 +43,16 @@ data class SharedEstimate(
 data class SharedLevel(
     @SerialName("date") val date: String,
     @SerialName("level") val level: Int
+)
+
+@Serializable
+data class SharedPillStatus(
+    @SerialName("date") val date: String,
+    @SerialName("is_active_day") val isActiveDay: Boolean,
+    @SerialName("day_in_phase") val dayInPhase: Int,
+    @SerialName("total_phase_days") val totalPhaseDays: Int,
+    @SerialName("active_days") val activeDays: Int,
+    @SerialName("pause_days") val pauseDays: Int,
+    @SerialName("is_taken") val isTaken: Boolean = false,
+    @SerialName("reminder_time") val reminderTime: String? = null
 )

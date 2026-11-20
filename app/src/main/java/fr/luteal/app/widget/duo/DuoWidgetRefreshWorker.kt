@@ -9,10 +9,12 @@ import dagger.assisted.AssistedInject
 import fr.luteal.app.widget.WidgetUpdateCoordinator
 import fr.luteal.core.data.datastore.UserPreferencesDataStore
 import fr.luteal.core.data.repository.DuoCycleProjectionCacheWriter
+import fr.luteal.core.data.repository.DuoProjectionSynchronizer
 import fr.luteal.core.data.repository.DuoRepository
 import fr.luteal.core.data.repository.DuoWidgetCacheRepository
 import fr.luteal.core.model.SyncMode
 import fr.luteal.core.network.FolicularApiException
+import fr.luteal.core.network.crypto.DuoProjectionDecoder
 import kotlinx.coroutines.flow.first
 
 /** Refreshes the grant-filtered Duo cycle cache without blocking widget render. */
@@ -23,6 +25,8 @@ class DuoWidgetRefreshWorker @AssistedInject constructor(
     private val duoRepository: DuoRepository,
     private val cacheWriter: DuoCycleProjectionCacheWriter,
     private val cacheRepository: DuoWidgetCacheRepository,
+    private val projectionDecoder: DuoProjectionDecoder,
+    private val projectionSynchronizer: DuoProjectionSynchronizer,
     private val userPreferences: UserPreferencesDataStore,
     private val updates: WidgetUpdateCoordinator
 ) : CoroutineWorker(appContext, params) {
@@ -42,7 +46,9 @@ class DuoWidgetRefreshWorker @AssistedInject constructor(
         }
 
         return runCatching {
-            cacheWriter.save(duoRepository.duoView())
+            val view = duoRepository.duoView()
+            cacheWriter.save(view)
+            projectionSynchronizer.onPartnerViewReceived(view, projectionDecoder.decode(view))
             Result.success()
         }.getOrElse { error ->
             // A confirmed 404 means there is no current relationship. Other

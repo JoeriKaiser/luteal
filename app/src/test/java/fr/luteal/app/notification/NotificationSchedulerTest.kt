@@ -2,6 +2,7 @@ package fr.luteal.app.notification
 
 import org.junit.Assert.assertEquals
 import fr.luteal.core.model.PillRegimenConfig
+import fr.luteal.core.model.SharedPillStatus
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.LocalDate
@@ -136,5 +137,40 @@ class NotificationSchedulerTest {
         )
         val now = LocalDateTime.of(2026, 10, 3, 15, 0)
         assertNull(NotificationScheduler.calculatePillReminderTarget(config, now))
+    }
+
+    @Test
+    fun `calculateDuoPartnerPillReminderTarget schedules 15 minutes after partner reminder time when not taken`() {
+        val shared = SharedPillStatus(
+            date = "2026-10-03",
+            isActiveDay = true,
+            dayInPhase = 3,
+            totalPhaseDays = 21,
+            activeDays = 21,
+            pauseDays = 7,
+            isTaken = false,
+            reminderTime = "20:00"
+        )
+        val now = LocalDateTime.of(2026, 10, 3, 19, 30)
+        val target = NotificationScheduler.calculateDuoPartnerPillReminderTarget(shared, now)
+        assertEquals(LocalDateTime.of(2026, 10, 3, 20, 15), target)
+    }
+
+    @Test
+    fun `calculateDuoPartnerPillReminderTarget skips today when already taken and skips pause days`() {
+        val sharedTakenToday = SharedPillStatus(
+            date = "2026-10-21",
+            isActiveDay = true,
+            dayInPhase = 21,
+            totalPhaseDays = 21,
+            activeDays = 21,
+            pauseDays = 7,
+            isTaken = true,
+            reminderTime = "20:00"
+        )
+        // Day 21 is taken, days 22..28 are pause days, so next active reminder is 2026-10-29 at 20:15
+        val now = LocalDateTime.of(2026, 10, 21, 18, 0)
+        val target = NotificationScheduler.calculateDuoPartnerPillReminderTarget(sharedTakenToday, now)
+        assertEquals(LocalDateTime.of(2026, 10, 29, 20, 15), target)
     }
 }

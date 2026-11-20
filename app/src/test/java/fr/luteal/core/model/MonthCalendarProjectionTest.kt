@@ -423,4 +423,62 @@ class MonthCalendarProjectionTest {
         assertFalse(aug16.hasPositiveLh)
         assertNull(aug16.biomarker)
     }
+
+    @Test
+    fun projectsPillRegimenStatesAndSuppressesEstimatedOvulationWhenEnabled() {
+        val targetMonth = YearMonth.of(2026, 8)
+        val today = LocalDate.of(2026, 8, 20)
+        val packStart = LocalDate.of(2026, 8, 1)
+
+        val cycle = Cycle(
+            id = "c1",
+            startDate = LocalDate.of(2026, 8, 1)
+        )
+        val entries = listOf(
+            DailyEntry(date = LocalDate.of(2026, 8, 1), bleedingIntensity = BleedingIntensity.MEDIUM)
+        )
+        val pillConfig = PillRegimenConfig(
+            isEnabled = true,
+            activeDays = 21,
+            pauseDays = 7,
+            startDate = packStart,
+            takenDates = setOf(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 10))
+        )
+
+        val projection = MonthCalendarProjectionCalculator.project(
+            targetMonth = targetMonth,
+            today = today,
+            cycles = listOf(cycle),
+            entries = entries,
+            estimateResult = CycleEstimateResult.NeedsMoreHistory,
+            pillRegimenConfig = pillConfig
+        )
+
+        assertTrue(projection.isPillRegimenEnabled)
+        val daysMap = projection.weeks.flatten().associateBy { it.date }
+
+        // Before pack start (July 31 in grid): Disabled
+        val july31 = daysMap[LocalDate.of(2026, 7, 31)]!!
+        assertEquals(PillDayStatus.Disabled, july31.pillStatus)
+
+        // Aug 1: ActiveDay 1, taken, recorded menstrual flow still shown
+        val aug1 = daysMap[LocalDate.of(2026, 8, 1)]!!
+        assertEquals(PillDayStatus.ActiveDay(1, 21, 7, isTakenToday = true), aug1.pillStatus)
+        assertEquals(CyclePhase.MENSTRUAL, aug1.cyclePhase)
+        assertEquals(PhaseCertainty.RECORDED, aug1.phaseCertainty)
+
+        // Aug 10: ActiveDay 10, taken, ovulatory/follicular estimate suppressed
+        val aug10 = daysMap[LocalDate.of(2026, 8, 10)]!!
+        assertEquals(PillDayStatus.ActiveDay(10, 21, 7, isTakenToday = true), aug10.pillStatus)
+        assertNull(aug10.cyclePhase)
+
+        // Aug 15: ActiveDay 15, not taken, ovulatory estimate suppressed
+        val aug15 = daysMap[LocalDate.of(2026, 8, 15)]!!
+        assertEquals(PillDayStatus.ActiveDay(15, 21, 7, isTakenToday = false), aug15.pillStatus)
+        assertNull(aug15.cyclePhase)
+
+        // Aug 22: PauseDay 1
+        val aug22 = daysMap[LocalDate.of(2026, 8, 22)]!!
+        assertEquals(PillDayStatus.PauseDay(1, 7, 21), aug22.pillStatus)
+    }
 }
