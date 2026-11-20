@@ -1,0 +1,4 @@
+- Español: interfaz completa e informes clínicos disponibles en español (es).
+- Píldora en el calendario: indicadores de toma, día previsto y descanso en la cuadrícula, y registro en días pasados.
+- Blíster en modo Duo: opción para compartir el estado del blíster con recordatorio y aviso de toma para la pareja.
+- Copias de seguridad JSON: registro de la versión real de la aplicación al exportar.

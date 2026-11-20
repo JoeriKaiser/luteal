@@ -1,0 +1,4 @@
+- Espagnol : interface complète et exports de récapitulatifs médicaux disponibles en espagnol (es).
+- Pilule au calendrier : indicateurs de prise, de jour actif et de pause sur la grille, et saisie sur les jours passés.
+- Suivi de plaquette en Duo : partage optionnel du statut de plaquette avec rappel partenaire et notification de prise.
+- Sauvegardes JSON : enregistrement de la version réelle de l'application dans les exports.

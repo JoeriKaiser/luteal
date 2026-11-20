@@ -41,5 +41,10 @@ jobs:
           cache-provider: "basic"
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
+      - name: Check string parity and Fastlane metadata
+        run: |
+          ./scripts/check-string-parity.py
+          python3 ./scripts/check-fastlane-metadata.py
+
       - name: Build, lint, and test
         run: ./gradlew assembleDebug lintDebug testDebugUnitTest

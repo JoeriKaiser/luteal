@@ -41,6 +41,15 @@ jobs:
         with:
           cache-disabled: true
 
+      - name: Validate string parity, Fastlane metadata, and tag version
+        run: |
+          ./scripts/check-string-parity.py
+          if [[ "${GITHUB_REF:-}" == refs/tags/* ]]; then
+            python3 ./scripts/check-fastlane-metadata.py --tag "${GITHUB_REF}"
+          else
+            python3 ./scripts/check-fastlane-metadata.py
+          fi
+
       - name: Set up release signing credentials
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
@@ -85,6 +94,14 @@ jobs:
           echo "Verifying APK signing certificate:"
           APKSIGNER=$(find $ANDROID_HOME/build-tools -name apksigner | sort -V | tail -n 1)
           $APKSIGNER verify --verbose --print-certs "$RELEASE_APK"
+
+          echo "Verifying F-Droid reproducible build constraints:"
+          if unzip -l "$RELEASE_APK" | grep -q "schemas/"; then
+            echo "ERROR: Release APK must not bundle debug Room schemas."
+            exit 1
+          fi
+          echo "--- Embedded VCS info (META-INF/version-control-info.textproto) ---"
+          unzip -p "$RELEASE_APK" META-INF/version-control-info.textproto || true
 
       - name: Publish GitHub Release asset
         uses: softprops/action-gh-release@v3
