@@ -57,8 +57,9 @@ lint:
 	./gradlew lintDebug
 
 check-strings:
-	@echo "==> Checking string resource parity..."
+	@echo "==> Checking string resource parity and Fastlane metadata..."
 	@./scripts/check-string-parity.py
+	@python3 ./scripts/check-fastlane-metadata.py
 # --- Release ---
 
 release-build:

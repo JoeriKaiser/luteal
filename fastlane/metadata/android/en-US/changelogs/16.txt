@@ -1,0 +1,4 @@
+- Spanish localization: full interface and clinical report exports in Spanish (es).
+- Calendar pill tracking: capsule indicators for taken, scheduled, and pause days, plus past-day logging in the day inspection card.
+- Duo pill status sharing: opt-in sharing of active or pause pack days and intake status, with partner reminder and taken confirmation alerts.
+- JSON backups: record the actual app version in exported backup metadata.
