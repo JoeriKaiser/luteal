@@ -20,6 +20,7 @@ import fr.luteal.core.data.datastore.UserPreferences
 import fr.luteal.core.data.repository.BiomarkerRepository
 import fr.luteal.core.data.repository.CycleRepository
 import fr.luteal.core.data.repository.DailyEntryRepository
+import fr.luteal.core.data.repository.DuoProjectionSynchronizer
 import fr.luteal.app.notification.NotificationScheduler
 import fr.luteal.core.data.repository.UserRepository
 import fr.luteal.core.model.AgeBand
@@ -58,6 +59,7 @@ class LutealViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val clinicalReportAggregator: ClinicalReportAggregator,
     private val notificationScheduler: NotificationScheduler,
+    private val duoProjectionSynchronizer: DuoProjectionSynchronizer,
     private val clock: Clock
 ) : ViewModel() {
     private val operationState = MutableStateFlow(OperationState())
@@ -148,10 +150,15 @@ class LutealViewModel @Inject constructor(
         operationState.update { it.copy(entrySaveState = EntrySaveState.IDLE) }
     }
     fun setPillTakenToday(taken: Boolean) {
+        val today = clock.instant().atZone(ZoneId.systemDefault()).toLocalDate()
+        setPillTakenOnDate(today, taken)
+    }
+
+    fun setPillTakenOnDate(date: LocalDate, taken: Boolean) {
         viewModelScope.launch {
-            val today = clock.instant().atZone(ZoneId.systemDefault()).toLocalDate()
-            userRepository.setPillLastTakenDate(if (taken) today.toString() else null)
+            userRepository.setPillTakenOnDate(date.toString(), taken)
             notificationScheduler.reconcileAllSchedules()
+            duoProjectionSynchronizer.publishIfTrackerPaired()
         }
     }
 

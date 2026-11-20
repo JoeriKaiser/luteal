@@ -851,4 +851,26 @@
     <string name="today_pill_action_undo_taken">Undo today’s intake</string>
     <string name="today_pill_pause_support">No active pill scheduled today. Next pack starts in %1$d d.</string>
     <string name="phase_reason_hormonal_contraception">Ovulatory and luteal phase estimates are disabled while pill tracking is active.</string>
+    <string name="calendar_legend_pill_taken">Pill taken (recorded)</string>
+    <string name="calendar_legend_pill_scheduled">Pill scheduled (active pack day)</string>
+    <string name="calendar_legend_pill_pause">Pill pause day</string>
+    <string name="inspection_pill_taken_badge">Pill taken</string>
+    <string name="inspection_pill_scheduled_badge">Pill scheduled</string>
+    <string name="inspection_pill_pause_badge">Pill pause</string>
+    <string name="inspection_pill_action_mark_taken">Mark pill as taken</string>
+    <string name="inspection_pill_action_undo_taken">Undo pill intake</string>
+    <string name="duo_share_pill_status">Pill pack status</string>
+    <string name="duo_share_pill_status_desc">Share active and pause pack days and whether today’s pill was taken.</string>
+    <string name="duo_view_pill_taken">Pill pack: Day %1$d of %2$d (taken today)</string>
+    <string name="duo_view_pill_pending">Pill pack: Day %1$d of %2$d (scheduled today)</string>
+    <string name="duo_view_pill_pause">Pill pack: Pause day %1$d of %2$d</string>
+    <string name="duo_partner_pill_card_title">Partner’s pill pack</string>
+    <string name="duo_partner_pill_reminder_toggle_title">Remind me if not marked as taken</string>
+    <string name="duo_partner_pill_reminder_toggle_desc">Receive a reminder on active pack days if the pill is still not marked as taken after the scheduled time.</string>
+    <string name="duo_partner_pill_taken_alert_toggle_title">Notify me when marked as taken</string>
+    <string name="duo_partner_pill_taken_alert_toggle_desc">Receive a notification when a Duo sync confirms today’s pill has been taken.</string>
+    <string name="notif_duo_partner_pill_pending_title">Duo pill reminder</string>
+    <string name="notif_duo_partner_pill_pending_body">Your partner’s pill has not been marked as taken yet today.</string>
+    <string name="notif_duo_partner_pill_taken_title">Pill marked as taken</string>
+    <string name="notif_duo_partner_pill_taken_body">Your partner marked today’s pill as taken.</string>
 </resources>

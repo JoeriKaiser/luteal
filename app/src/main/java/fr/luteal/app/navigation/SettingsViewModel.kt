@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.luteal.app.sync.SyncScheduler
 import fr.luteal.core.data.datastore.SyncDataStore
+import fr.luteal.core.data.repository.DuoProjectionSynchronizer
 import fr.luteal.core.data.repository.UserRepository
 import fr.luteal.core.data.seed.TestDataSeeder
 import fr.luteal.core.model.AgeBand
@@ -80,7 +81,8 @@ class SettingsViewModel @Inject constructor(
     private val pinCryptoManager: PinCryptoManager,
     private val appLockManager: AppLockManager,
     private val clinicalReportAggregator: ClinicalReportAggregator,
-    private val notificationScheduler: NotificationScheduler
+    private val notificationScheduler: NotificationScheduler,
+    private val duoProjectionSynchronizer: DuoProjectionSynchronizer
 ) : ViewModel() {
     private val syncCursorStore: SyncCursorStore get() = cursorStore
 
@@ -636,6 +638,7 @@ class SettingsViewModel @Inject constructor(
             }
             userPreferencesDataStore.setPillRegimenEnabled(enabled)
             notificationScheduler.reconcileAllSchedules()
+            duoProjectionSynchronizer.publishIfTrackerPaired()
         }
     }
 
@@ -644,6 +647,7 @@ class SettingsViewModel @Inject constructor(
             userPreferencesDataStore.setPillActiveDays(activeDays)
             userPreferencesDataStore.setPillPauseDays(pauseDays)
             notificationScheduler.reconcileAllSchedules()
+            duoProjectionSynchronizer.publishIfTrackerPaired()
         }
     }
 
@@ -651,6 +655,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesDataStore.setPillStartDate(startDate.toString())
             notificationScheduler.reconcileAllSchedules()
+            duoProjectionSynchronizer.publishIfTrackerPaired()
         }
     }
 
@@ -658,6 +663,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesDataStore.setPillReminderTime(time)
             notificationScheduler.reconcileAllSchedules()
+            duoProjectionSynchronizer.publishIfTrackerPaired()
         }
     }
 

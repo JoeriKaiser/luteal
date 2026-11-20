@@ -11,8 +11,11 @@ data class PillRegimenConfig(
     val pauseDays: Int = 7,
     val startDate: LocalDate? = null,
     val reminderTime: String = "20:00",
-    val lastTakenDate: LocalDate? = null
-)
+    val lastTakenDate: LocalDate? = null,
+    val takenDates: Set<LocalDate> = emptySet()
+) {
+    fun isTakenOn(date: LocalDate): Boolean = date in takenDates || lastTakenDate == date
+}
 
 sealed interface PillDayStatus {
     data object Disabled : PillDayStatus
@@ -53,7 +56,7 @@ object PillRegimenCalculator {
                 dayOfPack = indexInPack + 1,
                 activeDays = active,
                 pauseDays = pause,
-                isTakenToday = config.lastTakenDate == today
+                isTakenToday = config.isTakenOn(today)
             )
         } else {
             PillDayStatus.PauseDay(

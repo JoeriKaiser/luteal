@@ -15,6 +15,8 @@ import fr.luteal.core.model.CycleEstimateResult
 import fr.luteal.core.model.NotificationType
 import fr.luteal.core.model.PillRegimenCalculator
 import fr.luteal.core.model.PillRegimenConfig
+import fr.luteal.core.model.SharedPillStatus
+import fr.luteal.core.network.ContractJson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -41,6 +43,8 @@ class NotificationScheduler @Inject constructor(
         const val REQUEST_CODE_LATE = 1003
         const val REQUEST_CODE_PILL = 1004
         const val REQUEST_CODE_PILL_SNOOZE = 1005
+        const val REQUEST_CODE_DUO_PARTNER_PILL = 1006
+        const val PARTNER_PILL_GRACE_MINUTES = 15L
 
         fun calculateDailyCheckInTarget(targetTime: LocalTime, now: LocalDateTime, hasEntryToday: Boolean): LocalDateTime {
             val today = now.toLocalDate()
@@ -61,6 +65,56 @@ class NotificationScheduler @Inject constructor(
 
         fun calculatePillReminderTarget(config: PillRegimenConfig, now: LocalDateTime): LocalDateTime? =
             PillRegimenCalculator.nextReminderDateTime(config, now)
+
+        fun calculateDuoPartnerPillReminderTarget(
+            sharedPill: SharedPillStatus?,
+            now: LocalDateTime
+        ): LocalDateTime? {
+            if (sharedPill == null) return null
+            val sharedDate = runCatching { LocalDate.parse(sharedPill.date) }.getOrNull() ?: return null
+            val reminderTime = sharedPill.reminderTime
+                ?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
+                ?: LocalTime.of(20, 0)
+            val triggerTime = reminderTime.plusMinutes(PARTNER_PILL_GRACE_MINUTES)
+            val today = now.toLocalDate()
+
+            // Evaluate the projected pack schedule for today and the next active day
+            val active = sharedPill.activeDays.coerceIn(
+                PillRegimenCalculator.MIN_ACTIVE_DAYS,
+                PillRegimenCalculator.MAX_ACTIVE_DAYS
+            )
+            val pause = sharedPill.pauseDays.coerceIn(
+                PillRegimenCalculator.MIN_PAUSE_DAYS,
+                PillRegimenCalculator.MAX_PAUSE_DAYS
+            )
+            val cycleLength = active + pause
+            if (cycleLength <= 0) return null
+
+            val sharedIndexInPack = if (sharedPill.isActiveDay) {
+                (sharedPill.dayInPhase - 1).coerceIn(0, active - 1)
+            } else {
+                active + (sharedPill.dayInPhase - 1).coerceIn(0, (pause - 1).coerceAtLeast(0))
+            }
+
+            val maxOffset = cycleLength + 1
+            for (offset in 0..maxOffset) {
+                val candidateDate = today.plusDays(offset.toLong())
+                val daysFromShared = java.time.temporal.ChronoUnit.DAYS.between(sharedDate, candidateDate)
+                val indexOnCandidate = Math.floorMod(sharedIndexInPack.toLong() + daysFromShared, cycleLength.toLong()).toInt()
+                val isCandidateActive = indexOnCandidate < active
+                if (isCandidateActive) {
+                    val isTakenOnCandidate = candidateDate == sharedDate && sharedPill.isTaken
+                    if (offset == 0) {
+                        if (!isTakenOnCandidate && !now.toLocalTime().isAfter(triggerTime)) {
+                            return candidateDate.atTime(triggerTime)
+                        }
+                    } else {
+                        return candidateDate.atTime(triggerTime)
+                    }
+                }
+            }
+            return null
+        }
     }
 
     suspend fun reconcileAllSchedules(now: LocalDateTime = LocalDateTime.now()) {
@@ -72,6 +126,7 @@ class NotificationScheduler @Inject constructor(
                 cancelAlarm(NotificationType.PERIOD_WINDOW)
                 cancelAlarm(NotificationType.LATE_CYCLE)
                 cancelAlarm(NotificationType.PILL_REMINDER)
+                cancelAlarm(NotificationType.DUO_PARTNER_PILL_REMINDER)
                 cancelPillSnooze()
                 return@withContext
             }
@@ -111,6 +166,16 @@ class NotificationScheduler @Inject constructor(
                 cancelAlarm(NotificationType.PILL_REMINDER)
                 cancelPillSnooze()
             }
+
+            // Duo Partner Pill Reminder
+            val sharedPill = prefs.duoPartnerSharedPillJson?.let { raw ->
+                runCatching { ContractJson.decodeFromString(SharedPillStatus.serializer(), raw) }.getOrNull()
+            }
+            if (prefs.isDuoPartnerPillReminderEnabled && sharedPill != null) {
+                scheduleDuoPartnerPillReminder(sharedPill, now)
+            } else {
+                cancelAlarm(NotificationType.DUO_PARTNER_PILL_REMINDER)
+            }
         }
     }
 
@@ -145,7 +210,7 @@ class NotificationScheduler @Inject constructor(
     }
 
     private fun schedulePillReminder(config: PillRegimenConfig, now: LocalDateTime) {
-        if (config.lastTakenDate == now.toLocalDate()) {
+        if (config.isTakenOn(now.toLocalDate())) {
             cancelPillSnooze()
         }
         val targetDateTime = calculatePillReminderTarget(config, now)
@@ -153,6 +218,15 @@ class NotificationScheduler @Inject constructor(
             setAlarm(NotificationType.PILL_REMINDER, targetDateTime)
         } else {
             cancelAlarm(NotificationType.PILL_REMINDER)
+        }
+    }
+
+    private fun scheduleDuoPartnerPillReminder(sharedPill: SharedPillStatus, now: LocalDateTime) {
+        val targetDateTime = calculateDuoPartnerPillReminderTarget(sharedPill, now)
+        if (targetDateTime != null) {
+            setAlarm(NotificationType.DUO_PARTNER_PILL_REMINDER, targetDateTime)
+        } else {
+            cancelAlarm(NotificationType.DUO_PARTNER_PILL_REMINDER)
         }
     }
 
@@ -188,7 +262,8 @@ class NotificationScheduler @Inject constructor(
         setPendingIntentAlarm(
             epochMillis = epochMillis,
             pendingIntent = pendingIntent,
-            preferExact = type == NotificationType.PILL_REMINDER
+            preferExact = type == NotificationType.PILL_REMINDER ||
+                type == NotificationType.DUO_PARTNER_PILL_REMINDER
         )
     }
 
@@ -225,6 +300,7 @@ class NotificationScheduler @Inject constructor(
             NotificationType.PERIOD_WINDOW -> REQUEST_CODE_WINDOW
             NotificationType.LATE_CYCLE -> REQUEST_CODE_LATE
             NotificationType.PILL_REMINDER -> REQUEST_CODE_PILL
+            NotificationType.DUO_PARTNER_PILL_REMINDER -> REQUEST_CODE_DUO_PARTNER_PILL
         }
         return PendingIntent.getBroadcast(
             context,

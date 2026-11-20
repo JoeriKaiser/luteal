@@ -75,6 +75,18 @@ class UserRepositoryImpl @Inject constructor(
         userPreferencesDataStore.setPillLastTakenDate(date)
     }
 
+    override suspend fun setPillTakenOnDate(date: String, taken: Boolean) {
+        userPreferencesDataStore.setPillTakenOnDate(date, taken)
+    }
+
+    override suspend fun setDuoPartnerPillReminderEnabled(enabled: Boolean) {
+        userPreferencesDataStore.setDuoPartnerPillReminderEnabled(enabled)
+    }
+
+    override suspend fun setDuoPartnerPillTakenAlertEnabled(enabled: Boolean) {
+        userPreferencesDataStore.setDuoPartnerPillTakenAlertEnabled(enabled)
+    }
+
     override suspend fun setCouplePairing(pairingCode: String?, partnerName: String?) {
         userPreferencesDataStore.setCouplePairingCode(pairingCode)
         val currentProfile = userProfileDao.getUserProfile().firstOrNull()

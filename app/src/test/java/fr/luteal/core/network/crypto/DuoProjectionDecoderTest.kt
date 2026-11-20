@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import fr.luteal.core.model.DuoProjection
 import fr.luteal.core.model.SharedLevel
+import fr.luteal.core.model.SharedPillStatus
 import fr.luteal.core.network.ContractJson
 import fr.luteal.core.network.contract.models.DuoRole
 import fr.luteal.core.network.contract.models.DuoView
@@ -49,7 +50,17 @@ class DuoProjectionDecoderTest {
             version = DuoProjection.CURRENT_VERSION,
             cycleDay = 14,
             mood = SharedLevel(date = "2026-09-02", level = 3),
-            energy = SharedLevel(date = "2026-09-02", level = 4)
+            energy = SharedLevel(date = "2026-09-02", level = 4),
+            pillStatus = SharedPillStatus(
+                date = "2026-09-02",
+                isActiveDay = true,
+                dayInPhase = 10,
+                totalPhaseDays = 21,
+                activeDays = 21,
+                pauseDays = 7,
+                isTaken = true,
+                reminderTime = "20:00"
+            )
         )
         val plaintext = ContractJson.encodeToString(DuoProjection.serializer(), projection).toByteArray()
         val sealed = DuoCrypto.sealRaw(linkKey, linkId, plaintext)

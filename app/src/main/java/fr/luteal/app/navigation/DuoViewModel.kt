@@ -5,10 +5,12 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.luteal.core.data.repository.CycleRepository
 import fr.luteal.core.data.repository.DailyEntryRepository
+import fr.luteal.core.data.repository.DuoProjectionSynchronizer
 import fr.luteal.core.data.repository.DuoRepository
 import fr.luteal.core.data.repository.DuoCycleProjectionCacheWriter
 import fr.luteal.core.data.repository.DuoWidgetCacheRepository
 import fr.luteal.core.data.repository.UserRepository
+import fr.luteal.app.notification.NotificationScheduler
 import fr.luteal.core.model.AgeBand
 import fr.luteal.core.model.CycleEstimateCalculator
 import fr.luteal.app.widget.WidgetFreshness
@@ -22,6 +24,7 @@ import fr.luteal.core.model.PartnerPhaseTips
 import fr.luteal.core.model.PhaseIndeterminateReason
 import fr.luteal.core.model.SharedEstimate
 import fr.luteal.core.model.SharedLevel
+import fr.luteal.core.model.SharedPillStatus
 import fr.luteal.core.network.ContractJson
 import fr.luteal.core.network.crypto.DuoCrypto
 import fr.luteal.core.network.crypto.DuoKeyStore
@@ -56,6 +59,8 @@ class DuoViewModel @Inject constructor(
     private val dailyEntryRepository: DailyEntryRepository,
     private val userRepository: UserRepository,
     private val projectionDecoder: DuoProjectionDecoder,
+    private val projectionSynchronizer: DuoProjectionSynchronizer,
+    private val notificationScheduler: NotificationScheduler,
     private val widgetCacheWriter: DuoCycleProjectionCacheWriter,
     private val widgetCacheRepository: DuoWidgetCacheRepository
 ) : ViewModel() {
@@ -96,12 +101,13 @@ class DuoViewModel @Inject constructor(
             }
             // Show cached projection immediately so offline and demo data render instantly
             if (cached != null) {
+                seedGrantsFromCache()
                 applyCachedProjection()
                 _uiState.update { it.copy(isLoading = false) }
             } else {
                 _uiState.update { it.copy(isLoading = true, error = null) }
+                seedGrantsFromCache()
             }
-            seedGrantsFromCache()
 
             if (!duoRepository.hasAccount()) {
                 return@launch
@@ -217,12 +223,16 @@ class DuoViewModel @Inject constructor(
         }
         val decodedProjection = projectionDecoder.decode(view)
         widgetCacheWriter.save(view)
+        if (!isTracker) {
+            projectionSynchronizer.onPartnerViewReceived(view, decodedProjection)
+        }
         val projection = (decodedProjection as? DuoProjectionDecodeResult.Available)?.projection
         val refreshedAt = widgetCacheRepository.getLatest()?.refreshedAt ?: Instant.now()
         val partnerPhase = PartnerPhaseResolver.resolve(projection, LocalDate.now())
         val partnerTip = (partnerPhase as? CurrentCyclePhase.Available)?.let { available ->
             PartnerPhaseTips.forDate(available.phase, LocalDate.now())
         }
+        val prefs = userRepository.getUserPreferences().first()
         _uiState.update {
             it.copy(
                 phase = if (isTracker) DuoPhase.TrackerActive else DuoPhase.PartnerActive,
@@ -231,6 +241,10 @@ class DuoViewModel @Inject constructor(
                 projection = projection,
                 supportMessages = openSupportMessages(view),
                 grants = effectiveGrants?.associateWith { true } ?: it.grants,
+                isPillRegimenEnabled = prefs.isPillRegimenEnabled,
+                sharePillStatus = prefs.duoSharing.sharePillStatus,
+                isPartnerPillReminderEnabled = prefs.isDuoPartnerPillReminderEnabled,
+                isPartnerPillTakenAlertEnabled = prefs.isDuoPartnerPillTakenAlertEnabled,
                 keyMissing = decodedProjection == DuoProjectionDecodeResult.KeyMissing,
                 isLoading = false,
                 partnerPhase = partnerPhase,
@@ -243,14 +257,26 @@ class DuoViewModel @Inject constructor(
 
     /** Seeds the toggle state from the local cache (last confirmed choices). */
     private suspend fun seedGrantsFromCache() {
-        val prefs = userRepository.getUserPreferences().first().duoSharing
-        _uiState.update { it.copy(grants = prefs.toGrantMap()) }
+        val prefs = userRepository.getUserPreferences().first()
+        val sharing = prefs.duoSharing
+        _uiState.update {
+            it.copy(
+                grants = sharing.toGrantMap(),
+                isPillRegimenEnabled = prefs.isPillRegimenEnabled,
+                sharePillStatus = sharing.sharePillStatus,
+                isPartnerPillReminderEnabled = prefs.isDuoPartnerPillReminderEnabled,
+                isPartnerPillTakenAlertEnabled = prefs.isDuoPartnerPillTakenAlertEnabled
+            )
+        }
     }
 
     /** Mirrors the server's grant list into the local cache. */
     private suspend fun persistGrants(serverGrants: List<GrantField>) {
-        DuoSharingField.entries.forEach { field ->
-            userRepository.updateDuoSharing(field, serverGrants.contains(field.toGrantField()))
+        GrantField.entries.forEach { grantField ->
+            userRepository.updateDuoSharing(
+                grantField.toDuoSharingField(),
+                serverGrants.contains(grantField)
+            )
         }
     }
 
@@ -262,20 +288,47 @@ class DuoViewModel @Inject constructor(
         GrantField.SUPPORT_REQUESTS to shareSupportRequests
     )
 
-    private fun DuoSharingField.toGrantField(): GrantField = when (this) {
-        DuoSharingField.CYCLE_DAY -> GrantField.CYCLE_DAY
-        DuoSharingField.PERIOD_ESTIMATE -> GrantField.PERIOD_ESTIMATE
-        DuoSharingField.MOOD -> GrantField.MOOD
-        DuoSharingField.ENERGY -> GrantField.ENERGY
-        DuoSharingField.SUPPORT_REQUESTS -> GrantField.SUPPORT_REQUESTS
-    }
-
     private fun GrantField.toDuoSharingField(): DuoSharingField = when (this) {
         GrantField.CYCLE_DAY -> DuoSharingField.CYCLE_DAY
         GrantField.PERIOD_ESTIMATE -> DuoSharingField.PERIOD_ESTIMATE
         GrantField.MOOD -> DuoSharingField.MOOD
         GrantField.ENERGY -> DuoSharingField.ENERGY
         GrantField.SUPPORT_REQUESTS -> DuoSharingField.SUPPORT_REQUESTS
+    }
+
+    fun togglePillStatusSharing(granted: Boolean) {
+        viewModelScope.launch {
+            userRepository.updateDuoSharing(DuoSharingField.PILL_STATUS, granted)
+            val prefs = userRepository.getUserPreferences().first()
+            val localPill = if (granted) {
+                projectionSynchronizer.composeLocalPillStatus(LocalDate.now(), prefs)
+            } else null
+            _uiState.update { state ->
+                state.copy(
+                    sharePillStatus = granted,
+                    projection = state.projection?.copy(pillStatus = localPill)
+                        ?: if (localPill != null) DuoProjection(pillStatus = localPill) else null
+                )
+            }
+            if (_uiState.value.phase == DuoPhase.TrackerActive) {
+                publishProjection()
+            }
+        }
+    }
+
+    fun togglePartnerPillReminder(enabled: Boolean) {
+        viewModelScope.launch {
+            userRepository.setDuoPartnerPillReminderEnabled(enabled)
+            _uiState.update { it.copy(isPartnerPillReminderEnabled = enabled) }
+            notificationScheduler.reconcileAllSchedules()
+        }
+    }
+
+    fun togglePartnerPillTakenAlert(enabled: Boolean) {
+        viewModelScope.launch {
+            userRepository.setDuoPartnerPillTakenAlertEnabled(enabled)
+            _uiState.update { it.copy(isPartnerPillTakenAlertEnabled = enabled) }
+        }
     }
 
     fun createInvitation() {
@@ -438,6 +491,14 @@ class DuoViewModel @Inject constructor(
 
     private suspend fun applyCachedProjection() {
         val cached = widgetCacheRepository.getLatest() ?: return
+        val prefs = userRepository.getUserPreferences().first()
+        val cachedPartnerPill = prefs.duoPartnerSharedPillJson?.let { raw ->
+            runCatching { ContractJson.decodeFromString(SharedPillStatus.serializer(), raw) }.getOrNull()
+        }
+        val localTrackerPill = if (cached.role.equals("TRACKER", ignoreCase = true)) {
+            projectionSynchronizer.composeLocalPillStatus(LocalDate.now(), prefs)
+        } else null
+
         val projection = DuoProjection(
             cycleDay = cached.cycleDay,
             periodEstimate = if (cached.estimateStart != null && cached.estimateEnd != null) {
@@ -450,11 +511,17 @@ class DuoViewModel @Inject constructor(
                 )
             } else {
                 null
-            }
+            },
+            pillStatus = cachedPartnerPill ?: localTrackerPill
         )
         val partnerPhase = PartnerPhaseResolver.resolve(projection, LocalDate.now())
         val partnerTip = (partnerPhase as? CurrentCyclePhase.Available)?.let { available ->
             PartnerPhaseTips.forDate(available.phase, LocalDate.now())
+        }
+        val cachedGrants = buildMap {
+            putAll(prefs.duoSharing.toGrantMap())
+            if (cached.cycleDayGranted) put(GrantField.CYCLE_DAY, true)
+            if (cached.estimateGranted) put(GrantField.PERIOD_ESTIMATE, true)
         }
         _uiState.update {
             it.copy(
@@ -463,7 +530,14 @@ class DuoViewModel @Inject constructor(
                     cached.role.equals("TRACKER", ignoreCase = true) -> DuoPhase.TrackerActive
                     else -> it.phase
                 },
-                projection = it.projection ?: projection,
+                projection = it.projection?.copy(
+                    pillStatus = it.projection.pillStatus ?: projection.pillStatus
+                ) ?: projection,
+                grants = cachedGrants,
+                isPillRegimenEnabled = prefs.isPillRegimenEnabled,
+                sharePillStatus = prefs.duoSharing.sharePillStatus,
+                isPartnerPillReminderEnabled = prefs.isDuoPartnerPillReminderEnabled,
+                isPartnerPillTakenAlertEnabled = prefs.isDuoPartnerPillTakenAlertEnabled,
                 lastRefreshedAt = cached.refreshedAt,
                 freshness = WidgetFreshness.of(cached.refreshedAt),
                 partnerPhase = partnerPhase,
@@ -516,54 +590,7 @@ class DuoViewModel @Inject constructor(
 
         viewModelScope.launch {
             runCatching {
-                val cycles = cycleRepository.getCyclesOnce()
-                val today = LocalDate.now()
-
-                val cycleDay = if (grants[GrantField.CYCLE_DAY] == true) {
-                    cycles.filter { !it.startDate.isAfter(today) }
-                        .maxByOrNull { it.startDate }
-                        ?.let { ChronoUnit.DAYS.between(it.startDate, today).toInt() + 1 }
-                } else null
-
-                val estimate = if (grants[GrantField.PERIOD_ESTIMATE] == true) {
-                    // Must use the same inputs as the tracker's own estimate.
-                    // Called without them, this recomputed the window from the
-                    // undeclared prior, so a partner saw a narrower and more
-                    // confident range than the tracker did for the same cycles.
-                    val preferences = userRepository.getUserPreferences().first()
-                    CycleEstimateCalculator.estimateNextPeriod(
-                        cycles = cycles,
-                        ageBand = AgeBand.fromId(preferences.ageBand),
-                        hasTimingContext = preferences.hasTimingContext
-                    )?.let {
-                        SharedEstimate(
-                            windowStart = it.earliestDate.toString(),
-                            windowEnd = it.latestDate.toString(),
-                            centralDate = it.centralDate.toString(),
-                            cycleCount = it.cycleCount,
-                            variabilityDays = it.variabilityDays
-                        )
-                    }
-                } else null
-
-                val latest = dailyEntryRepository.observeEntries().first()
-                    .filter { !it.date.isAfter(today) }
-                    .maxByOrNull { it.date }
-
-                val mood = if (grants[GrantField.MOOD] == true) {
-                    latest?.moodLevel?.let { SharedLevel(latest.date.toString(), it) }
-                } else null
-
-                val energy = if (grants[GrantField.ENERGY] == true) {
-                    latest?.energyLevel?.let { SharedLevel(latest.date.toString(), it) }
-                } else null
-
-                val projection = DuoProjection(
-                    cycleDay = cycleDay,
-                    periodEstimate = estimate,
-                    mood = mood,
-                    energy = energy
-                )
+                val projection = projectionSynchronizer.composeProjection(grants)
                 val json = ContractJson.encodeToString(DuoProjection.serializer(), projection)
                 duoRepository.putDuoPayload(DuoCrypto.seal(key, linkId, json.toByteArray()))
                 projection
@@ -612,6 +639,10 @@ data class DuoUiState(
     /** Pairing URL including the key fragment; shown only to the tracker. */
     val shareableUrl: String? = null,
     val grants: Map<GrantField, Boolean> = emptyMap(),
+    val isPillRegimenEnabled: Boolean = false,
+    val sharePillStatus: Boolean = false,
+    val isPartnerPillReminderEnabled: Boolean = false,
+    val isPartnerPillTakenAlertEnabled: Boolean = false,
     val supportDraft: String = "",
     val isSendingSupport: Boolean = false,
     val partnerPhase: CurrentCyclePhase = CurrentCyclePhase.Indeterminate(

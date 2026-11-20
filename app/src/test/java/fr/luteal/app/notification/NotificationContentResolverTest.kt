@@ -113,4 +113,24 @@ class NotificationContentResolverTest {
         assertNull(content.actionTakenLabel)
         assertNull(content.actionSnoozeLabel)
     }
+
+    @Test
+    fun duoPartnerPillReminderUsesPillChannelWithoutSelfMarkTakenActions() {
+        val descriptive = resolver.resolve(
+            type = NotificationType.DUO_PARTNER_PILL_REMINDER,
+            visibility = NotificationVisibility.DESCRIPTIVE
+        )
+        assertEquals(NotificationChannelManager.CHANNEL_PILL_REMINDER, descriptive.channelId)
+        assertEquals(context.getString(R.string.notif_duo_partner_pill_pending_title), descriptive.title)
+        assertEquals(context.getString(R.string.notif_duo_partner_pill_pending_body), descriptive.body)
+        assertNull(descriptive.actionTakenLabel)
+        assertNull(descriptive.actionSnoozeLabel)
+
+        val concealed = resolver.resolve(
+            type = NotificationType.DUO_PARTNER_PILL_REMINDER,
+            visibility = NotificationVisibility.CONCEALED
+        )
+        assertEquals(context.getString(R.string.notif_default_concealed_title), concealed.title)
+        assertNull(concealed.actionTakenLabel)
+    }
 }

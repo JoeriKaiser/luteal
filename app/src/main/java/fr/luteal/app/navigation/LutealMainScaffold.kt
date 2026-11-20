@@ -174,7 +174,8 @@ fun LutealMainScaffold(
                                 onStartPeriod = {
                                     viewModel.clearEntrySaveState()
                                     editorRequest = EditorRequest(uiState.today, startPeriodIntent = true)
-                                }
+                                },
+                                onTogglePillTakenOnDate = viewModel::setPillTakenOnDate
                             )
                             LutealDestination.DUO -> DuoScreen(
                                 onOpenSettings = {

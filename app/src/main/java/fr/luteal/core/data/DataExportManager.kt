@@ -148,7 +148,8 @@ class DataExportManager @Inject constructor(
             pillPauseDays = prefs.pillPauseDays,
             pillStartDate = prefs.pillStartDate,
             pillReminderTime = prefs.pillReminderTime,
-            pillLastTakenDate = prefs.pillLastTakenDate
+            pillLastTakenDate = prefs.pillLastTakenDate,
+            pillTakenDates = prefs.pillTakenDates.sorted()
         )
 
         return LutealBackupPayload(

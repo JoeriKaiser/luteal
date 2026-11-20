@@ -225,4 +225,28 @@ class PillRegimenCalculatorTest {
         val reminder = PillRegimenCalculator.nextReminderDateTime(config, nowBefore)
         assertEquals(startDate.atTime(20, 0), reminder)
     }
+
+    @Test
+    fun `takenDates set preserves multi-day intake history across pack days`() {
+        val day1 = startDate
+        val day2 = startDate.plusDays(1)
+        val day3 = startDate.plusDays(2)
+
+        val config = PillRegimenConfig(
+            isEnabled = true,
+            activeDays = 21,
+            pauseDays = 7,
+            startDate = startDate,
+            lastTakenDate = day3,
+            takenDates = setOf(day1, day3)
+        )
+
+        val status1 = PillRegimenCalculator.evaluate(config, day1) as PillDayStatus.ActiveDay
+        val status2 = PillRegimenCalculator.evaluate(config, day2) as PillDayStatus.ActiveDay
+        val status3 = PillRegimenCalculator.evaluate(config, day3) as PillDayStatus.ActiveDay
+
+        assertTrue(status1.isTakenToday)
+        assertFalse(status2.isTakenToday)
+        assertTrue(status3.isTakenToday)
+    }
 }

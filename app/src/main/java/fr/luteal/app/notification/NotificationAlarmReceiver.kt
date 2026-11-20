@@ -14,8 +14,15 @@ import dagger.hilt.android.AndroidEntryPoint
 import fr.luteal.app.MainActivity
 import fr.luteal.app.R
 import fr.luteal.core.data.datastore.UserPreferencesDataStore
+import fr.luteal.core.data.repository.DuoProjectionSynchronizer
+import fr.luteal.core.data.repository.DuoRepository
 import fr.luteal.core.model.NotificationType
 import fr.luteal.core.model.NotificationVisibility
+import fr.luteal.core.model.SharedPillStatus
+import fr.luteal.core.model.SyncMode
+import fr.luteal.core.network.ContractJson
+import fr.luteal.core.network.crypto.DuoProjectionDecodeResult
+import fr.luteal.core.network.crypto.DuoProjectionDecoder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -43,15 +50,25 @@ class NotificationAlarmReceiver : BroadcastReceiver() {
     @Inject
     lateinit var notificationScheduler: NotificationScheduler
 
+    @Inject
+    lateinit var duoRepository: DuoRepository
+
+    @Inject
+    lateinit var duoProjectionDecoder: DuoProjectionDecoder
+
+    @Inject
+    lateinit var duoProjectionSynchronizer: DuoProjectionSynchronizer
+
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == ACTION_MARK_PILL_TAKEN) {
             val pendingResult = goAsync()
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    userPreferencesDataStore.setPillLastTakenDate(LocalDate.now().toString())
+                    userPreferencesDataStore.setPillTakenOnDate(LocalDate.now().toString(), true)
                     notificationScheduler.cancelPillSnooze()
                     NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID_PILL)
                     notificationScheduler.reconcileAllSchedules()
+                    duoProjectionSynchronizer.publishIfTrackerPaired()
                 } finally {
                     pendingResult.finish()
                 }
@@ -86,8 +103,30 @@ class NotificationAlarmReceiver : BroadcastReceiver() {
                     NotificationType.PERIOD_WINDOW -> prefs.isPeriodWindowEnabled
                     NotificationType.LATE_CYCLE -> prefs.isLateCycleEnabled
                     NotificationType.PILL_REMINDER -> prefs.isPillRegimenEnabled
+                    NotificationType.DUO_PARTNER_PILL_REMINDER -> prefs.isDuoPartnerPillReminderEnabled
                 }
                 if (!isTypeEnabled) return@launch
+
+                if (type == NotificationType.DUO_PARTNER_PILL_REMINDER) {
+                    // Refresh latest Duo view if online before deciding whether to alert the partner
+                    if (prefs.syncMode == SyncMode.ONLINE_CLOUD.name && duoRepository.hasAccount()) {
+                        runCatching {
+                            val view = duoRepository.duoView()
+                            val decoded = duoProjectionDecoder.decode(view)
+                            duoProjectionSynchronizer.onPartnerViewReceived(view, decoded)
+                        }
+                    }
+                    val updatedPrefs = userPreferencesDataStore.userPreferencesFlow.first()
+                    val sharedPill = updatedPrefs.duoPartnerSharedPillJson?.let { raw ->
+                        runCatching { ContractJson.decodeFromString(SharedPillStatus.serializer(), raw) }.getOrNull()
+                    }
+                    val todayStr = LocalDate.now().toString()
+                    if (sharedPill == null || !sharedPill.isActiveDay || (sharedPill.date == todayStr && sharedPill.isTaken)) {
+                        DuoPartnerPillAlertNotifier(context).cancelPendingReminderNotification()
+                        notificationScheduler.reconcileAllSchedules()
+                        return@launch
+                    }
+                }
 
                 val visibility = NotificationVisibility.fromName(prefs.notificationVisibilityMode)
                 val content = contentResolver.resolve(
@@ -157,6 +196,7 @@ class NotificationAlarmReceiver : BroadcastReceiver() {
                     NotificationType.PERIOD_WINDOW -> 2002
                     NotificationType.LATE_CYCLE -> 2003
                     NotificationType.PILL_REMINDER -> NOTIFICATION_ID_PILL
+                    NotificationType.DUO_PARTNER_PILL_REMINDER -> DuoPartnerPillAlertNotifier.NOTIFICATION_ID_DUO_PARTNER_PILL_REMINDER
                 }
 
                 val hasPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||

@@ -26,6 +26,7 @@ import java.time.ZoneOffset
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -373,6 +374,37 @@ class TestDataSeederImpl @Inject constructor(
                 refreshedAtEpochMillis = nowEpoch
             )
         )
+        val prefs = userPreferencesDataStore.userPreferencesFlow.first()
+        val seededPartnerPill = if (prefs.isPillRegimenEnabled) {
+            userPreferencesDataStore.setDuoSharing(fr.luteal.core.model.DuoSharingField.PILL_STATUS, true)
+            when (val pillStatus = fr.luteal.core.model.PillRegimenCalculator.evaluate(prefs.pillRegimenConfig, anchorDate)) {
+                is fr.luteal.core.model.PillDayStatus.ActiveDay -> fr.luteal.core.model.SharedPillStatus(
+                    date = anchorDate.toString(),
+                    isActiveDay = true,
+                    dayInPhase = pillStatus.dayOfPack,
+                    totalPhaseDays = pillStatus.activeDays,
+                    activeDays = pillStatus.activeDays,
+                    pauseDays = pillStatus.pauseDays,
+                    isTaken = pillStatus.isTakenToday,
+                    reminderTime = prefs.pillReminderTime
+                )
+                is fr.luteal.core.model.PillDayStatus.PauseDay -> fr.luteal.core.model.SharedPillStatus(
+                    date = anchorDate.toString(),
+                    isActiveDay = false,
+                    dayInPhase = pillStatus.dayOfPause,
+                    totalPhaseDays = pillStatus.pauseDays,
+                    activeDays = pillStatus.activeDays,
+                    pauseDays = pillStatus.pauseDays,
+                    isTaken = false,
+                    reminderTime = prefs.pillReminderTime
+                )
+                fr.luteal.core.model.PillDayStatus.Disabled -> null
+            }
+        } else null
+        userPreferencesDataStore.setDuoPartnerSharedPillJson(
+            seededPartnerPill?.let { fr.luteal.core.network.ContractJson.encodeToString(fr.luteal.core.model.SharedPillStatus.serializer(), it) }
+        )
+        userPreferencesDataStore.setDuoPartnerNotifiedTakenDate(null)
         syncCredentialStore.save(
             SyncCredentials(
                 accountId = "demo-account-id",
