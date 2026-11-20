@@ -36,6 +36,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 import androidx.annotation.StringRes
+import fr.luteal.app.BuildConfig
 import fr.luteal.app.R
 import fr.luteal.core.data.datastore.UserPreferencesDataStore
 import fr.luteal.core.data.security.AppLockManager
@@ -351,7 +352,7 @@ class SettingsViewModel @Inject constructor(
             withContext(Dispatchers.IO) {
                 runCatching {
                     context.contentResolver.openOutputStream(uri)?.use { stream ->
-                        dataExportManager.exportToStream(stream)
+                        dataExportManager.exportToStream(stream, appVersion = BuildConfig.VERSION_NAME)
                     } ?: throw IllegalStateException("Cannot open output stream for URI")
                 }
             }.onSuccess {
