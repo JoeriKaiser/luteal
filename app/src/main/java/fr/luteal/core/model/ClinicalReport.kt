@@ -10,7 +10,8 @@ enum class ReportFormat {
 
 enum class ReportLanguage(val languageTag: String) {
     FRENCH("fr"),
-    ENGLISH("en");
+    ENGLISH("en"),
+    SPANISH("es");
 
     val locale: Locale = Locale.forLanguageTag(languageTag)
 }

@@ -81,6 +81,7 @@ data class ReportStrings(
         fun forLanguage(language: ReportLanguage): ReportStrings = when (language) {
             ReportLanguage.FRENCH -> french
             ReportLanguage.ENGLISH -> english
+            ReportLanguage.SPANISH -> spanish
         }
 
         private val french = ReportStrings(
@@ -221,6 +222,76 @@ data class ReportStrings(
             colNotes = "Notes",
             htmlDisclaimer = "Descriptive summary generated locally by Luteal from user-recorded observations. Does not constitute a clinical diagnosis or medical interpretation.",
             pdfDisclaimer = "Descriptive document generated from user observations. Does not constitute a clinical diagnosis or interpretation."
+        )
+
+        private val spanish = ReportStrings(
+            datePattern = "d 'de' MMMM 'de' yyyy",
+            dayUnit = "d",
+            colonSeparator = ":",
+            title = "Resumen para la consulta médica",
+            htmlPeriodLabel = "Periodo de observación",
+            htmlGeneratedLabel = "Generado el",
+            pdfPeriodLabel = "Periodo",
+            pdfIssuedLabel = "Emitido el",
+            noteLabel = "Nota",
+            cycleSectionHeading = "1. Resumen de los ciclos",
+            totalCyclesLabel = "Total de ciclos",
+            meanLengthLabel = "Duración media",
+            medianLabel = "Mediana",
+            htmlStdDevLabel = "Desviación típica (s)",
+            pdfStdDevLabel = "Desv. típica",
+            htmlRangeLabel = "Rango (mín. - máx.)",
+            pdfRangeLabel = "Rango",
+            htmlMeanBleedingLabel = "Sangrado medio",
+            pdfBleedingDurationLabel = "Días de sangrado",
+            colStart = "Inicio",
+            colEnd = "Fin",
+            colLength = "Duración",
+            colBleeding = "Sangrado",
+            colPeakFlow = "Máx. sangrado",
+            colPainDays = "Días dolor",
+            colStatus = "Estado",
+            statusExcluded = "Excluido",
+            statusIncluded = "Incluido",
+            htmlBleedingSectionHeading = "2. Perfil del sangrado",
+            totalBleedingDaysLabel = "Total de días con sangrado",
+            spottingFlowLabel = "Manchado",
+            lightFlowLabel = "Sangrado leve",
+            mediumFlowLabel = "Sangrado moderado",
+            heavyFlowLabel = "Sangrado abundante",
+            intermenstrualBleedingLabel = "Sangrado intermenstrual",
+            htmlPainSectionHeading = "3. Evolución del dolor",
+            totalPainDaysLabel = "Total de días con dolor",
+            menstrualPainLabel = "Dolor menstrual (dismenorrea)",
+            nonMenstrualPainLabel = "Dolor pélvico fuera de la regla",
+            severePainHtmlLabel = "Días de dolor intenso (≥ 4/5)",
+            meanScoreHtmlLabel = "Puntuación media (/5)",
+            pdfBleedingPainSectionHeading = "2. Sangrado y dolor",
+            pdfBleedingDaysLabel = "Días de sangrado",
+            pdfSpottingLabel = "Manchado",
+            pdfHeavyLabel = "Abundante",
+            pdfPainDaysLabel = "Días con dolor",
+            pdfDysmenorrheaLabel = "Dismenorrea",
+            pdfNonMenstrualLabel = "Fuera de la regla",
+            pdfSeverePainLabel = "Dolor intenso (≥4/5)",
+            pdfMeanScoreLabel = "Puntuación media",
+            htmlSymptomSectionHeading = "4. Frecuencia de los síntomas registrados",
+            pdfSymptomSectionHeading = "3. Frecuencia de síntomas",
+            colSymptom = "Síntoma",
+            htmlColTotalOccurrences = "Total de veces",
+            htmlColDuringMenses = "Durante la regla",
+            htmlColOutsideMenses = "Fuera de la regla",
+            pdfColTotal = "Total",
+            pdfColMenses = "Regla",
+            pdfColNonMenses = "Sin regla",
+            htmlNotesSectionHeading = "5. Notas y medicación",
+            pdfNotesSectionHeading = "4. Notas y observaciones",
+            colDate = "Fecha",
+            colFlow = "Sangrado",
+            colPain = "Dolor",
+            colNotes = "Notas",
+            htmlDisclaimer = "Resumen descriptivo generado en el dispositivo por Luteal a partir de lo que ha registrado la persona. No es un diagnóstico clínico ni una interpretación médica.",
+            pdfDisclaimer = "Documento descriptivo elaborado a partir de lo que ha registrado la persona. No es un diagnóstico clínico ni una interpretación médica."
         )
     }
 }

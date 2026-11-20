@@ -66,9 +66,28 @@ object ClinicalSymptomNames {
         "breast_tenderness" to "Breast tenderness"
     )
 
+    private val namesEs = mapOf(
+        "cramps" to "Calambres uterinos",
+        "headache" to "Cefalea / dolor de cabeza",
+        "abdominal_pain" to "Dolor abdominal",
+        "backache" to "Dolor lumbar",
+        "muscle_aches" to "Dolores / tensión muscular",
+        "pelvic_pain_outside_period" to "Dolor pélvico fuera de la regla",
+        "mood_changes" to "Cambios de humor / irritabilidad",
+        "anxiety" to "Ansiedad / tensión",
+        "fatigue" to "Cansancio / astenia",
+        "sleep_issue" to "Alteraciones del sueño",
+        "bloating" to "Hinchazón abdominal",
+        "nausea" to "Náuseas",
+        "digestive_changes" to "Cambios digestivos / tránsito",
+        "acne" to "Acné",
+        "breast_tenderness" to "Sensibilidad mamaria / mastalgia"
+    )
+
     private fun namesFor(language: ReportLanguage): Map<String, String> = when (language) {
         ReportLanguage.FRENCH -> namesFr
         ReportLanguage.ENGLISH -> namesEn
+        ReportLanguage.SPANISH -> namesEs
     }
 
     fun getName(symptomId: String, language: ReportLanguage): String {

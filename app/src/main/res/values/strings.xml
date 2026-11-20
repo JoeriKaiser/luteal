@@ -602,6 +602,7 @@
     <string name="report_language_label">Report language</string>
     <string name="report_language_fr">Français</string>
     <string name="report_language_en">English</string>
+    <string name="report_language_es">Español</string>
     <string name="report_include_notes_title">Include private notes</string>
     <string name="report_include_notes_desc">Adds your written notes and treatment details.</string>
     <string name="report_export_action">Generate and export</string>
