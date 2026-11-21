@@ -147,5 +147,42 @@ class LongitudinalCycleStatsCalculatorTest {
 
         assertEquals(28, cycle3Item.lengthDays)
         assertFalse(cycle3Item.hasSevenDayShift)
+        val cycle2Item = stats.items.first { it.cycleId == "2" }
+        assertFalse("Excluded cycle itself must not carry Shift >= 7d badge", cycle2Item.hasSevenDayShift)
+    }
+
+    @Test
+    fun gapAboveNinetyDaysResetsConsecutiveShiftComparisonAndSpottingNotCountedAsPeriodFlow() {
+        val cycles = listOf(
+            Cycle(
+                id = "1",
+                startDate = LocalDate.of(2026, 1, 1),
+                endDate = LocalDate.of(2026, 1, 28), // 28d
+                periodDays = listOf(
+                    PeriodDay(LocalDate.of(2026, 1, 1), BleedingIntensity.MEDIUM),
+                    PeriodDay(LocalDate.of(2026, 1, 14), BleedingIntensity.SPOTTING)
+                )
+            ),
+            Cycle(
+                id = "2",
+                startDate = LocalDate.of(2026, 1, 29),
+                endDate = LocalDate.of(2026, 5, 28) // 120d gap (> 90d)
+            ),
+            Cycle(
+                id = "3",
+                startDate = LocalDate.of(2026, 5, 29),
+                endDate = LocalDate.of(2026, 7, 4) // 37d (would look like +9d vs cycle 1 without reset)
+            ),
+            Cycle(id = "4", startDate = LocalDate.of(2026, 7, 5), endDate = null)
+        )
+
+        val stats = LongitudinalCycleStatsCalculator.calculate(cycles)
+        val c1 = stats.items.first { it.cycleId == "1" }
+        val c2 = stats.items.first { it.cycleId == "2" }
+        val c3 = stats.items.first { it.cycleId == "3" }
+
+        assertEquals(1, c1.bleedingDaysCount)
+        assertFalse("Out-of-range gap must not trigger Shift >= 7d", c2.hasSevenDayShift)
+        assertFalse("Cycle after >90d gap must not compare against pre-gap cycle", c3.hasSevenDayShift)
     }
 }

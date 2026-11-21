@@ -14,7 +14,8 @@ data class LongitudinalCycleItem(
     val isExcluded: Boolean,
     val exclusionReason: CycleExclusionReason?,
     /**
-     * Flags a single-cycle length difference >= 7 days for the UI badge "Shift >= 7d",
+     * Flags a single-cycle length difference >= 7 days between consecutive
+     * plausible, non-excluded completed cycles for the UI badge "Shift >= 7d",
      * distinct from multi-cycle STRAW+10 staging.
      */
     val hasSevenDayShift: Boolean
@@ -49,17 +50,24 @@ object LongitudinalCycleStatsCalculator {
                 ChronoUnit.DAYS.between(cycle.startDate, today).toInt() + 1
             }
 
-            val bleedingDays = cycle.periodDays.count { it.bleedingIntensity != BleedingIntensity.NONE }
-            val hasSevenDayShift = if (!isCurrent && prevCompletedLength != null) {
+            val bleedingDays = cycle.periodDays.count { it.bleedingIntensity.isPeriodFlow() }
+            val isPlausible = length in CycleEstimateCalculator.plausibleCycleDays
+            val hasSevenDayShift = if (
+                !isCurrent &&
+                !cycle.isExcludedFromEstimates &&
+                isPlausible &&
+                prevCompletedLength != null
+            ) {
                 abs(length - prevCompletedLength) >= 7
             } else {
                 false
             }
             if (!isCurrent) {
-                if (!cycle.isExcludedFromEstimates) {
+                if (!isPlausible) {
+                    // Recording gaps >90d or implausible <15d intervals break consecutive comparison.
+                    prevCompletedLength = null
+                } else if (!cycle.isExcludedFromEstimates) {
                     prevCompletedLength = length
-                }
-                if (!cycle.isExcludedFromEstimates && length in CycleEstimateCalculator.plausibleCycleDays) {
                     completedLengths.add(length)
                 }
             }

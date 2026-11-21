@@ -1,6 +1,5 @@
 package fr.luteal.core.model
 
-import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
 data class SymptomPattern(
@@ -14,11 +13,33 @@ data class SymptomPattern(
 /**
  * Pure, deterministic calculator aggregating user-recorded symptoms across
  * cycle phases. Purely descriptive: provides factual occurrence counts and
- * phase distribution without making clinical inferences, screening, or predictions.
+ * phase distribution without making clinical inferences, screening, or
+ * predictions.
+ *
+ * Aligns with [CurrentCyclePhaseCalculator]:
+ * - Menstruation is recorded (period flow or cycle start day without explicit
+ *   non-period flow), never inferred from early cycle days without bleeding.
+ * - Spotting does not classify a day as menstrual.
+ * - Unmatched dates, transition days around `cycleLength - 13 +/- 2`, open
+ *   cycles without completed history, and non-menstrual days under active
+ *   hormonal contraception stay unclassified rather than being forced into
+ *   follicular or ovulatory buckets.
+ * - [SymptomPattern.mostFrequentPhase] requires at least 3 total occurrences
+ *   across at least 2 cycles and a strict unique maximum (no arbitrary tie
+ *   breaking).
  */
 object SymptomPatternCalculator {
+    private const val EARLY_CYCLE_DAYS = 7
+    private const val LUTEAL_ANCHOR_DAYS = 13
+    private const val OVULATION_TRANSITION_RADIUS_DAYS = 2
+    private const val MIN_PATTERN_OCCURRENCES = 3
+    private const val MIN_PATTERN_CYCLES = 2
 
-    fun calculate(cycles: List<Cycle>, entries: List<DailyEntry>): List<SymptomPattern> {
+    fun calculate(
+        cycles: List<Cycle>,
+        entries: List<DailyEntry>,
+        isPillRegimenActive: Boolean = false
+    ): List<SymptomPattern> {
         val entriesWithSymptoms = entries.filter { it.symptomIds.isNotEmpty() }
         if (entriesWithSymptoms.isEmpty()) return emptyList()
 
@@ -35,20 +56,28 @@ object SymptomPatternCalculator {
         val accumulators = mutableMapOf<String, SymptomAccumulator>()
 
         for (entry in entriesWithSymptoms) {
-            val (cycle, phase) = resolveCycleAndPhase(entry, sortedCycles)
+            val (cycle, phase) = resolveCycleAndPhase(entry, sortedCycles, isPillRegimenActive)
             val cycleIdentifier = cycle?.id ?: "unassigned_${entry.date.year}_${entry.date.monthValue}"
 
             for (symptomId in entry.symptomIds) {
                 val acc = accumulators.getOrPut(symptomId) { SymptomAccumulator() }
                 acc.totalOccurrences++
                 acc.cycleIds.add(cycleIdentifier)
-                acc.phaseCounts[phase] = (acc.phaseCounts[phase] ?: 0) + 1
+                if (phase != null) {
+                    acc.phaseCounts[phase] = (acc.phaseCounts[phase] ?: 0) + 1
+                }
             }
         }
 
         return accumulators.map { (symptomId, acc) ->
             val maxPhaseCount = acc.phaseCounts.values.maxOrNull() ?: 0
-            val topPhase = if (maxPhaseCount > 0) {
+            val hasUniqueMaximum = maxPhaseCount > 0 &&
+                acc.phaseCounts.values.count { it == maxPhaseCount } == 1
+            val topPhase = if (
+                acc.totalOccurrences >= MIN_PATTERN_OCCURRENCES &&
+                acc.cycleIds.size >= MIN_PATTERN_CYCLES &&
+                hasUniqueMaximum
+            ) {
                 acc.phaseCounts.entries.firstOrNull { it.value == maxPhaseCount }?.key
             } else {
                 null
@@ -68,31 +97,46 @@ object SymptomPatternCalculator {
 
     private fun resolveCycleAndPhase(
         entry: DailyEntry,
-        sortedCycles: List<Cycle>
-    ): Pair<Cycle?, CyclePhase> {
-        // Bleeding overrides phase to MENSTRUAL
-        if (entry.bleedingIntensity != null && entry.bleedingIntensity != BleedingIntensity.NONE) {
-            val matchingCycle = sortedCycles.lastOrNull { !it.startDate.isAfter(entry.date) }
+        sortedCycles: List<Cycle>,
+        isPillRegimenActive: Boolean
+    ): Pair<Cycle?, CyclePhase?> {
+        val cycleIndex = sortedCycles.indexOfLast { !it.startDate.isAfter(entry.date) }
+        val matchingCycle = sortedCycles.getOrNull(cycleIndex)?.takeIf { cycle ->
+            cycle.endDate == null || !entry.date.isAfter(cycle.endDate)
+        }
+
+        // Recorded period flow (light/medium/heavy, never spotting) is menstrual.
+        if (entry.bleedingIntensity?.isPeriodFlow() == true) {
             return matchingCycle to CyclePhase.MENSTRUAL
         }
 
-        // Find cycle containing this date
-        val cycleIndex = sortedCycles.indexOfLast { !it.startDate.isAfter(entry.date) }
-        if (cycleIndex == -1) {
-            return null to CyclePhase.FOLLICULAR
+        val cycle = matchingCycle ?: return null to null
+        val dayIndex = ChronoUnit.DAYS.between(cycle.startDate, entry.date).toInt()
+        val isExplicitNonPeriodFlow = entry.bleedingIntensity == BleedingIntensity.NONE ||
+            entry.bleedingIntensity == BleedingIntensity.SPOTTING
+        if (dayIndex == 0 && !isExplicitNonPeriodFlow) {
+            return cycle to CyclePhase.MENSTRUAL
         }
 
-        val cycle = sortedCycles[cycleIndex]
-        if (cycle.endDate != null && entry.date.isAfter(cycle.endDate)) {
-            return null to CyclePhase.FOLLICULAR
+        if (isPillRegimenActive) {
+            return cycle to null
         }
+
+        if (dayIndex < EARLY_CYCLE_DAYS) {
+            return cycle to null
+        }
+
         val nextCycle = sortedCycles.getOrNull(cycleIndex + 1)
         val completedLengths = sortedCycles
-            .filter { it.endDate != null && !it.isExcludedFromEstimates && it.lengthInDays in CycleEstimateCalculator.plausibleCycleDays }
+            .filter {
+                it.endDate != null &&
+                    !it.isExcludedFromEstimates &&
+                    it.lengthInDays in CycleEstimateCalculator.plausibleCycleDays
+            }
             .map { it.lengthInDays }
         val typicalCycleLength = if (completedLengths.isNotEmpty()) {
             val sorted = completedLengths.sorted()
-            sorted[sorted.size / 2] // median
+            sorted[sorted.size / 2]
         } else {
             null
         }
@@ -103,24 +147,18 @@ object SymptomPatternCalculator {
             else -> typicalCycleLength
         }
 
-        val dayIndex = ChronoUnit.DAYS.between(cycle.startDate, entry.date).toInt()
+        if (lengthOrNull == null || lengthOrNull !in CycleEstimateCalculator.plausibleCycleDays) {
+            return cycle to null
+        }
 
-        val phase = if (lengthOrNull != null) {
-            val cycleLength = lengthOrNull.coerceAtLeast(10)
-            val lutealStart = maxOf(6, cycleLength - 14)
-            val ovulatoryStart = maxOf(5, lutealStart - 2)
+        val ovulationCentral = lengthOrNull - LUTEAL_ANCHOR_DAYS
+        val ovulationEarliest = maxOf(EARLY_CYCLE_DAYS, ovulationCentral - OVULATION_TRANSITION_RADIUS_DAYS)
+        val ovulationLatest = maxOf(ovulationEarliest, ovulationCentral + OVULATION_TRANSITION_RADIUS_DAYS)
 
-            when {
-                dayIndex < 5 -> CyclePhase.MENSTRUAL
-                dayIndex in ovulatoryStart until lutealStart -> CyclePhase.OVULATORY
-                dayIndex >= lutealStart -> CyclePhase.LUTEAL
-                else -> CyclePhase.FOLLICULAR
-            }
-        } else {
-            when {
-                dayIndex < 5 -> CyclePhase.MENSTRUAL
-                else -> CyclePhase.FOLLICULAR
-            }
+        val phase = when {
+            dayIndex < ovulationEarliest -> CyclePhase.FOLLICULAR
+            dayIndex > ovulationLatest -> CyclePhase.LUTEAL
+            else -> null
         }
         return cycle to phase
     }
