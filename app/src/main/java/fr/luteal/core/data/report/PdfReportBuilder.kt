@@ -128,21 +128,36 @@ object PdfReportBuilder {
         val periodText = "${strings.pdfPeriodLabel}$colon${data.dateRangeStart.format(dateFormatter)} - ${data.dateRangeEnd.format(dateFormatter)}  |  ${strings.pdfIssuedLabel}$colon${data.generatedAt.format(dateFormatter)}"
         canvas.drawText(periodText, MARGIN, y, secondaryPaint)
         y += 12f
+        data.pillRegimenSummary?.let { pill ->
+            val pillStart = pill.startDate.format(dateFormatter)
+            val pillText = strings.pillRegimenScheduleTemplate.format(
+                language.locale,
+                pill.activeDays,
+                pill.pauseDays,
+                pillStart
+            )
+            canvas.drawText("${strings.pillRegimenNoteLabel}$colon$pillText", MARGIN, y, secondaryPaint)
+            y += 12f
+        }
         canvas.drawLine(MARGIN, y, MARGIN + CONTENT_WIDTH, y, linePaint)
         y += 20f
 
         // Section 1: Cycle Statistics
-        ensureSpace(60f)
+        ensureSpace(75f)
         canvas.drawText(strings.cycleSectionHeading, MARGIN, y, headerPaint)
         y += 14f
 
         val stats = data.cycleStats
+        val rangeDisplay = buildString {
+            append("${stats.minLengthDays ?: "--"} - ${stats.maxLengthDays ?: "--"} $u")
+            stats.lengthSpanDays?.let { span -> append(" (Δ $span $u)") }
+        }
         val metrics = listOf(
             "${strings.totalCyclesLabel}$colon${stats.totalCyclesCount}",
             "${strings.meanLengthLabel}$colon${stats.meanLengthDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}",
             "${strings.medianLabel}$colon${stats.medianLengthDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}",
             "${strings.pdfStdDevLabel}$colon${stats.sampleStdDevDays?.let { "± %.1f $u".format(Locale.US, it) } ?: "--"}",
-            "${strings.pdfRangeLabel}$colon${stats.minLengthDays ?: "--"} - ${stats.maxLengthDays ?: "--"} $u",
+            "${strings.pdfRangeLabel}$colon$rangeDisplay",
             "${strings.pdfBleedingDurationLabel}$colon${stats.meanBleedingDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}"
         )
         val colWidth = CONTENT_WIDTH / 3

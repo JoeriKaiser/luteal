@@ -54,6 +54,7 @@ data class CycleStatistics(
     val medianLengthDays: Double?,
     val minLengthDays: Int?,
     val maxLengthDays: Int?,
+    val lengthSpanDays: Int? = null,
     val meanBleedingDays: Double?,
     val shortestCycleDate: LocalDate?,
     val longestCycleDate: LocalDate?,
@@ -92,6 +93,12 @@ data class ReportNoteEntry(
     val notes: String
 )
 
+data class ReportPillSummary(
+    val activeDays: Int,
+    val pauseDays: Int,
+    val startDate: LocalDate
+)
+
 data class ClinicalReportData(
     val generatedAt: LocalDate,
     val dateRangeStart: LocalDate,
@@ -101,5 +108,6 @@ data class ClinicalReportData(
     val bleedingDist: BleedingDistribution,
     val painDist: PainDistribution,
     val symptomFrequencies: List<SymptomFrequencyEntry>,
-    val notes: List<ReportNoteEntry>
+    val notes: List<ReportNoteEntry>,
+    val pillRegimenSummary: ReportPillSummary? = null
 )

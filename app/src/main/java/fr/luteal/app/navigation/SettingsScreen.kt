@@ -281,6 +281,11 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_widgets_privacy_title),
                     body = stringResource(R.string.widget_privacy_notice)
                 )
+                SettingsInformationRow(
+                    icon = Icons.Rounded.HealthAndSafety,
+                    title = stringResource(R.string.settings_health_data_notice_title),
+                    body = stringResource(R.string.settings_health_data_notice_body)
+                )
             }
         }
 

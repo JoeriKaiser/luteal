@@ -34,7 +34,17 @@ object HtmlReportBuilder {
             appendLine("<header>")
             appendLine("  <div class=\"brand\">LUTEAL</div>")
             appendLine("  <h1>${strings.title}</h1>")
-            appendLine("  <p class=\"meta\"><strong>${strings.htmlPeriodLabel}${strings.colonSeparator}</strong> $formattedStart &ndash; $formattedEnd &nbsp;|&nbsp; <strong>${strings.htmlGeneratedLabel}${strings.colonSeparator}</strong> $formattedGenerated</p>")
+            appendLine("  <p class=\"meta\"><strong>${strings.htmlPeriodLabel}${strings.colonSeparator}</strong> $formattedStart - $formattedEnd &nbsp;|&nbsp; <strong>${strings.htmlGeneratedLabel}${strings.colonSeparator}</strong> $formattedGenerated</p>")
+            data.pillRegimenSummary?.let { pill ->
+                val pillStart = pill.startDate.format(dateFormatter)
+                val pillText = strings.pillRegimenScheduleTemplate.format(
+                    language.locale,
+                    pill.activeDays,
+                    pill.pauseDays,
+                    pillStart
+                )
+                appendLine("  <p class=\"meta\"><strong>${strings.pillRegimenNoteLabel}${strings.colonSeparator}</strong> ${escapeHtml(pillText)}</p>")
+            }
             appendLine("</header>")
 
             // Section 1: Cycle Statistics
@@ -46,7 +56,8 @@ object HtmlReportBuilder {
             appendLine("    <div class=\"metric\"><span class=\"label\">${strings.meanLengthLabel}</span><span class=\"value\">${stats.meanLengthDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}</span></div>")
             appendLine("    <div class=\"metric\"><span class=\"label\">${strings.medianLabel}</span><span class=\"value\">${stats.medianLengthDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}</span></div>")
             appendLine("    <div class=\"metric\"><span class=\"label\">${strings.htmlStdDevLabel}</span><span class=\"value\">${stats.sampleStdDevDays?.let { "± %.1f $u".format(Locale.US, it) } ?: "--"}</span></div>")
-            appendLine("    <div class=\"metric\"><span class=\"label\">${strings.htmlRangeLabel}</span><span class=\"value\">${stats.minLengthDays ?: "--"} $u &ndash; ${stats.maxLengthDays ?: "--"} $u</span></div>")
+            appendLine("    <div class=\"metric\"><span class=\"label\">${strings.htmlRangeLabel}</span><span class=\"value\">${stats.minLengthDays ?: "--"} $u - ${stats.maxLengthDays ?: "--"} $u</span></div>")
+            appendLine("    <div class=\"metric\"><span class=\"label\">${strings.lengthSpanLabel}</span><span class=\"value\">${stats.lengthSpanDays?.let { "$it $u" } ?: "--"}</span></div>")
             appendLine("    <div class=\"metric\"><span class=\"label\">${strings.htmlMeanBleedingLabel}</span><span class=\"value\">${stats.meanBleedingDays?.let { "%.1f $u".format(Locale.US, it) } ?: "--"}</span></div>")
             appendLine("  </div>")
 

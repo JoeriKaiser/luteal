@@ -22,7 +22,7 @@
     <string name="widget_estimate_needs_history">Estimación no disponible: registra otro inicio de ciclo.</string>
     <string name="widget_estimate_out_of_range">Las duraciones de ciclo registradas no permiten calcular un intervalo estimado.</string>
     <string name="widget_estimate_range">Estimado: del %1$s al %2$s</string>
-    <string name="widget_estimate_range_short">%1$s – %2$s</string>
+    <string name="widget_estimate_range_short">%1$s - %2$s</string>
     <string name="widget_estimate_in_progress">El intervalo estimado está en curso.</string>
     <plurals name="widget_estimate_past">
         <item quantity="one">El intervalo estimado terminó hace %1$d día.</item>
@@ -125,7 +125,7 @@
     <string name="phase_tip_follicular_pcos_movement">Los ejercicios de fuerza y caminar con regularidad favorecen la sensibilidad a la insulina y una energía estable a lo largo del ciclo.</string>
     <string name="phase_tip_follicular_thyroid_fatigue">Con un trastorno de tiroides, el cansancio por la mañana y la sensibilidad al frío pueden variar según la fase del ciclo. Adapta el ritmo de tus mañanas.</string>
     <string name="phase_tip_follicular_perimeno_fluctuation">En la perimenopausia es habitual que la duración de la fase folicular varíe, porque los niveles de estrógenos fluctúan de un ciclo a otro.</string>
-    <string name="phase_tip_ovulatory_hydration_mucus">Beber suficiente agua favorece la hidratación natural del moco cervical durante la transición de mitad del ciclo.</string>
+    <string name="phase_tip_ovulatory_hydration_mucus">Al acercarse la ovulación, el moco cervical suele cambiar en cantidad y textura. Anotar estos cambios aporta una observación física junto al calendario.</string>
     <string name="phase_tip_luteal_pmdd_neuro_validation">Los bajones de ánimo y la mayor sensibilidad sensorial antes de la regla son respuestas neuroquímicas reales a los cambios de progesterona, no una debilidad personal.</string>
     <string name="phase_tip_luteal_pmdd_pacing">Aligerar tu agenda y poner límites en los días premenstruales más intensos puede ayudarte a proteger tu energía y tus reservas emocionales.</string>
     <string name="phase_tip_luteal_sleep_routine">El aumento de la progesterona puede alterar la calidad del sueño al final del ciclo. Un dormitorio más fresco y una rutina tranquila por la noche ayudan a descansar más profundamente.</string>
@@ -761,7 +761,7 @@
     <string name="partner_guidance_indeterminate_period_window_body">Esta fecha está dentro del intervalo estimado de la próxima regla. Las sensaciones físicas y la energía pueden cambiar.</string>
     <string name="duo_capsule_label">Fisiología y hormonas</string>
     <string name="duo_capsule_menstrual_desc">Los estrógenos y la progesterona están en sus niveles más bajos mientras se desprende el endometrio. Puede haber cansancio o dolor menstrual porque el útero se contrae.</string>
-    <string name="duo_capsule_follicular_desc">Los folículos ováricos en desarrollo liberan estrógenos poco a poco, lo que estimula el crecimiento del endometrio. La energía y el estado de alerta suelen ir recuperándose de forma progresiva.</string>
+    <string name="duo_capsule_follicular_desc">Los folículos ováricos en desarrollo liberan estrógenos poco a poco, lo que estimula el crecimiento del endometrio. La energía y cómo se vive esta fase varían de una persona y de un ciclo a otro.</string>
     <string name="duo_capsule_ovulatory_desc">Un pico de hormona luteinizante desencadena la liberación de un óvulo. El moco cervical aumenta y la temperatura corporal sube ligeramente después de la ovulación.</string>
     <string name="duo_capsule_luteal_desc">La progesterona aumenta después de la ovulación para preparar el endometrio. Un nivel más alto de progesterona puede influir en la temperatura basal, la calidad del sueño y la energía de base.</string>
     <string name="duo_guide_open_button">Entender las fases del ciclo</string>
@@ -806,10 +806,10 @@
     <string name="partner_tip_partner_perimeno_support">Flexibilidad ante los cambios de energía</string>
     <string name="partner_tip_partner_perimeno_support_message">Los cambios de la perimenopausia pueden provocar cansancio imprevisible o cambios de temperatura. Ser flexible con los planes de la noche marca una diferencia real.</string>
     <string name="estimate_target_headline">Prevista hacia el %1$s</string>
-    <string name="estimate_window_subhead">Ventana probable: %1$s – %2$s</string>
+    <string name="estimate_window_subhead">Ventana probable: %1$s - %2$s</string>
     <string name="calendar_legend_estimated_period_target">Regla estimada (día previsto)</string>
     <string name="widget_estimate_target">Hacia el %1$s</string>
-    <string name="widget_estimate_target_with_range">Hacia el %1$s (%2$s – %3$s)</string>
+    <string name="widget_estimate_target_with_range">Hacia el %1$s (%2$s - %3$s)</string>
     <string name="calendar_legend_toggle">Leyenda de fases y observaciones</string>
     <string name="calendar_legend_phase_menstrual">Fase menstrual (regla registrada)</string>
     <string name="calendar_legend_phase_follicular">Fase folicular (estimación)</string>
@@ -887,4 +887,10 @@
     <string name="notif_duo_partner_pill_pending_body">La píldora de hoy aún no se ha marcado como tomada.</string>
     <string name="notif_duo_partner_pill_taken_title">Píldora marcada como tomada</string>
     <string name="notif_duo_partner_pill_taken_body">Tu pareja ha marcado la píldora de hoy como tomada.</string>
+    <string name="phase_recorded_bleeding_pill">Sangrado registrado</string>
+    <string name="partner_guidance_indeterminate_hormonal_contraception_title">Anticoncepción hormonal activa</string>
+    <string name="partner_guidance_indeterminate_hormonal_contraception_body">Las estimaciones de las fases folicular, ovulatoria y lútea están desactivadas mientras el seguimiento de la píldora esté activo.</string>
+    <string name="thermal_chart_pill_disabled">La confirmación de la subida de temperatura está desactivada mientras el seguimiento de la píldora esté activo, porque la anticoncepción hormonal modifica la temperatura basal.</string>
+    <string name="settings_health_data_notice_title">Datos de salud y uso personal</string>
+    <string name="settings_health_data_notice_body">Los registros de tu ciclo son datos de salud sensibles (artículo 9 del RGPD). Luteal los guarda localmente por defecto sin SDK de análisis ni publicidad de terceros, y la sincronización en línea es opcional. Esta aplicación es una herramienta personal de observación, no un producto sanitario ni un servicio clínico.</string>
 </resources>

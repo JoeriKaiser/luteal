@@ -482,7 +482,10 @@ private fun TrackerActiveSection(
             val anyGranted = state.grants.values.any { it } || state.sharePillStatus
             val partnerPhase = state.partnerPhase
             if (!state.keyMissing && anyGranted && partnerPhase is CurrentCyclePhase.Available) {
-                PartnerPhaseBadge(phase = partnerPhase)
+                PartnerPhaseBadge(
+                    phase = partnerPhase,
+                    isPillRegimenActive = state.projection?.pillStatus != null
+                )
             }
             SharedProjectionList(state = state)
             TextButton(
@@ -1096,10 +1099,15 @@ private fun SupportThreadSection(
 @Composable
 internal fun PartnerPhaseBadge(
     phase: CurrentCyclePhase.Available,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isPillRegimenActive: Boolean = false
 ) {
     val tone = phaseTone(phase.phase)
-    val anchorText = phaseAnchorLabel(phase.phase)
+    val anchorText = if (isPillRegimenActive && phase.phase == CyclePhase.MENSTRUAL) {
+        stringResource(R.string.phase_recorded_bleeding_pill)
+    } else {
+        phaseAnchorLabel(phase.phase)
+    }
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(LutealSpacing.xxs)
@@ -1164,7 +1172,10 @@ private fun PartnerGuidanceCard(
     LutealCard(modifier = Modifier.fillMaxWidth(), emphasis = LutealCardEmphasis.QUIET) {
         Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
             if (partnerPhase is CurrentCyclePhase.Available) {
-                PartnerPhaseBadge(phase = partnerPhase)
+                PartnerPhaseBadge(
+                    phase = partnerPhase,
+                    isPillRegimenActive = state.projection?.pillStatus != null
+                )
 
                 val capsule = PartnerPhaseCapsules.forPhase(partnerPhase.phase)
                 val capsuleDesc = phaseCapsuleDescription(partnerPhase.phase)
@@ -1249,6 +1260,7 @@ private fun PartnerGuidanceCard(
                     PhaseIndeterminateReason.EARLY_CYCLE_WITHOUT_BLEEDING_DETAIL -> R.string.partner_guidance_indeterminate_early_cycle_title
                     PhaseIndeterminateReason.PHASE_TRANSITION -> R.string.partner_guidance_indeterminate_transition_title
                     PhaseIndeterminateReason.NEXT_PERIOD_WINDOW -> R.string.partner_guidance_indeterminate_period_window_title
+                    PhaseIndeterminateReason.HORMONAL_CONTRACEPTION -> R.string.partner_guidance_indeterminate_hormonal_contraception_title
                     else -> R.string.partner_guidance_indeterminate_title
                 }
                 val bodyRes = when (reason) {
@@ -1256,6 +1268,7 @@ private fun PartnerGuidanceCard(
                     PhaseIndeterminateReason.EARLY_CYCLE_WITHOUT_BLEEDING_DETAIL -> R.string.partner_guidance_indeterminate_early_cycle_body
                     PhaseIndeterminateReason.PHASE_TRANSITION -> R.string.partner_guidance_indeterminate_transition_body
                     PhaseIndeterminateReason.NEXT_PERIOD_WINDOW -> R.string.partner_guidance_indeterminate_period_window_body
+                    PhaseIndeterminateReason.HORMONAL_CONTRACEPTION -> R.string.partner_guidance_indeterminate_hormonal_contraception_body
                     else -> R.string.partner_guidance_indeterminate_body
                 }
                 Text(

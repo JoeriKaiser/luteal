@@ -1,5 +1,6 @@
 package fr.luteal.core.data
 
+import fr.luteal.core.data.datastore.UserPreferencesDataStore
 import fr.luteal.core.data.local.CycleDao
 import fr.luteal.core.data.local.DailyEntryDao
 import fr.luteal.core.model.BleedingDistribution
@@ -14,11 +15,14 @@ import fr.luteal.core.model.CycleStatistics
 import fr.luteal.core.model.DailyEntry
 import fr.luteal.core.model.PainDistribution
 import fr.luteal.core.model.PeriodDay
+import fr.luteal.core.model.PillRegimenConfig
 import fr.luteal.core.model.ReportDateRangePreset
 import fr.luteal.core.model.ReportLanguage
 import fr.luteal.core.model.ReportNoteEntry
+import fr.luteal.core.model.ReportPillSummary
 import fr.luteal.core.model.SymptomFrequencyEntry
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.time.LocalDate
@@ -98,10 +102,31 @@ object ClinicalSymptomNames {
 }
 
 @Singleton
-class ClinicalReportAggregator @Inject constructor(
+class ClinicalReportAggregator private constructor(
     private val cycleDao: CycleDao,
-    private val dailyEntryDao: DailyEntryDao
+    private val dailyEntryDao: DailyEntryDao,
+    private val pillConfigProvider: suspend () -> PillRegimenConfig?
 ) {
+    @Inject
+    constructor(
+        cycleDao: CycleDao,
+        dailyEntryDao: DailyEntryDao,
+        userPreferencesDataStore: UserPreferencesDataStore
+    ) : this(
+        cycleDao = cycleDao,
+        dailyEntryDao = dailyEntryDao,
+        pillConfigProvider = { userPreferencesDataStore.userPreferencesFlow.first().pillRegimenConfig }
+    )
+
+    constructor(
+        cycleDao: CycleDao,
+        dailyEntryDao: DailyEntryDao,
+        pillConfig: PillRegimenConfig? = null
+    ) : this(
+        cycleDao = cycleDao,
+        dailyEntryDao = dailyEntryDao,
+        pillConfigProvider = { pillConfig }
+    )
     suspend fun aggregate(
         config: ClinicalReportConfig,
         now: LocalDate = LocalDate.now()
@@ -267,6 +292,9 @@ class ClinicalReportAggregator @Inject constructor(
 
             val minLength = completedLengths.minOrNull()
             val maxLength = completedLengths.maxOrNull()
+            val lengthSpanDays = if (completedLengths.size >= 2 && minLength != null && maxLength != null) {
+                maxLength - minLength
+            } else null
             val meanBleeding = if (bleedingDaysList.isNotEmpty()) bleedingDaysList.average() else null
 
             val validCompletedCycles = cycleRows.filter {
@@ -283,6 +311,7 @@ class ClinicalReportAggregator @Inject constructor(
                 medianLengthDays = medianLength,
                 minLengthDays = minLength,
                 maxLengthDays = maxLength,
+                lengthSpanDays = lengthSpanDays,
                 meanBleedingDays = meanBleeding,
                 shortestCycleDate = shortestCycle?.startDate,
                 longestCycleDate = longestCycle?.startDate,
@@ -361,8 +390,9 @@ class ClinicalReportAggregator @Inject constructor(
                     painScores.add(pain)
                     if (pain >= 4) severePainDays++
 
-                    val isBleedingDay = entry.bleedingIntensity != null && entry.bleedingIntensity != BleedingIntensity.NONE
-                    if (isBleedingDay) {
+                    // Use mensesDates so pain on intermenstrual spotting counts as non-menstrual.
+                    val isMensesDay = entry.date in mensesDates
+                    if (isMensesDay) {
                         dysmenorrheaDays++
                     } else {
                         nonMenstrualPainDays++
@@ -381,13 +411,13 @@ class ClinicalReportAggregator @Inject constructor(
             // Symptom Frequency Matrix
             val symptomMap = mutableMapOf<String, Triple<Int, Int, Int>>() // total, menstrual, non-menstrual
             for (entry in selectedEntries) {
-                val isBleedingDay = entry.bleedingIntensity != null && entry.bleedingIntensity != BleedingIntensity.NONE
+                val isMensesDay = entry.date in mensesDates
                 for (symptomId in entry.symptomIds) {
                     val (tot, men, nonMen) = symptomMap[symptomId] ?: Triple(0, 0, 0)
                     symptomMap[symptomId] = Triple(
                         tot + 1,
-                        if (isBleedingDay) men + 1 else men,
-                        if (!isBleedingDay) nonMen + 1 else nonMen
+                        if (isMensesDay) men + 1 else men,
+                        if (!isMensesDay) nonMen + 1 else nonMen
                     )
                 }
             }
@@ -416,6 +446,17 @@ class ClinicalReportAggregator @Inject constructor(
                 emptyList()
             }
 
+            val pillConfig = pillConfigProvider()
+            val pillRegimenSummary = pillConfig
+                ?.takeIf { it.isEnabled && it.startDate != null && !it.startDate.isAfter(dateRangeEnd) }
+                ?.let {
+                    ReportPillSummary(
+                        activeDays = it.activeDays,
+                        pauseDays = it.pauseDays,
+                        startDate = it.startDate!!
+                    )
+                }
+
             ClinicalReportData(
                 generatedAt = now,
                 dateRangeStart = dateRangeStart,
@@ -425,7 +466,8 @@ class ClinicalReportAggregator @Inject constructor(
                 bleedingDist = bleedingDist,
                 painDist = painDist,
                 symptomFrequencies = symptomFrequencies,
-                notes = notesList
+                notes = notesList,
+                pillRegimenSummary = pillRegimenSummary
             )
         }
     }

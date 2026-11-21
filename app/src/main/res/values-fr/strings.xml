@@ -22,7 +22,7 @@
     <string name="widget_estimate_needs_history">Estimation indisponible&#160;: ajoutez un autre début de cycle.</string>
     <string name="widget_estimate_out_of_range">Aucune plage estimée à partir des intervalles enregistrés.</string>
     <string name="widget_estimate_range">Estimé&#160;: du %1$s au %2$s</string>
-    <string name="widget_estimate_range_short">%1$s – %2$s</string>
+    <string name="widget_estimate_range_short">%1$s - %2$s</string>
     <string name="widget_estimate_in_progress">La plage estimée est en cours.</string>
     <plurals name="widget_estimate_past">
         <item quantity="one">La plage estimée s’est terminée il y a %1$d jour.</item>
@@ -125,7 +125,7 @@
     <string name="phase_tip_follicular_pcos_movement">Le renforcement musculaire et une marche régulière soutiennent la sensibilité à l’insuline et stabilisent votre énergie tout au long du cycle.</string>
     <string name="phase_tip_follicular_thyroid_fatigue">En cas de troubles thyroïdiens, la fatigue matinale et la frilosité peuvent varier selon les phases. Adaptez votre rythme en conséquence.</string>
     <string name="phase_tip_follicular_perimeno_fluctuation">Les variations de la phase folliculaire sont fréquentes en périménopause, au gré des fluctuations hormonales d’un cycle à l’autre.</string>
-    <string name="phase_tip_ovulatory_hydration_mucus">Une bonne hydratation soutient naturellement la texture de la glaire cervicale lors de la transition de milieu de cycle.</string>
+    <string name="phase_tip_ovulatory_hydration_mucus">À l’approche de l’ovulation, l’abondance et la texture de la glaire cervicale évoluent souvent. Noter ces changements fournit un repère physique en complément du calendrier.</string>
     <string name="phase_tip_luteal_pmdd_neuro_validation">Les baisses de moral et la sensibilité accrue en phase lutéale sont des réponses neurochimiques bien réelles, et non un manque de volonté.</string>
     <string name="phase_tip_luteal_pmdd_pacing">Alléger votre emploi du temps et poser des limites claires sur ces quelques jours permet de préserver vos ressources physiques et émotionnelles.</string>
     <string name="phase_tip_luteal_sleep_routine">La hausse de progestérone peut fragmenter le sommeil. Une chambre fraîche et un rituel de coucher calme aident à préserver la qualité de vos nuits.</string>
@@ -753,7 +753,7 @@
     <string name="partner_guidance_indeterminate_period_window_body">Cette date se situe dans la période estimée pour les prochaines règles. La fatigue et les sensations physiques peuvent évoluer.</string>
     <string name="duo_capsule_label">Physiologie et hormones</string>
     <string name="duo_capsule_menstrual_desc">Les œstrogènes et la progestérone sont à leur niveau de base tandis que la muqueuse utérine s’évacue. Fatigue et crampes peuvent apparaître sous l’effet des contractions utérines.</string>
-    <string name="duo_capsule_follicular_desc">Les follicules ovariens en développement sécrètent progressivement des œstrogènes, qui stimulent l’épaississement de la muqueuse utérine. L’énergie remonte souvent de manière progressive.</string>
+    <string name="duo_capsule_follicular_desc">Les follicules ovariens en développement sécrètent progressivement des œstrogènes, qui stimulent l’épaississement de la muqueuse utérine. L’énergie et le ressenti varient d’une personne et d’un cycle à l’autre.</string>
     <string name="duo_capsule_ovulatory_desc">Un pic d’hormone lutéinisante déclenche la libération d’un ovule. Les sécrétions cervicales augmentent et la température basale s’élève légèrement après l’ovulation.</string>
     <string name="duo_capsule_luteal_desc">La progestérone augmente après l’ovulation pour préparer la muqueuse utérine. Sa présence peut modifier la température corporelle, le sommeil et l’énergie de base.</string>
     <string name="duo_guide_open_button">Comprendre les phases du cycle</string>
@@ -798,10 +798,10 @@
     <string name="partner_tip_partner_perimeno_support">Souplesse face aux variations d’énergie</string>
     <string name="partner_tip_partner_perimeno_support_message">La périménopause peut causer des baisses d’énergie et des sensations thermiques imprévisibles. Rester souple sur les projets du soir fait une vraie différence.</string>
     <string name="estimate_target_headline">Prévues autour du %1$s</string>
-    <string name="estimate_window_subhead">Fenêtre probable&#160;: %1$s – %2$s</string>
+    <string name="estimate_window_subhead">Fenêtre probable&#160;: %1$s - %2$s</string>
     <string name="calendar_legend_estimated_period_target">Règles estimées (jour prévu)</string>
     <string name="widget_estimate_target">Autour du %1$s</string>
-    <string name="widget_estimate_target_with_range">Autour du %1$s (%2$s – %3$s)</string>
+    <string name="widget_estimate_target_with_range">Autour du %1$s (%2$s - %3$s)</string>
     <string name="calendar_legend_toggle">Légende des phases et observations</string>
     <string name="calendar_legend_phase_menstrual">Phase menstruelle (règles enregistrées)</string>
     <string name="calendar_legend_phase_follicular">Phase folliculaire (estimation)</string>
@@ -840,8 +840,8 @@
     <string name="settings_pill_preset_28_0">28 en continu</string>
     <string name="settings_pill_preset_custom">Personnalisé (%1$d / %2$d)</string>
     <string name="settings_pill_custom_dialog_title">Schéma de plaquette personnalisé</string>
-    <string name="settings_pill_active_days_label">Jours de prise active (1–90)</string>
-    <string name="settings_pill_pause_days_label">Jours de pause (0–30)</string>
+    <string name="settings_pill_active_days_label">Jours de prise active (1-90)</string>
+    <string name="settings_pill_pause_days_label">Jours de pause (0-30)</string>
     <string name="settings_pill_start_date_label">Début de plaquette&#160;: %1$s</string>
     <string name="settings_pill_start_date_unset">Aujourd’hui</string>
     <string name="settings_pill_time_label">Heure du rappel de prise&#160;: %1$s</string>
@@ -878,4 +878,10 @@
     <string name="notif_duo_partner_pill_pending_body">La pilule du jour n’a pas encore été marquée comme prise par votre partenaire.</string>
     <string name="notif_duo_partner_pill_taken_title">Pilule marquée comme prise</string>
     <string name="notif_duo_partner_pill_taken_body">Votre partenaire a marqué la pilule du jour comme prise.</string>
+    <string name="phase_recorded_bleeding_pill">Saignement enregistré</string>
+    <string name="partner_guidance_indeterminate_hormonal_contraception_title">Contraception hormonale active</string>
+    <string name="partner_guidance_indeterminate_hormonal_contraception_body">Les estimations de phases folliculaire, ovulatoire et lutéale sont désactivées pendant le suivi de pilule.</string>
+    <string name="thermal_chart_pill_disabled">La confirmation du décalage thermique est désactivée pendant le suivi de pilule, car la contraception hormonale modifie la température basale.</string>
+    <string name="settings_health_data_notice_title">Données de santé et usage personnel</string>
+    <string name="settings_health_data_notice_body">Vos observations de cycle sont des données de santé sensibles (article 9 du RGPD, recommandations CNIL). Luteal les conserve localement par défaut sans aucun SDK publicitaire ou d’analyse tiers, et la synchronisation en ligne reste optionnelle. Cette application est un outil d’observation personnel, pas un dispositif médical ni un service de soins.</string>
 </resources>

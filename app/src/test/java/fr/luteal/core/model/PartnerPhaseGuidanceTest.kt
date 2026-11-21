@@ -187,4 +187,35 @@ class PartnerPhaseGuidanceTest {
         )
         assertEquals("partner_luteal_pmdd_space", pmddPartnerTip.id)
     }
+
+    @Test
+    fun `partner resolver suppresses estimated phases when shared pill status is active`() {
+        val today = LocalDate.parse("2026-08-19")
+        val partner = PartnerPhaseResolver.resolve(
+            DuoProjection(
+                cycleDay = 22,
+                periodEstimate = SharedEstimate(
+                    windowStart = "2026-08-17",
+                    windowEnd = "2026-09-04",
+                    centralDate = "2026-08-26",
+                    cycleCount = 6,
+                    variabilityDays = 4
+                ),
+                pillStatus = SharedPillStatus(
+                    date = today.toString(),
+                    isActiveDay = true,
+                    dayInPhase = 12,
+                    totalPhaseDays = 21,
+                    activeDays = 21,
+                    pauseDays = 7,
+                    isTaken = true
+                )
+            ),
+            today
+        )
+        assertEquals(
+            CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.HORMONAL_CONTRACEPTION),
+            partner
+        )
+    }
 }

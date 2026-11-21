@@ -22,7 +22,7 @@
     <string name="widget_estimate_needs_history">Estimate unavailable: add another recorded cycle start.</string>
     <string name="widget_estimate_out_of_range">No estimated range is available from the recorded intervals.</string>
     <string name="widget_estimate_range">Estimated: %1$s to %2$s</string>
-    <string name="widget_estimate_range_short">%1$s – %2$s</string>
+    <string name="widget_estimate_range_short">%1$s - %2$s</string>
     <string name="widget_estimate_in_progress">The estimated range is in progress.</string>
     <plurals name="widget_estimate_past">
         <item quantity="one">The estimated range ended %1$d day ago.</item>
@@ -124,7 +124,7 @@
     <string name="phase_tip_follicular_pcos_movement">Strength-building exercises and regular walking support insulin sensitivity and steady energy throughout the cycle.</string>
     <string name="phase_tip_follicular_thyroid_fatigue">With thyroid conditions, morning fatigue and cold sensitivity can fluctuate across cycle phases. Pace your morning routine accordingly.</string>
     <string name="phase_tip_follicular_perimeno_fluctuation">Variations in follicular length are typical during perimenopause as estrogen levels fluctuate from cycle to cycle.</string>
-    <string name="phase_tip_ovulatory_hydration_mucus">Drinking enough water supports the natural hydration of cervical fluid during the mid-cycle transition.</string>
+    <string name="phase_tip_ovulatory_hydration_mucus">Approaching ovulation, cervical fluid often changes in amount and texture. Noting these changes provides a physical observation alongside calendar dates.</string>
     <string name="phase_tip_luteal_pmdd_neuro_validation">Premenstrual mood drops and sensory sensitivity are genuine neurochemical responses to progesterone shifts, not a personal weakness.</string>
     <string name="phase_tip_luteal_pmdd_pacing">Lightening your schedule and setting boundaries around peak premenstrual days can help protect your energy and emotional reserves.</string>
     <string name="phase_tip_luteal_sleep_routine">Rising progesterone can disrupt sleep quality in the late cycle. A cooler bedroom and a quiet evening routine help support deeper rest.</string>
@@ -749,7 +749,7 @@
     <string name="partner_guidance_indeterminate_period_window_body">This date falls within the estimated range for the next period. Physical sensations and energy can shift.</string>
     <string name="duo_capsule_label">Physiology and hormones</string>
     <string name="duo_capsule_menstrual_desc">Estrogen and progesterone sit at baseline levels while the uterine lining sheds. Fatigue or cramping can occur as the uterus contracts.</string>
-    <string name="duo_capsule_follicular_desc">Developing ovarian follicles gradually release estrogen, which stimulates uterine lining growth. Energy levels and alertness often rebuild steadily.</string>
+    <string name="duo_capsule_follicular_desc">Developing ovarian follicles gradually release estrogen, which stimulates uterine lining growth. Energy and how this phase feels vary from person to person and cycle to cycle.</string>
     <string name="duo_capsule_ovulatory_desc">A surge in luteinizing hormone triggers the release of an egg. Cervical fluid increases and body temperature shifts slightly after ovulation.</string>
     <string name="duo_capsule_luteal_desc">Progesterone rises after ovulation to prepare the uterine lining. Higher progesterone can affect basal temperature, sleep quality, and baseline energy.</string>
     <string name="duo_guide_open_button">Understand cycle phases</string>
@@ -794,10 +794,10 @@
     <string name="partner_tip_partner_perimeno_support">Flexibility with changing energy</string>
     <string name="partner_tip_partner_perimeno_support_message">Perimenopausal shifts can cause unpredictable fatigue or temperature changes. Staying flexible with evening plans makes a real difference.</string>
     <string name="estimate_target_headline">Expected around %1$s</string>
-    <string name="estimate_window_subhead">Likely window: %1$s – %2$s</string>
+    <string name="estimate_window_subhead">Likely window: %1$s - %2$s</string>
     <string name="calendar_legend_estimated_period_target">Estimated period (target day)</string>
     <string name="widget_estimate_target">Around %1$s</string>
-    <string name="widget_estimate_target_with_range">Around %1$s (%2$s – %3$s)</string>
+    <string name="widget_estimate_target_with_range">Around %1$s (%2$s - %3$s)</string>
     <string name="calendar_legend_toggle">Phases and observations legend</string>
     <string name="calendar_legend_phase_menstrual">Menstrual phase (recorded period)</string>
     <string name="calendar_legend_phase_follicular">Follicular phase (estimate)</string>
@@ -836,8 +836,8 @@
     <string name="settings_pill_preset_28_0">28 continuous</string>
     <string name="settings_pill_preset_custom">Custom (%1$d / %2$d)</string>
     <string name="settings_pill_custom_dialog_title">Custom pack schedule</string>
-    <string name="settings_pill_active_days_label">Active pill days (1–90)</string>
-    <string name="settings_pill_pause_days_label">Pause days (0–30)</string>
+    <string name="settings_pill_active_days_label">Active pill days (1-90)</string>
+    <string name="settings_pill_pause_days_label">Pause days (0-30)</string>
     <string name="settings_pill_start_date_label">Pack start date: %1$s</string>
     <string name="settings_pill_start_date_unset">Today</string>
     <string name="settings_pill_time_label">Pill reminder time: %1$s</string>
@@ -874,4 +874,10 @@
     <string name="notif_duo_partner_pill_pending_body">Your partner’s pill has not been marked as taken yet today.</string>
     <string name="notif_duo_partner_pill_taken_title">Pill marked as taken</string>
     <string name="notif_duo_partner_pill_taken_body">Your partner marked today’s pill as taken.</string>
+    <string name="phase_recorded_bleeding_pill">Recorded bleeding</string>
+    <string name="partner_guidance_indeterminate_hormonal_contraception_title">Hormonal contraception active</string>
+    <string name="partner_guidance_indeterminate_hormonal_contraception_body">Estimated follicular, ovulatory, and luteal phases are turned off while hormonal pill tracking is active.</string>
+    <string name="thermal_chart_pill_disabled">Thermal shift confirmation is disabled while pill tracking is active because hormonal contraception alters basal body temperature.</string>
+    <string name="settings_health_data_notice_title">Health data and personal scope</string>
+    <string name="settings_health_data_notice_body">Cycle records are sensitive health data (GDPR Article 9). Luteal stores them locally by default with no third-party analytics or advertising SDKs, and online sync stays opt-in. This app is a personal observation tool, not a medical device or clinical service.</string>
 </resources>
