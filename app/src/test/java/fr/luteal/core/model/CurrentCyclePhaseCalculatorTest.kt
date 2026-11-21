@@ -151,15 +151,30 @@ class CurrentCyclePhaseCalculatorTest {
     }
 
     @Test
-    fun `luteal span does not depend on earliest date`() {
-        val lutealDay = LocalDate.parse("2026-07-20")
-        for (radius in listOf(4, 5, 9, 11, 22)) {
-            assertEquals(
-                "R=$radius should still name luteal on $lutealDay",
-                CurrentCyclePhase.Available(CyclePhase.LUTEAL, PhaseCertainty.ESTIMATED),
-                evaluateOn(lutealDay, radius)
-            )
-        }
+    fun `transition band scales with moderate uncertainty and suppresses phases under extreme uncertainty`() {
+        // Moderate radius (5): transition extra radius = 2, day 20 is luteal
+        assertEquals(
+            CurrentCyclePhase.Available(CyclePhase.LUTEAL, PhaseCertainty.ESTIMATED),
+            evaluateOn(LocalDate.parse("2026-07-20"), radius = 5)
+        )
+        // Wider radius (9): transition extra radius = 4 (July 13..21), so July 20 is transition and July 22 is luteal
+        assertEquals(
+            CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.PHASE_TRANSITION),
+            evaluateOn(LocalDate.parse("2026-07-20"), radius = 9)
+        )
+        assertEquals(
+            CurrentCyclePhase.Available(CyclePhase.LUTEAL, PhaseCertainty.ESTIMATED),
+            evaluateOn(LocalDate.parse("2026-07-22"), radius = 9)
+        )
+        // Extreme uncertainty (lateRadius > 14, e.g. 22): declines to label follicular or luteal
+        assertEquals(
+            CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.PHASE_TRANSITION),
+            evaluateOn(LocalDate.parse("2026-07-10"), radius = 22)
+        )
+        assertEquals(
+            CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.PHASE_TRANSITION),
+            evaluateOn(LocalDate.parse("2026-07-25"), radius = 22)
+        )
     }
 
     @Test

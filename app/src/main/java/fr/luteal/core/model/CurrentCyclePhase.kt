@@ -39,25 +39,39 @@ sealed interface CurrentCyclePhase {
  *
  * Menstruation is recorded, never inferred from an average duration. The other
  * phases are estimates. `earliestDate` is an uncertainty bound on the next
- * period, not a phase cutoff: luteal runs from after the ovulation band until
- * two days before `centralDate`, or until recorded period flow.
+ * period, not a hard phase cutoff: luteal runs from after the ovulation
+ * transition band until two days before `centralDate`, or until recorded period
+ * flow. When next-period uncertainty grows wide, the ovulation transition band
+ * widens proportionally, and extreme uncertainty (`lateRadius > 14` days)
+ * suppresses estimated follicular and luteal labels altogether.
  *
  * Calendar data cannot confirm ovulation, so the ovulatory label is limited to
  * the central low-confidence date after a strict history gate; the surrounding
  * estimate remains indeterminate.
  *
  * Research basis is recorded in `docs/research/SOURCE_REGISTER.md`: Mihm et al.
- * (phase physiology), Fehring et al. (phase variability), and NHS Periods.
+ * (phase physiology), Soumpasis et al. (luteal distribution), Fehring et al.
+ * (phase variability), and NHS Periods.
  */
 object CurrentCyclePhaseCalculator {
     /** NHS: periods generally last 2 to 7 days. Missing data in this span stays unknown. */
     private const val EARLY_CYCLE_DAYS = 7
 
-    /** Canonical pre-E2EE cyclecalc anchor, based on the 12 to 14 day luteal range. */
+    /** Backward luteal anchor supported by Bull 2019 (12.4d), Soumpasis 2020 (12.77d), and Mihm 2011 (12-14d). */
     private const val LUTEAL_ANCHOR_DAYS = 13L
 
-    /** Fehring variability margin around the ovulation anchor. */
-    private const val OVULATION_EXTRA_RADIUS_DAYS = 2L
+    /** Minimum Fehring variability margin around the ovulation anchor. */
+    private const val MIN_OVULATION_EXTRA_RADIUS_DAYS = 2L
+
+    /** Maximum scaled ovulation transition margin before high-uncertainty suppression kicks in. */
+    private const val MAX_OVULATION_EXTRA_RADIUS_DAYS = 5L
+
+    /**
+     * When the late next-period uncertainty exceeds two weeks (for example age
+     * 50+, strong PCOS uncertainty, or severe STRAW+10 swings), decline to name
+     * follicular or luteal phases rather than presenting false precision.
+     */
+    private const val MAX_PHASE_LABEL_LATE_RADIUS_DAYS = 14L
 
     /** Estimated luteal ends this many days before `centralDate`. */
     private const val PRE_PERIOD_LEAD_DAYS = 2L
@@ -121,14 +135,26 @@ object CurrentCyclePhaseCalculator {
             return CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.NEXT_PERIOD_WINDOW)
         }
 
+        val earlyRadius = ChronoUnit.DAYS.between(estimate.earliestDate, estimate.centralDate).coerceAtLeast(0L)
+        val lateRadius = ChronoUnit.DAYS.between(estimate.centralDate, estimate.latestDate).coerceAtLeast(0L)
+        if (lateRadius > MAX_PHASE_LABEL_LATE_RADIUS_DAYS) {
+            return CurrentCyclePhase.Indeterminate(PhaseIndeterminateReason.PHASE_TRANSITION)
+        }
+
+        val effectiveHalfWidth = (earlyRadius + lateRadius) / 2L
+        val ovulationExtraRadius = maxOf(
+            MIN_OVULATION_EXTRA_RADIUS_DAYS,
+            effectiveHalfWidth / 2L
+        ).coerceAtMost(MAX_OVULATION_EXTRA_RADIUS_DAYS)
+
         val follicularOpensOn = cycle.startDate.plusDays(EARLY_CYCLE_DAYS.toLong())
         val ovulationCentral = estimate.centralDate.minusDays(LUTEAL_ANCHOR_DAYS)
         val ovulationEarliest = maxOf(
-            ovulationCentral.minusDays(OVULATION_EXTRA_RADIUS_DAYS),
+            ovulationCentral.minusDays(ovulationExtraRadius),
             follicularOpensOn
         )
         val ovulationLatest = maxOf(
-            ovulationCentral.plusDays(OVULATION_EXTRA_RADIUS_DAYS),
+            ovulationCentral.plusDays(ovulationExtraRadius),
             ovulationEarliest
         )
 

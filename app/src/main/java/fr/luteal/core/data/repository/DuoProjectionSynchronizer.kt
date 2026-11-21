@@ -89,11 +89,15 @@ class DuoProjectionSynchronizer @Inject constructor(
                 ?.let { ChronoUnit.DAYS.between(it.startDate, today).toInt() + 1 }
         } else null
 
-        val estimate = if (grants[GrantField.PERIOD_ESTIMATE] == true) {
+        val isPillRegimenActive =
+            PillRegimenCalculator.evaluate(preferences.pillRegimenConfig, today) !is PillDayStatus.Disabled
+
+        val estimate = if (grants[GrantField.PERIOD_ESTIMATE] == true && !isPillRegimenActive) {
             CycleEstimateCalculator.estimateNextPeriod(
                 cycles = cycles,
                 ageBand = AgeBand.fromId(preferences.ageBand),
-                hasTimingContext = preferences.hasTimingContext
+                hasTimingContext = preferences.hasTimingContext,
+                declaredContexts = preferences.declaredContexts
             )?.let {
                 SharedEstimate(
                     windowStart = it.earliestDate.toString(),

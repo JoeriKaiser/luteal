@@ -95,7 +95,8 @@ class LutealViewModel @Inject constructor(
         val estimateResult = CycleEstimateCalculator.evaluate(
             cycles = records.cycles,
             ageBand = AgeBand.fromId(records.preferences.ageBand),
-            hasTimingContext = records.preferences.hasTimingContext
+            hasTimingContext = records.preferences.hasTimingContext,
+            declaredContexts = records.preferences.declaredContexts
         )
         val estimate = (estimateResult as? CycleEstimateResult.Available)?.estimate
         val pillStatus = PillRegimenCalculator.evaluate(records.preferences.pillRegimenConfig, today)

@@ -27,7 +27,8 @@ class WidgetSnapshotFactory @Inject constructor() {
         val estimateResult = CycleEstimateCalculator.evaluate(
             cycles = cycles,
             ageBand = AgeBand.fromId(preferences.ageBand),
-            hasTimingContext = preferences.hasTimingContext
+            hasTimingContext = preferences.hasTimingContext,
+            declaredContexts = preferences.declaredContexts
         )
         val currentCycle = cycles
             .asSequence()

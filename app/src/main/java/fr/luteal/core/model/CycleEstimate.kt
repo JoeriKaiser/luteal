@@ -79,16 +79,6 @@ object CycleEstimateCalculator {
      */
     private const val PRIOR_WEIGHT_HIGH_VARIABILITY = 0.5
 
-    // A declared timing context is handled as a floor on the variance rather
-    // than a change to the prior's weight. Lowering the weight only widens the
-    // window when the user's own variance already exceeds the prior; someone
-    // who declares SOPK but has recorded three regular cycles would have got a
-    // *narrower* window than someone declaring nothing, which inverts the
-    // intent. The floor also needs no per-condition standard deviation, and no
-    // usable one exists: the available PCOS figure is a rate of self-reported
-    // irregularity, not a dispersion.
-    // See docs/research/CONDITION_CYCLE_IMPACTS.md, Findings 1 and 6.
-
     /**
      * STRAW+10 threshold for increased cycle variability: "a persistent
      * difference of 7 days or more in the length of consecutive cycles", where
@@ -105,22 +95,28 @@ object CycleEstimateCalculator {
     private const val PERSISTENCE_CYCLE_WINDOW = 10
     private const val PERSISTENCE_MIN_OCCURRENCES = 2
 
-    /** Half-width multiplier: approximately a 95% window under normality. */
+    /** Base half-width multiplier: approximately a 95% window under normality. */
     private const val WINDOW_Z = 1.96
 
-    /** Never claim a window tighter than this, whatever the recorded history. */
+    /**
+     * Right-skew asymmetry factors derived from Li et al. 2023 (PMC10226714):
+     * median cycle length 28 days, 5th-95th percentile 22-38 days (-6 early,
+     * +10 late: 37.5% early / 62.5% late of total span). Applying 0.75 early
+     * and 1.25 late preserves the total 95% coverage width while reflecting
+     * real-world right-skewed cycle tails.
+     */
+    private const val EARLY_ASYMMETRY_FACTOR = 0.75
+    private const val LATE_ASYMMETRY_FACTOR = 1.25
+
+    /** Never claim a bound tighter than this on either side. */
     private const val MINIMUM_RANGE_RADIUS_DAYS = 3
 
     /**
-     * Beyond this the window stops being informative; keep it bounded.
-     *
-     * 22 days is roughly the 95% half-width implied by the largest
-     * within-person SD in the Apple study (11.19 days above age 50). The
-     * previous cap of 14 truncated real uncertainty for precisely the users
-     * who carry the most of it, which reported more precision than the
-     * recorded history supported.
+     * Asymmetric upper caps preserving the 44-day maximum total span (2 * 22
+     * from Li et al.'s top age-band SD of 11.19 days).
      */
-    private const val MAXIMUM_RANGE_RADIUS_DAYS = 22
+    private const val MAXIMUM_EARLY_RADIUS_DAYS = 16
+    private const val MAXIMUM_LATE_RADIUS_DAYS = 28
 
     /**
      * Interval lengths the estimate actually uses: start-to-start, skipping
@@ -130,18 +126,22 @@ object CycleEstimateCalculator {
         recordedIntervalLengths(cycles).takeLast(RECENT_INTERVAL_WINDOW)
 
     /**
-     * @param ageBand optional declared age band. Selects the variability prior;
-     *   see [AgeBand]. Null uses [AgeBand.UNDECLARED_VARIATION_SD_DAYS].
+     * @param ageBand optional declared age band. Selects the variability prior
+     *   and PCOS multiplier; see [AgeBand]. Null uses
+     *   [AgeBand.UNDECLARED_VARIATION_SD_DAYS].
      * @param hasTimingContext whether the user has declared any
-     *   [ContextGroup.TIMING] tracking context. Widens the window by trusting
-     *   the population prior less; it never moves the central date. When the
-     *   user establishes longitudinal stability across 10 cycles without
-     *   swings, the floor yields to their observed regularity.
+     *   [ContextGroup.TIMING] tracking context. Widens uncertainty via a
+     *   variance floor; never moves the central date. Yields to observed
+     *   regularity across 10 consecutive swing-free cycles.
+     * @param declaredContexts full set of declared [TrackingContext] values.
+     *   When [TrackingContext.PCOS] is present, applies the age-stratified
+     *   relative PCOS multiplier from Mortimer et al. 2026 (PMC12915291).
      */
     fun evaluate(
         cycles: List<Cycle>,
         ageBand: AgeBand? = null,
-        hasTimingContext: Boolean = false
+        hasTimingContext: Boolean = false,
+        declaredContexts: Set<TrackingContext> = emptySet()
     ): CycleEstimateResult {
         val sortedCycles = cycles.sortedBy { it.startDate }
         val starts = sortedCycles
@@ -163,23 +163,32 @@ object CycleEstimateCalculator {
         val hasProvenRegularity = lengths.size >= PERSISTENCE_CYCLE_WINDOW &&
             !highVariability &&
             hasNoRecentSwings(lengths.takeLast(PERSISTENCE_CYCLE_WINDOW), VARIABILITY_SWING_DAYS)
-        val rangeRadius = rangeRadiusDays(
+
+        val effectiveHasTimingContext = hasTimingContext ||
+            declaredContexts.any { it.group == ContextGroup.TIMING }
+        val hasPcosContext = TrackingContext.PCOS in declaredContexts
+        val priorSdDays = ageBand?.variationSdDays ?: AgeBand.UNDECLARED_VARIATION_SD_DAYS
+        val pcosMultiplier = ageBand?.pcosSdMultiplier ?: AgeBand.UNDECLARED_PCOS_SD_MULTIPLIER
+
+        val (earlyRadius, lateRadius) = rangeRadiiDays(
             lengths = recentLengths,
             highVariability = highVariability,
-            hasTimingContext = hasTimingContext,
-            priorSdDays = ageBand?.variationSdDays ?: AgeBand.UNDECLARED_VARIATION_SD_DAYS,
+            hasTimingContext = effectiveHasTimingContext,
+            hasPcosContext = hasPcosContext,
+            priorSdDays = priorSdDays,
+            pcosMultiplier = pcosMultiplier,
             hasProvenRegularity = hasProvenRegularity
         )
         val lastCycle = sortedCycles.last()
         val centralDate = lastCycle.startDate.plusDays(averageLength.toLong())
-        val computedEarliest = centralDate.minusDays(rangeRadius.toLong())
+        val computedEarliest = centralDate.minusDays(earlyRadius.toLong())
         val earliestDate = maxOf(computedEarliest, earliestFloor(lastCycle))
 
         return CycleEstimateResult.Available(
             CycleEstimate(
                 earliestDate = earliestDate,
                 centralDate = centralDate,
-                latestDate = centralDate.plusDays(rangeRadius.toLong()),
+                latestDate = centralDate.plusDays(lateRadius.toLong()),
                 cycleCount = recentLengths.size,
                 variabilityDays = recentLengths.maxOrNull()!! - recentLengths.minOrNull()!!
             )
@@ -189,9 +198,10 @@ object CycleEstimateCalculator {
     fun estimateNextPeriod(
         cycles: List<Cycle>,
         ageBand: AgeBand? = null,
-        hasTimingContext: Boolean = false
+        hasTimingContext: Boolean = false,
+        declaredContexts: Set<TrackingContext> = emptySet()
     ): CycleEstimate? =
-        (evaluate(cycles, ageBand, hasTimingContext) as? CycleEstimateResult.Available)?.estimate
+        (evaluate(cycles, ageBand, hasTimingContext, declaredContexts) as? CycleEstimateResult.Available)?.estimate
 
     private fun recordedIntervalLengths(cycles: List<Cycle>): List<Int> {
         val sorted = cycles.sortedBy { it.startDate }
@@ -225,27 +235,23 @@ object CycleEstimateCalculator {
     }
 
     /**
-     * Half-width of the estimated window.
+     * Asymmetric early and late radii for the estimated next-period window.
      *
-     * The previous implementation used `ceil(range / 2)`, which is not a
-     * dispersion estimate: converting a range to an SD needs a factor that
-     * depends on the sample size (about 1.13 at n=2, 2.53 at n=6). Dividing by
-     * a constant 2 therefore understated uncertainty most severely when the
-     * fewest cycles had been recorded, which is exactly when it is highest.
-     *
-     * Instead: shrink the sample variance towards the population prior, then
-     * take a ~95% window. Attenuate the prior weight as consistent intervals
-     * accumulate so regular users are not penalized by a heavy static prior.
-     * When [hasTimingContext] is true, enforce at least population-level
-     * uncertainty unless [hasProvenRegularity] demonstrates longitudinal stability.
+     * Shrinks the sample variance towards the population prior, enforces a
+     * variance floor when a timing context (or age-stratified PCOS multiplier)
+     * is declared without 10-cycle proven regularity, then splits the ~95%
+     * window asymmetrically (0.75 early / 1.25 late) to reflect right-skewed
+     * cycle length distributions.
      */
-    private fun rangeRadiusDays(
+    private fun rangeRadiiDays(
         lengths: List<Int>,
         highVariability: Boolean,
         hasTimingContext: Boolean,
+        hasPcosContext: Boolean,
         priorSdDays: Double,
+        pcosMultiplier: Double,
         hasProvenRegularity: Boolean = false
-    ): Int {
+    ): Pair<Int, Int> {
         val n = lengths.size
         val priorVariance = priorSdDays * priorSdDays
         val shrunkVariance = if (n < 2) {
@@ -264,17 +270,25 @@ object CycleEstimateCalculator {
                 (sampleWeight + priorWeight)
         }
 
-        // A declared timing context guarantees at least population-level
-        // uncertainty unless the user has demonstrated longitudinal stability.
-        // If proven regular, allow shrunkVariance rather than locking at priorVariance.
-        val flooredVariance = if (hasTimingContext && !hasProvenRegularity) {
-            max(shrunkVariance, priorVariance)
-        } else {
-            shrunkVariance
+        val flooredVariance = when {
+            hasPcosContext && !hasProvenRegularity -> {
+                val pcosSd = priorSdDays * pcosMultiplier
+                max(shrunkVariance, pcosSd * pcosSd)
+            }
+            hasTimingContext && !hasProvenRegularity -> {
+                max(shrunkVariance, priorVariance)
+            }
+            else -> shrunkVariance
         }
 
-        val radius = ceil(WINDOW_Z * sqrt(flooredVariance)).toInt()
-        return radius.coerceIn(MINIMUM_RANGE_RADIUS_DAYS, MAXIMUM_RANGE_RADIUS_DAYS)
+        val baseHalfWidth = WINDOW_Z * sqrt(flooredVariance)
+        val earlyRadius = ceil(baseHalfWidth * EARLY_ASYMMETRY_FACTOR)
+            .toInt()
+            .coerceIn(MINIMUM_RANGE_RADIUS_DAYS, MAXIMUM_EARLY_RADIUS_DAYS)
+        val lateRadius = ceil(baseHalfWidth * LATE_ASYMMETRY_FACTOR)
+            .toInt()
+            .coerceIn(MINIMUM_RANGE_RADIUS_DAYS, MAXIMUM_LATE_RADIUS_DAYS)
+        return earlyRadius to lateRadius
     }
 
     /**

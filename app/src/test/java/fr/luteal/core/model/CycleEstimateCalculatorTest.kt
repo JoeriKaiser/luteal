@@ -50,8 +50,10 @@ class CycleEstimateCalculatorTest {
         // Interval is 28 days; central = 2025-01-29 + 28 = 2025-02-26.
         assertEquals(LocalDate.parse("2025-02-26"), estimate.centralDate)
         // One interval carries no variability signal, so the undeclared prior
-        // fully determines the radius: ceil(1.96 * 4.54) = 9.
-        assertEquals(9, radiusOf(estimate))
+        // fully determines the asymmetric radii: base = 1.96 * 4.54 = 8.90,
+        // early = ceil(8.90 * 0.75) = 7, late = ceil(8.90 * 1.25) = 12.
+        assertEquals(7, earlyRadiusOf(estimate))
+        assertEquals(12, lateRadiusOf(estimate))
         assertEquals(0, estimate.variabilityDays)
     }
 
@@ -135,7 +137,8 @@ class CycleEstimateCalculatorTest {
 
         val estimate = requireNotNull(CycleEstimateCalculator.estimateNextPeriod(erratic))
 
-        assertTrue(radiusOf(estimate) <= 22)
+        assertTrue(earlyRadiusOf(estimate) <= 16)
+        assertTrue(lateRadiusOf(estimate) <= 28)
     }
 
     @Test
@@ -144,11 +147,11 @@ class CycleEstimateCalculatorTest {
         val recurringSwings = intervalsToCycles(listOf(28, 36, 28, 37, 29, 36))
 
         val steadyRadius =
-            radiusOf(requireNotNull(CycleEstimateCalculator.estimateNextPeriod(oneOffSwing)))
+            lateRadiusOf(requireNotNull(CycleEstimateCalculator.estimateNextPeriod(oneOffSwing)))
         val variableRadius =
-            radiusOf(requireNotNull(CycleEstimateCalculator.estimateNextPeriod(recurringSwings)))
+            lateRadiusOf(requireNotNull(CycleEstimateCalculator.estimateNextPeriod(recurringSwings)))
 
-        assertEquals(7, steadyRadius)
+        assertEquals(9, steadyRadius)
         assertTrue(
             "Recurring swings ($variableRadius) must widen versus a one-off ($steadyRadius)",
             variableRadius > steadyRadius
@@ -163,11 +166,11 @@ class CycleEstimateCalculatorTest {
 
         val estimate = requireNotNull(CycleEstimateCalculator.estimateNextPeriod(cycles))
 
-        // With the prior still at full weight the radius stays modest; the
+        // With the prior still at full weight the late radius stays modest; the
         // withdrawn-prior path would push this materially wider.
         assertTrue(
-            "Radius ${radiusOf(estimate)} should stay bounded for one swing",
-            radiusOf(estimate) < 12
+            "Late radius ${lateRadiusOf(estimate)} should stay bounded for one swing",
+            lateRadiusOf(estimate) < 14
         )
     }
 
@@ -180,10 +183,11 @@ class CycleEstimateCalculatorTest {
         val estimate = requireNotNull(CycleEstimateCalculator.estimateNextPeriod(cycles))
 
         assertTrue(
-            "Radius ${radiusOf(estimate)} should exceed the retired 14-day cap",
-            radiusOf(estimate) > 14
+            "Late radius ${lateRadiusOf(estimate)} should exceed the retired 14-day cap",
+            lateRadiusOf(estimate) > 14
         )
-        assertTrue(radiusOf(estimate) <= 22)
+        assertTrue(earlyRadiusOf(estimate) <= 16)
+        assertTrue(lateRadiusOf(estimate) <= 28)
     }
 
     @Test
@@ -271,29 +275,87 @@ class CycleEstimateCalculatorTest {
     fun `regular history contracts window to tight radius as sample size grows`() {
         val sixRegular = intervalsToCycles(listOf(28, 28, 28, 28, 28, 28))
         val estimate = requireNotNull(CycleEstimateCalculator.estimateNextPeriod(sixRegular))
-        val radius = radiusOf(estimate)
 
-        // With 6 consistent cycles and prior weight attenuation, radius contracts to 4 days or less
-        assertTrue("Radius ($radius) should contract to <= 4 days for 6 regular cycles", radius <= 4)
+        // With 6 consistent cycles and prior weight attenuation, early contracts to 3d and late to <= 5d
+        assertEquals(3, earlyRadiusOf(estimate))
+        assertTrue("Late radius (${lateRadiusOf(estimate)}) should contract to <= 5 days for 6 regular cycles", lateRadiusOf(estimate) <= 5)
     }
 
     @Test
     fun `proven longitudinal regularity across ten cycles relaxes timing context floor`() {
         val tenRegular = intervalsToCycles(List(10) { 28 })
-        val withoutContext = radiusOf(
+        val withoutContext = lateRadiusOf(
             requireNotNull(
                 CycleEstimateCalculator.estimateNextPeriod(tenRegular, hasTimingContext = false)
             )
         )
-        val withContext = radiusOf(
+        val withContext = lateRadiusOf(
             requireNotNull(
                 CycleEstimateCalculator.estimateNextPeriod(tenRegular, hasTimingContext = true)
             )
         )
+        val withPcos = lateRadiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(
+                    tenRegular,
+                    ageBand = AgeBand.AGE_25_29,
+                    declaredContexts = setOf(TrackingContext.PCOS)
+                )
+            )
+        )
 
-        // After 10 consecutive regular cycles with no swings, the timing context floor relaxes
+        // After 10 consecutive regular cycles with no swings, timing and PCOS floors relax
         assertEquals(withoutContext, withContext)
-        assertTrue("Radius ($withContext) should be <= 4 days after 10 regular cycles", withContext <= 4)
+        assertTrue("Late radius ($withContext) should be <= 5 days after 10 regular cycles", withContext <= 5)
+        assertTrue("PCOS late radius ($withPcos) should relax to <= 5 days after 10 regular cycles", withPcos <= 5)
+    }
+
+    @Test
+    fun `pcos applies age-stratified multiplier below age 45 and converges after 45`() {
+        val cycles = intervalsToCycles(listOf(28, 29, 28))
+
+        val youngTimingOnly = lateRadiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(
+                    cycles,
+                    ageBand = AgeBand.AGE_25_29,
+                    declaredContexts = setOf(TrackingContext.THYROID)
+                )
+            )
+        )
+        val youngPcos = lateRadiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(
+                    cycles,
+                    ageBand = AgeBand.AGE_25_29,
+                    declaredContexts = setOf(TrackingContext.PCOS)
+                )
+            )
+        )
+        assertTrue(
+            "Age 25-29 PCOS ($youngPcos) must widen versus non-PCOS timing context ($youngTimingOnly)",
+            youngPcos > youngTimingOnly
+        )
+
+        val age45TimingOnly = lateRadiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(
+                    cycles,
+                    ageBand = AgeBand.AGE_45_49,
+                    declaredContexts = setOf(TrackingContext.THYROID)
+                )
+            )
+        )
+        val age45Pcos = lateRadiusOf(
+            requireNotNull(
+                CycleEstimateCalculator.estimateNextPeriod(
+                    cycles,
+                    ageBand = AgeBand.AGE_45_49,
+                    declaredContexts = setOf(TrackingContext.PCOS)
+                )
+            )
+        )
+        assertEquals(age45TimingOnly, age45Pcos)
     }
 
     @Test
@@ -325,8 +387,8 @@ class CycleEstimateCalculatorTest {
         )
 
         // Nine intervals falls one short of PERSISTENCE_CYCLE_WINDOW, so floor remains active
-        assertTrue("Without context ($withoutContext) should be tight (<= 4)", withoutContext <= 4)
-        assertTrue("With context ($withContext) must remain wide (>= 8) until 10 intervals", withContext >= 8)
+        assertTrue("Without context ($withoutContext) should be tight (<= 5)", withoutContext <= 5)
+        assertTrue("With context ($withContext) must remain wide (>= 10) until 10 intervals", withContext >= 10)
         assertTrue(withContext > withoutContext)
     }
 
@@ -399,7 +461,7 @@ class CycleEstimateCalculatorTest {
     }
 
     @Test
-    fun `estimate window is always symmetric around the central date`() {
+    fun `estimate window is right-skewed around the central date`() {
         val cycles = listOf(
             cycle("2025-01-01"),
             cycle("2025-01-30"),
@@ -407,15 +469,22 @@ class CycleEstimateCalculatorTest {
         )
 
         val estimate = requireNotNull(CycleEstimateCalculator.estimateNextPeriod(cycles))
+        val early = earlyRadiusOf(estimate)
+        val late = lateRadiusOf(estimate)
 
-        assertEquals(
-            ChronoUnit.DAYS.between(estimate.earliestDate, estimate.centralDate),
-            ChronoUnit.DAYS.between(estimate.centralDate, estimate.latestDate)
+        assertTrue(
+            "Late radius ($late) should exceed early radius ($early) to reflect right-skewed cycle lengths",
+            late > early
         )
     }
 
-    private fun radiusOf(estimate: CycleEstimate): Int =
+    private fun earlyRadiusOf(estimate: CycleEstimate): Int =
+        ChronoUnit.DAYS.between(estimate.earliestDate, estimate.centralDate).toInt()
+
+    private fun lateRadiusOf(estimate: CycleEstimate): Int =
         ChronoUnit.DAYS.between(estimate.centralDate, estimate.latestDate).toInt()
+
+    private fun radiusOf(estimate: CycleEstimate): Int = lateRadiusOf(estimate)
 
     private fun cycle(startDate: String) = cycle(LocalDate.parse(startDate))
 
@@ -479,7 +548,8 @@ class CycleEstimateCalculatorTest {
         val estimate = requireNotNull(CycleEstimateCalculator.estimateNextPeriod(cycles))
 
         assertEquals(1, estimate.cycleCount)
-        assertEquals(9, radiusOf(estimate))
+        assertEquals(7, earlyRadiusOf(estimate))
+        assertEquals(12, lateRadiusOf(estimate))
     }
 
     @Test
