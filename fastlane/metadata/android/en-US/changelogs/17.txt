@@ -1,0 +1,4 @@
+- Smarter estimates: right-skewed period windows, age-stratified PCOS uncertainty, and conservative phase gating under high variability.
+- Thermal shifts, patterns, and Duo: fixed +0.20 C precision edge case, excluded spotting from menses, and added pill-mode phase suppression.
+- Clinical reports: FIGO cycle-length span, active pill note, and accurate spotting pain separation.
+- Verified clinical citations and added a GDPR/CNIL health-data notice in Settings.
