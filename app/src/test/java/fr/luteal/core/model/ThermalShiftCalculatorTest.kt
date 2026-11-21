@@ -72,6 +72,46 @@ class ThermalShiftCalculatorTest {
         assertEquals(ThermalShiftResult.None, result)
     }
 
+    @Test
+    fun `exact 0_20 C rise from 36_10 to 36_30 confirms despite IEEE-754 representation`() {
+        val observations = temperatures(
+            36.00, 36.02, 36.05, 36.08, 36.06, 36.10,
+            36.20, 36.25, 36.30
+        )
+        val result = ThermalShiftCalculator.evaluateCycle(start, observations)
+        val confirmed = result as ThermalShiftResult.Confirmed
+        assertEquals(36.10, confirmed.coverlineCelsius, 0.001)
+        assertEquals(start.plusDays(6), confirmed.firstHighDay)
+    }
+
+    @Test
+    fun `observations past cycle end date are excluded`() {
+        val observations = temperatures(
+            36.30, 36.35, 36.40, 36.42, 36.38, 36.45,
+            36.70, 36.75, 36.85
+        )
+        val result = ThermalShiftCalculator.evaluateCycle(
+            cycleStartDate = start,
+            observations = observations,
+            cycleEndDate = start.plusDays(7)
+        )
+        assertEquals(ThermalShiftResult.None, result)
+    }
+
+    @Test
+    fun `thermal shift stays unconfirmed during active pill regimen`() {
+        val observations = temperatures(
+            36.30, 36.35, 36.40, 36.42, 36.38, 36.45,
+            36.70, 36.75, 36.85
+        )
+        val result = ThermalShiftCalculator.evaluateCycle(
+            cycleStartDate = start,
+            observations = observations,
+            isPillRegimenActive = true
+        )
+        assertEquals(ThermalShiftResult.None, result)
+    }
+
     private fun temperatures(vararg values: Double): List<BiomarkerObservation> =
         values.mapIndexed { index, value -> observation(start.plusDays(index.toLong()), value) }
 

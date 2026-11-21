@@ -1408,9 +1408,18 @@ private fun ThermalHistoryCard(state: LutealUiState) {
         }
         return
     }
-    val observations = state.biomarkers.filter { it.date >= cycle.startDate }
-    val shift = remember(cycle.startDate, observations) {
-        ThermalShiftCalculator.evaluateCycle(cycle.startDate, observations)
+    val isPillRegimenActive = state.pillStatus !is PillDayStatus.Disabled
+    val observations = state.biomarkers.filter { obs ->
+        !obs.date.isBefore(cycle.startDate) &&
+            (cycle.endDate == null || !obs.date.isAfter(cycle.endDate))
+    }
+    val shift = remember(cycle.startDate, cycle.endDate, observations, isPillRegimenActive) {
+        ThermalShiftCalculator.evaluateCycle(
+            cycleStartDate = cycle.startDate,
+            observations = observations,
+            cycleEndDate = cycle.endDate,
+            isPillRegimenActive = isPillRegimenActive
+        )
     }
     LutealCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
@@ -1419,7 +1428,13 @@ private fun ThermalHistoryCard(state: LutealUiState) {
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                text = stringResource(R.string.thermal_chart_subtitle),
+                text = stringResource(
+                    if (isPillRegimenActive) {
+                        R.string.thermal_chart_pill_disabled
+                    } else {
+                        R.string.thermal_chart_subtitle
+                    }
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1513,8 +1528,13 @@ private fun ObservationPatternsCard(
     state: LutealUiState,
     onSelectDate: (java.time.LocalDate) -> Unit
 ) {
-    val patterns = remember(state.cycles, state.entries) {
-        SymptomPatternCalculator.calculate(state.cycles, state.entries)
+    val isPillRegimenActive = state.pillStatus !is PillDayStatus.Disabled
+    val patterns = remember(state.cycles, state.entries, isPillRegimenActive) {
+        SymptomPatternCalculator.calculate(
+            cycles = state.cycles,
+            entries = state.entries,
+            isPillRegimenActive = isPillRegimenActive
+        )
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.md)) {

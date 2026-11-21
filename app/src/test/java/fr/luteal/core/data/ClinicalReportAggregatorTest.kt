@@ -9,6 +9,7 @@ import fr.luteal.core.data.local.LutealDatabase
 import fr.luteal.core.data.report.HtmlReportBuilder
 import fr.luteal.core.model.ClinicalReportConfig
 import fr.luteal.core.model.BleedingIntensity
+import fr.luteal.core.model.PillRegimenConfig
 import fr.luteal.core.model.ReportDateRangePreset
 import fr.luteal.core.model.ReportFormat
 import fr.luteal.core.model.ReportLanguage
@@ -473,5 +474,53 @@ class ClinicalReportAggregatorTest {
         assertEquals(8, data.bleedingDist.totalBleedingDays)
         assertEquals(7, data.bleedingDist.mediumDays)
         assertEquals(1, data.bleedingDist.spottingDays)
+    }
+
+    @Test
+    fun painAndSymptomsOnIntermenstrualSpottingCountAsNonMenstrualAndSpanAndPillContextRender() = runTest {
+        database.cycleDao().insertCycle(
+            CycleEntity(id = "c1", startDate = "2026-01-01", endDate = "2026-01-28", averageLengthDays = 28, lutealPhaseLengthDays = 14, periodDaysJson = "[]")
+        )
+        database.cycleDao().insertCycle(
+            CycleEntity(id = "c2", startDate = "2026-01-29", endDate = "2026-03-04", averageLengthDays = 35, lutealPhaseLengthDays = 14, periodDaysJson = "[]")
+        )
+        // Menses day with pain & cramps
+        database.dailyEntryDao().upsert(
+            DailyEntryEntity(date = "2026-01-01", bleedingIntensity = "MEDIUM", painLevel = 3, moodLevel = 3, energyLevel = 3, symptomIdsJson = "[\"cramps\"]", notes = "", updatedAtEpochMillis = 1000L)
+        )
+        // Intermenstrual spotting day with pain & cramps -> must be non-menstrual, not dysmenorrhea
+        database.dailyEntryDao().upsert(
+            DailyEntryEntity(date = "2026-01-16", bleedingIntensity = "SPOTTING", painLevel = 3, moodLevel = 3, energyLevel = 3, symptomIdsJson = "[\"cramps\"]", notes = "", updatedAtEpochMillis = 1000L)
+        )
+
+        val pillAggregator = ClinicalReportAggregator(
+            cycleDao = database.cycleDao(),
+            dailyEntryDao = database.dailyEntryDao(),
+            pillConfig = PillRegimenConfig(
+                isEnabled = true,
+                activeDays = 21,
+                pauseDays = 7,
+                startDate = LocalDate.of(2026, 1, 1)
+            )
+        )
+        val data = pillAggregator.aggregate(
+            ClinicalReportConfig(preset = ReportDateRangePreset.ALL_CYCLES, language = ReportLanguage.FRENCH),
+            now = LocalDate.of(2026, 3, 10)
+        )
+
+        assertEquals(7, data.cycleStats.lengthSpanDays)
+        assertEquals(1, data.painDist.dysmenorrheaDays)
+        assertEquals(1, data.painDist.nonMenstrualPainDays)
+        val cramps = data.symptomFrequencies.first { it.symptomId == "cramps" }
+        assertEquals(1, cramps.menstrualOccurrences)
+        assertEquals(1, cramps.nonMenstrualOccurrences)
+        assertNotNull(data.pillRegimenSummary)
+
+        val frHtml = HtmlReportBuilder.buildHtml(data)
+        assertTrue(frHtml.contains("Variation (Max - Min)"))
+        assertTrue(frHtml.contains("7 j"))
+        assertTrue(frHtml.contains("Contraception hormonale"))
+        assertTrue(frHtml.contains("21j actifs / 7j pause"))
+        assertFalse(frHtml.contains("Hors règles / Lutéale"))
     }
 }

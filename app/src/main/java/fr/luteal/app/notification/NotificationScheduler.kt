@@ -143,7 +143,8 @@ class NotificationScheduler @Inject constructor(
             val estimateResult = CycleEstimateCalculator.evaluate(
                 cycles = cycles,
                 ageBand = AgeBand.fromId(prefs.ageBand),
-                hasTimingContext = prefs.hasTimingContext
+                hasTimingContext = prefs.hasTimingContext,
+                declaredContexts = prefs.declaredContexts
             )
 
             if (prefs.isPeriodWindowEnabled && estimateResult is CycleEstimateResult.Available) {

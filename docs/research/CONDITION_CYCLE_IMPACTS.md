@@ -148,19 +148,26 @@ exists and is correctly worded.
 
 No change needed. This was the obvious suspect and it is not the problem.
 
-## Finding 6: the PCOS-specific variability constant remains unobtainable
+## Finding 6: PCOS-specific variability constants are now available (with a methodological caveat)
 
-Mortimer et al., *Variability of menstrual cycles by age, polycystic ovary
-syndrome, and early-life cycle irregularity in the Apple Women's Health Study*
-(AJOG, April 2026) is the one directly on-point source. The within-individual
-SDs by PCOS status are in Figure 4. PubMed gives only the abstract and the
-publisher full text returns HTTP 403.
+Mortimer et al., *Variability of menstrual cycles by age, polycystic ovary syndrome, and early-life cycle irregularity in the Apple Women's Health Study* (*AJOG*, April 2026; `PMC12915291`, 160,206 cycles across 15,586 participants) is now open access on PubMed Central. Table 4 reports within-individual standard deviations (days, unadjusted Model 1 with 95% CI) across age bands:
 
-Note also that Li et al. **excluded participants with PCOS history**, so it
-cannot supply a SOPK prior either.
+| Age | Group 1: With PCOS (18,875 cycles) | Group 2: Early-life irregular (28,054 cycles) | Group 3: Early-life regular (113,277 cycles) | PCOS / Regular ratio |
+|---|---|---|---|---|
+| Under 20 | 10.5 (9.0, 11.9) | 10.6 (9.2, 11.9) | 6.1 (5.9, 6.3) | 1.72x |
+| 20-24 | 11.0 (10.3, 11.7) | 9.4 (8.9, 9.8) | 6.4 (6.3, 6.5) | 1.72x |
+| 25-29 | 10.3 (9.9, 10.7) | 8.2 (8.0, 8.5) | 6.5 (6.4, 6.6) | 1.58x |
+| 30-34 | 9.2 (9.0, 9.5) | 7.4 (7.2, 7.6) | 6.1 (6.0, 6.2) | 1.51x |
+| 35-39 | 9.4 (9.2, 9.6) | 7.5 (7.4, 7.6) | 6.1 (6.1, 6.2) | 1.54x |
+| 40-44 | 8.4 (8.2, 8.6) | 7.3 (7.1, 7.5) | 6.6 (6.5, 6.7) | 1.27x |
+| 45-49 | 7.9 (7.6, 8.1) | 8.2 (7.9, 8.5) | 8.6 (8.4, 8.9) | 0.92x |
+| 50+ | 10.4 (9.7, 11.1) | 12.0 (10.5, 13.6) | 11.9 (10.9, 12.9) | 0.87x |
 
-This no longer blocks implementation, because Findings 3 and 4 provide
-condition-independent routes to the same behaviour.
+**Methodological caveat before plugging these numbers into `AgeBand`:** both Li et al. (2023) and Mortimer et al. (2026) excluded cycles under 10 or over 90 days, but Li et al. additionally removed skipped-cycle logging artifacts and excluded participants with uterine fibroids. Because Mortimer et al. did not apply that skipped-cycle artifact filter, even Mortimer's early-life regular group has higher residual SDs (6.1-6.6 days under age 45) than Li et al. (3.79-5.07 days). Raw Mortimer SDs therefore cannot be mixed directly into an `AgeBand` table built on Li et al. without inflating the PCOS floor relative to non-PCOS bands.
+
+If Luteal introduces a PCOS-specific prior or variance floor in the future, it should either apply the **relative PCOS multiplier** from Mortimer Table 4 (~1.5x-1.7x below age 40, tapering toward 1.0x after 45) on top of Li's baseline, or keep the current condition-agnostic population floor plus STRAW+10 observed-swing trigger.
+
+Note also that Li et al. **excluded participants with PCOS history**, so `AgeBand` remains strictly a non-PCOS baseline.
 
 ## Recommended implementation
 
@@ -202,10 +209,6 @@ observations plus a Duo sharing decision. Larger than it looks; do not assume it
 
 ## Required follow-up
 
-- Obtain Mortimer et al. (2026) full text for the PCOS-stratified SDs, or an
-  open equivalent. Recommendations 1-4 do not depend on it.
-- Decide whether Luteal collects age or age band, given the size of the age
-  effect relative to anything condition-specific.
+- Decide whether to apply Mortimer et al. (2026) Table 4's relative PCOS multiplier (~1.5x-1.7x under age 40) to the `TrackingContext.PCOS` variance floor, or keep the current population floor plus STRAW+10 trigger.
+- Decide whether next-period windows should remain symmetric (`+/- 1.96 * SD`) or model right-skewness (Li et al. 2023: 5th-95th percentile is -6 / +10 days around the 28-day median).
 - Domain review before any of this reaches shipped copy, per SOURCE_REGISTER.md.
-- French public-health sources (HAS, Sante publique France, Inserm); current
-  evidence is WHO, NHS, and US/global cohorts.

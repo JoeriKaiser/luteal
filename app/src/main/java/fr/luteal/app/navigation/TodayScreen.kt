@@ -220,7 +220,10 @@ private fun CycleHeroCard(state: LutealUiState) {
                         ) { facts() }
                     }
                 }
-                CurrentPhaseSummary(state.currentPhase)
+                CurrentPhaseSummary(
+                    result = state.currentPhase,
+                    isPillRegimenActive = state.pillStatus !is PillDayStatus.Disabled
+                )
                 state.todayEntry?.bleedingIntensity?.let { intensity ->
                     Text(
                         text = stringResource(
@@ -236,7 +239,10 @@ private fun CycleHeroCard(state: LutealUiState) {
 }
 
 @Composable
-private fun CurrentPhaseSummary(result: CurrentCyclePhase) {
+private fun CurrentPhaseSummary(
+    result: CurrentCyclePhase,
+    isPillRegimenActive: Boolean = false
+) {
     Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
         Text(
             text = stringResource(R.string.phase_current_label),
@@ -246,7 +252,11 @@ private fun CurrentPhaseSummary(result: CurrentCyclePhase) {
             is CurrentCyclePhase.Available -> {
                 val tone = phaseTone(result.phase)
                 Text(
-                    text = phaseLabel(result.phase),
+                    text = if (isPillRegimenActive && result.phase == CyclePhase.MENSTRUAL) {
+                        stringResource(R.string.phase_recorded_bleeding_pill)
+                    } else {
+                        phaseLabel(result.phase)
+                    },
                     style = MaterialTheme.typography.titleLarge,
                     color = tone.content
                 )

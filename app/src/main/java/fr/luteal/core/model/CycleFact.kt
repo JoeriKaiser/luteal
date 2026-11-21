@@ -45,7 +45,7 @@ object CycleFacts {
     private const val NHS_PERIODS = "NHS, Periods"
     private const val NHS_PERIODS_URL = "https://www.nhs.uk/conditions/periods/"
     private const val NHS_IRREGULAR = "NHS, Irregular periods"
-    private const val NHS_IRREGULAR_URL = "https://www.nhs.uk/conditions/irregular-periods/"
+    private const val NHS_IRREGULAR_URL = "https://www.nhs.uk/symptoms/irregular-periods/"
     private const val WHO = "Organisation mondiale de la santé, 2022"
     private const val WHO_URL =
         "https://www.who.int/news/item/22-06-2022-who-statement-on-menstrual-health-and-rights"

@@ -1,0 +1,4 @@
+- Estimations : fenêtres asymétriques, incertitude SOPK selon l'âge et phases prudentes en cas de forte variabilité.
+- Température, tendances et Duo : correction du seuil +0,20 °C, exclusion du spotting et phases désactivées sous pilule.
+- Récapitulatif médical : amplitude FIGO (max - min), mention pilule active et séparation des douleurs hors règles.
+- Sources cliniques vérifiées et notice données de santé (RGPD / CNIL) dans les paramètres.

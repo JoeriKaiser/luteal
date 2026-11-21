@@ -1,0 +1,4 @@
+- Estimaciones: ventanas asimétricas, incertidumbre de SOP por edad y fases prudentes con variabilidad alta.
+- Temperatura, patrones y Duo: corrección del salto +0,20 °C, exclusión del manchado y fases desactivadas con píldora.
+- Informe clínico: variación FIGO (máx. - mín.), nota de píldora activa y separación del dolor fuera de la regla.
+- Fuentes clínicas verificadas y aviso de datos de salud (RGPD) en los ajustes.

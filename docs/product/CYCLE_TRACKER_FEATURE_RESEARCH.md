@@ -80,7 +80,7 @@ These observations must never be converted into a pregnancy, fertility, or ovula
 
 #### Pre-backend baseline
 
-- Estimate a future period range only after at least two valid recorded intervals
+- Estimate a future period range after at least one valid recorded interval, using the full population variability prior until multiple cycles accumulate
 - Use recent recorded intervals and show how many informed the range
 - Widen the range when recent intervals vary
 - Suppress the estimate when history is insufficient or invalid
