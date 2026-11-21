@@ -15,12 +15,10 @@ data class PhaseTip(
 object PhaseTips {
     private const val GRIEGER = "Grieger & Norman, J Med Internet Res, 2020"
     private const val GRIEGER_URL = "https://pmc.ncbi.nlm.nih.gov/articles/PMC7381001/"
-    private const val HAS_ENDO = "HAS, Prise en charge de l'endométriose, 2017"
+    private const val HAS_ENDO = "HAS / CNGOF, Prise en charge de l'endométriose, 2017"
     private const val HAS_ENDO_URL = "https://www.has-sante.fr/jcms/c_2819733/fr/prise-en-charge-de-l-endometriose"
     private const val ACOG_PREMENSTRUAL_GUIDELINE = "ACOG, Management of Premenstrual Disorders, 2023"
     private const val ACOG_PREMENSTRUAL_GUIDELINE_URL = "https://pubmed.ncbi.nlm.nih.gov/37973069/"
-    private const val GUNGOR_THYROID = "Güngör Semiz & Hekimsoy, Cureus, 2024"
-    private const val GUNGOR_THYROID_URL = "https://pmc.ncbi.nlm.nih.gov/articles/PMC11259460/"
 
     val ALL: List<PhaseTip> = listOf(
         // Menstrual phase
@@ -76,22 +74,22 @@ object PhaseTips {
             CyclePhase.FOLLICULAR,
             targetContext = TrackingContext.THYROID,
             targetSymptoms = setOf("fatigue"),
-            source = GUNGOR_THYROID,
-            url = GUNGOR_THYROID_URL
+            source = ClinicalSources.NHS_HYPOTHYROIDISM,
+            url = ClinicalSources.NHS_HYPOTHYROIDISM_URL
         ),
         PhaseTip(
             "follicular_perimeno_fluctuation",
             CyclePhase.FOLLICULAR,
             targetContext = TrackingContext.PERIMENOPAUSE,
-            source = ClinicalSources.BMS_PERIMENO,
-            url = ClinicalSources.BMS_PERIMENO_URL
+            source = ClinicalSources.STRAW,
+            url = ClinicalSources.STRAW_URL
         ),
 
         // Ovulatory phase
         PhaseTip("ovulatory_not_confirmed", CyclePhase.OVULATORY, source = ClinicalSources.FEHRING, url = ClinicalSources.FEHRING_URL),
         PhaseTip("ovulatory_counts_back", CyclePhase.OVULATORY, source = ClinicalSources.NHS_PERIODS, url = ClinicalSources.NHS_PERIODS_URL),
         PhaseTip("ovulatory_not_day_14", CyclePhase.OVULATORY, source = GRIEGER, url = GRIEGER_URL),
-        PhaseTip("ovulatory_hydration_mucus", CyclePhase.OVULATORY, source = ClinicalSources.ACOG_PMS, url = ClinicalSources.ACOG_PMS_URL),
+        PhaseTip("ovulatory_hydration_mucus", CyclePhase.OVULATORY, source = ClinicalSources.ACOG_FERTILITY_AWARENESS, url = ClinicalSources.ACOG_FERTILITY_AWARENESS_URL),
 
         // Luteal phase
         PhaseTip("luteal_diary", CyclePhase.LUTEAL, source = ACOG_PREMENSTRUAL_GUIDELINE, url = ACOG_PREMENSTRUAL_GUIDELINE_URL),
@@ -123,8 +121,8 @@ object PhaseTips {
             "luteal_pmdd_neuro_validation",
             CyclePhase.LUTEAL,
             targetContext = TrackingContext.PMDD,
-            source = ClinicalSources.INSERM_PMDD,
-            url = ClinicalSources.INSERM_PMDD_URL
+            source = ClinicalSources.ISPMD_MGMT,
+            url = ClinicalSources.ISPMD_MGMT_URL
         ),
         PhaseTip(
             "luteal_pmdd_pacing",
@@ -154,8 +152,8 @@ object PhaseTips {
             CyclePhase.LUTEAL,
             targetContext = TrackingContext.PERIMENOPAUSE,
             targetSymptoms = setOf("sleep_issue"),
-            source = ClinicalSources.BMS_PERIMENO,
-            url = ClinicalSources.BMS_PERIMENO_URL
+            source = ClinicalSources.NHS_MENOPAUSE,
+            url = ClinicalSources.NHS_MENOPAUSE_URL
         )
     )
 

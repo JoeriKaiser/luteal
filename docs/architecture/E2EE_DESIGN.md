@@ -18,9 +18,10 @@ second device recovers the account from the code alone and reads the first
 device's record. Inspecting the resulting SQLite file directly found **no
 plaintext at all**, no notes, dates, or enum values, only the `0x01` version
 byte and ciphertext. The Compose app itself has since run against a real
-server on a device (see `BACKEND_INTEGRATION.md`, current state), and
-`sync_transport_notice` still claims the server cannot read the data. That
-sentence is not established. See `docs/architecture/OPEN_WORK.md`.
+server on a device (see `BACKEND_INTEGRATION.md`, current state). `sync_transport_notice`
+and `settings_sync_account_code_body` now state plainly that the server created
+the account code and receives it again on `addDevice`, so the app does not claim
+operator blindness. See `docs/architecture/OPEN_WORK.md`.
 
 This document is the single design reference for both repositories. The Android
 client is `luteal`; the Go backend is

@@ -43,15 +43,15 @@ object PartnerPhaseTips {
             "partner_luteal_pmdd_space",
             CyclePhase.LUTEAL,
             targetContext = TrackingContext.PMDD,
-            source = ClinicalSources.INSERM_PMDD,
-            url = ClinicalSources.INSERM_PMDD_URL
+            source = ClinicalSources.ISPMD_MGMT,
+            url = ClinicalSources.ISPMD_MGMT_URL
         ),
         PartnerPhaseTip(
             "partner_perimeno_support",
             CyclePhase.LUTEAL,
             targetContext = TrackingContext.PERIMENOPAUSE,
-            source = ClinicalSources.BMS_PERIMENO,
-            url = ClinicalSources.BMS_PERIMENO_URL
+            source = ClinicalSources.NHS_MENOPAUSE,
+            url = ClinicalSources.NHS_MENOPAUSE_URL
         )
     )
 
@@ -130,7 +130,8 @@ object PartnerPhaseResolver {
             today = today,
             currentCycle = cycle,
             todayEntry = null,
-            estimateResult = projection.toEstimateResult()
+            estimateResult = projection.toEstimateResult(),
+            isPillRegimenActive = projection.pillStatus != null
         )
         if (calculated is CurrentCyclePhase.Indeterminate &&
             calculated.reason == PhaseIndeterminateReason.NEEDS_MORE_HISTORY &&
