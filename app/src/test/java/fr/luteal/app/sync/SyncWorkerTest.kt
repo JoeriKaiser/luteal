@@ -64,6 +64,7 @@ class SyncWorkerTest {
     private val registerResponse = Register201Response(
         account = Register201ResponseAccount(
             id = UUID.fromString("019832e0-6c14-7000-8000-0000000000aa"),
+            authVersion = 1,
             code = "LTL-8K3FQ-Z2WNT-7HJMC-4XRDB"
         ),
         device = NewDevice(

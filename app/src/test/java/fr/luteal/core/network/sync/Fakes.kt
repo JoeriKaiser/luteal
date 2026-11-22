@@ -10,10 +10,18 @@ import fr.luteal.core.data.local.SyncStateDao
 import fr.luteal.core.data.local.SymptomDao
 import fr.luteal.core.data.repository.CycleRepository
 import fr.luteal.core.model.Cycle
+import fr.luteal.core.network.AccountMeResult
+import fr.luteal.core.network.AccountUpgradeRequestWire
+import fr.luteal.core.network.AccountUpgradeResultWire
+import fr.luteal.core.network.AddDeviceResult
 import fr.luteal.core.network.FolicularApiClient
 import fr.luteal.core.network.PullResultWire
 import fr.luteal.core.network.PushChangeWire
 import fr.luteal.core.network.PushResultWire
+import fr.luteal.core.network.RegisterV2Result
+import fr.luteal.core.network.RemoteDevice
+import fr.luteal.core.network.SealedExportResult
+import fr.luteal.core.network.auth.AuthVersion
 import fr.luteal.core.network.auth.SyncCredentialStore
 import fr.luteal.core.network.auth.SyncCredentials
 import fr.luteal.core.network.contract.models.Register201Response
@@ -197,6 +205,8 @@ class FakeSymptomDao : SymptomDao {
 
 /** In-memory [SyncCredentialStore] for engine tests. */
 class FakeCredentialStore(var credentials: SyncCredentials? = null) : SyncCredentialStore {
+    var pendingUpgradeCode: String? = null
+
     override fun load(): SyncCredentials? = credentials
     override fun save(credentials: SyncCredentials) {
         this.credentials = credentials
@@ -204,6 +214,17 @@ class FakeCredentialStore(var credentials: SyncCredentials? = null) : SyncCreden
 
     override fun clear() {
         credentials = null
+        pendingUpgradeCode = null
+    }
+
+    override fun savePendingUpgradeCode(code: String) {
+        pendingUpgradeCode = code
+    }
+
+    override fun loadPendingUpgradeCode(): String? = pendingUpgradeCode
+
+    override fun clearPendingUpgradeCode() {
+        pendingUpgradeCode = null
     }
 }
 
@@ -240,10 +261,15 @@ class FakeCursorStore(
 /** Scripted [FolicularApiClient] for engine tests. */
 class FakeApiClient : FolicularApiClient {
     lateinit var registerResponse: Register201Response
+    var registerV2Result: RegisterV2Result? = null
     var pushResult: PushResultWire = PushResultWire(emptyList(), emptyList(), emptyList(), 0L)
     var pullResults: ArrayDeque<PullResultWire> = ArrayDeque()
     var pushError: Throwable? = null
     var pullError: Throwable? = null
+    var meResult: AccountMeResult? = null
+    var remoteDevices: List<RemoteDevice> = emptyList()
+    var exportResult: SealedExportResult? = null
+    var upgradeHandler: (suspend (AccountUpgradeRequestWire) -> AccountUpgradeResultWire)? = null
 
     /** Runs inside [syncPush] before the result is returned: simulates a
      * local edit landing during the network round trip. */
@@ -252,13 +278,50 @@ class FakeApiClient : FolicularApiClient {
     var registerCalls = 0
         private set
     val registerInviteCodes = mutableListOf<String>()
+    val registerV2AuthKeys = mutableListOf<String>()
     val pushCalls = mutableListOf<List<PushChangeWire>>()
     val pullSinceValues = mutableListOf<Long>()
+    val upgradeRequests = mutableListOf<AccountUpgradeRequestWire>()
 
     override suspend fun register(deviceName: String, inviteCode: String?): Register201Response {
         registerCalls++
         if (inviteCode != null) registerInviteCodes += inviteCode
         return registerResponse
+    }
+
+    override suspend fun registerV2(
+        authKeyHex: String,
+        deviceName: String,
+        inviteCode: String?
+    ): RegisterV2Result {
+        registerCalls++
+        registerV2AuthKeys += authKeyHex
+        if (inviteCode != null) registerInviteCodes += inviteCode
+        return registerV2Result ?: RegisterV2Result(
+            accountId = registerResponse.account.id.toString(),
+            authVersion = AuthVersion.V2,
+            deviceToken = registerResponse.device.token
+        )
+    }
+
+    override suspend fun addDeviceV2(authKeyHex: String, deviceName: String): AddDeviceResult =
+        throw UnsupportedOperationException("not used in sync tests")
+
+    override suspend fun getMe(deviceToken: String): AccountMeResult =
+        meResult ?: throw UnsupportedOperationException("meResult not configured")
+
+    override suspend fun listDevices(deviceToken: String): List<RemoteDevice> = remoteDevices
+
+    override suspend fun getExport(deviceToken: String): SealedExportResult =
+        exportResult ?: throw UnsupportedOperationException("exportResult not configured")
+
+    override suspend fun upgradeAccount(
+        deviceToken: String,
+        request: AccountUpgradeRequestWire
+    ): AccountUpgradeResultWire {
+        upgradeRequests += request
+        return upgradeHandler?.invoke(request)
+            ?: throw UnsupportedOperationException("upgradeHandler not configured")
     }
 
     override suspend fun syncPush(deviceToken: String, changes: List<PushChangeWire>): PushResultWire {

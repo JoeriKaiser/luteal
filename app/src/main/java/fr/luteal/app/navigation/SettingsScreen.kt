@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,6 +43,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -63,6 +65,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -88,6 +91,7 @@ import fr.luteal.core.model.ReportDateRangePreset
 import fr.luteal.core.model.ReportFormat
 import fr.luteal.core.model.ReportLanguage
 import fr.luteal.core.model.TrackingContext
+import fr.luteal.core.network.auth.AuthVersion
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -295,10 +299,24 @@ fun SettingsScreen(
             onToggleOnline = viewModel::setOnlineSyncEnabled,
             onSave = viewModel::saveSyncSettings,
             onSyncNow = viewModel::syncNow,
+            onCreateAccount = viewModel::beginV2Registration,
+            onStartUpgrade = viewModel::startAccountUpgrade,
             getAccountCode = viewModel::getAccountCode,
             onRecoverAccount = viewModel::recoverAccount,
             onDismissRecoveryMessage = viewModel::clearRecoveryState,
             onUnlinkSync = viewModel::unlinkSync
+        )
+
+        V2RegistrationDialog(
+            state = syncState.registrationState,
+            onConfirm = viewModel::confirmV2Registration,
+            onDismiss = viewModel::dismissV2Registration
+        )
+
+        AccountUpgradeDialog(
+            state = syncState.upgradeState,
+            onConfirm = viewModel::confirmAccountUpgrade,
+            onDismiss = viewModel::dismissAccountUpgrade
         )
         if (BuildConfig.DEBUG) {
             TestDataCard(
@@ -1791,11 +1809,15 @@ private fun SyncCard(
     onToggleOnline: (Boolean) -> Unit,
     onSave: (String) -> Unit,
     onSyncNow: () -> Unit,
+    onCreateAccount: () -> Unit,
+    onStartUpgrade: () -> Unit,
     getAccountCode: () -> String?,
     onRecoverAccount: (String) -> Unit,
     onDismissRecoveryMessage: () -> Unit,
     onUnlinkSync: () -> Unit
 ) {
+    val isLegacyV1 = state.hasAccount && state.authVersion == AuthVersion.V1
+
     Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
         SettingsSectionHeader(title = stringResource(R.string.settings_sync_title))
 
@@ -1808,7 +1830,10 @@ private fun SyncCard(
                 )
 
                 Text(
-                    text = stringResource(R.string.sync_transport_notice),
+                    text = stringResource(
+                        if (isLegacyV1) R.string.sync_transport_notice
+                        else R.string.sync_transport_notice_v2
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1859,14 +1884,22 @@ private fun SyncCard(
                             modifier = Modifier.weight(1f)
                         )
 
-                        LutealPrimaryButton(
-                            text = stringResource(R.string.settings_sync_now),
-                            onClick = onSyncNow,
-                            icon = Icons.Rounded.Sync,
-                            loading = state.inProgress,
-                            enabled = !state.inProgress,
-                            modifier = Modifier.weight(1f)
-                        )
+                        if (state.hasAccount) {
+                            LutealPrimaryButton(
+                                text = stringResource(R.string.settings_sync_now),
+                                onClick = onSyncNow,
+                                icon = Icons.Rounded.Sync,
+                                loading = state.inProgress,
+                                enabled = !state.inProgress,
+                                modifier = Modifier.weight(1f)
+                            )
+                        } else {
+                            LutealPrimaryButton(
+                                text = stringResource(R.string.settings_sync_create_account),
+                                onClick = onCreateAccount,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
 
@@ -1875,6 +1908,27 @@ private fun SyncCard(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                 AccountCodeSection(state = state, getAccountCode = getAccountCode)
+
+                if (isLegacyV1) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
+                        Text(
+                            text = stringResource(R.string.settings_sync_upgrade_title),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_sync_upgrade_body),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        LutealPrimaryButton(
+                            text = stringResource(R.string.settings_sync_upgrade_action),
+                            onClick = onStartUpgrade,
+                            enabled = !state.inProgress && state.upgradeState is AccountUpgradeState.Idle,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
 
                 if (state.isLinked || state.hasAccount) {
                     LutealSecondaryButton(
@@ -1897,18 +1951,60 @@ private fun SyncCard(
     }
 }
 
+private fun formatRecoveryCodeForDisplay(code: String): String {
+    if (!code.startsWith("LTL2-")) return code
+    val groups = code.split("-")
+    return if (groups.size == 8) {
+        groups.take(4).joinToString("-") + "\n" + groups.drop(4).joinToString("-")
+    } else {
+        code
+    }
+}
+
+@Composable
+private fun RecoveryCodeBox(code: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = formatRecoveryCodeForDisplay(code),
+            style = MaterialTheme.typography.titleSmall,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = LutealSpacing.md, vertical = LutealSpacing.sm)
+        )
+    }
+}
+
+private fun copySensitiveRecoveryCode(context: Context, label: String, code: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+    if (clipboard != null) {
+        val clip = android.content.ClipData.newPlainText(label, code).apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                description.extras = android.os.PersistableBundle().apply {
+                    putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true)
+                }
+            }
+        }
+        clipboard.setPrimaryClip(clip)
+    }
+}
+
 @Composable
 private fun AccountCodeSection(state: SettingsSyncUiState, getAccountCode: () -> String?) {
-    val accountCode = remember(state.hasAccount, state.lastSyncedEpochMillis) {
-        getAccountCode()
+    val accountCode = remember(state.hasAccount, state.authVersion, state.accountCode, state.lastSyncedEpochMillis) {
+        state.accountCode ?: getAccountCode()
     }
     val context = LocalContext.current
-    var copied by remember { mutableStateOf(false) }
+    var copied by remember(accountCode) { mutableStateOf(false) }
     val accountCodeTitle = stringResource(R.string.settings_sync_account_code_title)
+    val isV2 = state.authVersion == AuthVersion.V2
 
     Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
         Text(
-            text = stringResource(R.string.settings_sync_account_code_title),
+            text = accountCodeTitle,
             style = MaterialTheme.typography.titleMedium
         )
         if (accountCode == null) {
@@ -1919,40 +2015,292 @@ private fun AccountCodeSection(state: SettingsSyncUiState, getAccountCode: () ->
             )
         } else {
             Text(
-                text = stringResource(R.string.settings_sync_account_code_body),
+                text = stringResource(
+                    if (isV2) R.string.settings_sync_encryption_v2_badge
+                    else R.string.settings_sync_encryption_v1_badge
+                ),
+                style = MaterialTheme.typography.labelMedium,
+                color = if (isV2) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = stringResource(
+                    if (isV2) R.string.settings_sync_account_code_body_v2
+                    else R.string.settings_sync_account_code_body
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Text(
-                text = accountCode,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(vertical = LutealSpacing.xxs)
-            )
-            val accountCodeTitle = stringResource(R.string.settings_sync_account_code_title)
+            RecoveryCodeBox(code = accountCode)
             LutealSecondaryButton(
                 text = if (copied) stringResource(R.string.settings_sync_account_code_copied)
                 else stringResource(R.string.settings_sync_account_code_copy),
                 onClick = {
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                    if (clipboard != null) {
-                        val clip = android.content.ClipData.newPlainText(
-                            accountCodeTitle,
-                            accountCode
-                        ).apply {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                description.extras = android.os.PersistableBundle().apply {
-                                    putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true)
-                                }
-                            }
-                        }
-                        clipboard.setPrimaryClip(clip)
-                    }
+                    copySensitiveRecoveryCode(context, accountCodeTitle, accountCode)
                     copied = true
                 },
                 modifier = Modifier.fillMaxWidth()
             )
         }
+    }
+}
+
+@Composable
+private fun V2RegistrationDialog(
+    state: V2RegistrationState,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    if (state is V2RegistrationState.Idle) return
+
+    val context = LocalContext.current
+    val codeLabel = stringResource(R.string.settings_sync_account_code_title)
+    val recoveryCode = when (state) {
+        is V2RegistrationState.ReviewCode -> state.recoveryCode
+        is V2RegistrationState.Submitting -> state.recoveryCode
+        is V2RegistrationState.Error -> state.recoveryCode
+        V2RegistrationState.Idle -> ""
+    }
+    var acknowledged by rememberSaveable(recoveryCode) { mutableStateOf(false) }
+    var copied by remember(recoveryCode) { mutableStateOf(false) }
+    val submitting = state is V2RegistrationState.Submitting
+
+    AlertDialog(
+        onDismissRequest = { if (!submitting) onDismiss() },
+        title = { Text(stringResource(R.string.settings_sync_setup_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
+                Text(
+                    text = stringResource(R.string.settings_sync_setup_body),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                RecoveryCodeBox(code = recoveryCode)
+                LutealSecondaryButton(
+                    text = if (copied) stringResource(R.string.settings_sync_account_code_copied)
+                    else stringResource(R.string.settings_sync_account_code_copy),
+                    onClick = {
+                        copySensitiveRecoveryCode(context, codeLabel, recoveryCode)
+                        copied = true
+                    },
+                    enabled = !submitting,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                LutealCheckboxRow(
+                    title = stringResource(R.string.settings_sync_setup_checkbox),
+                    checked = acknowledged,
+                    onCheckedChange = { if (!submitting) acknowledged = it }
+                )
+                if (submitting) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(LutealSpacing.sm)
+                    ) {
+                        CircularProgressIndicator()
+                        Text(
+                            text = stringResource(R.string.settings_sync_setup_in_progress),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+                if (state is V2RegistrationState.Error) {
+                    val errText = state.messageResId?.let { stringResource(it) } ?: state.message.orEmpty()
+                    Text(
+                        text = errText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                enabled = acknowledged && !submitting
+            ) {
+                Text(stringResource(R.string.settings_sync_setup_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !submitting
+            ) {
+                Text(stringResource(R.string.action_close))
+            }
+        }
+    )
+}
+
+@Composable
+private fun AccountUpgradeDialog(
+    state: AccountUpgradeState,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    if (state is AccountUpgradeState.Idle) return
+
+    val context = LocalContext.current
+    val codeLabel = stringResource(R.string.settings_sync_account_code_title)
+
+    when (state) {
+        AccountUpgradeState.Idle -> Unit
+        AccountUpgradeState.Preparing -> AlertDialog(
+            onDismissRequest = {},
+            title = { Text(stringResource(R.string.settings_sync_upgrade_title)) },
+            text = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(LutealSpacing.sm)
+                ) {
+                    CircularProgressIndicator()
+                    Text(
+                        text = stringResource(R.string.settings_sync_upgrade_preparing),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            },
+            confirmButton = {}
+        )
+        is AccountUpgradeState.ConfirmCode -> {
+            var acknowledged by rememberSaveable(state.newRecoveryCode) { mutableStateOf(false) }
+            var copied by remember(state.newRecoveryCode) { mutableStateOf(false) }
+
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text(stringResource(R.string.settings_sync_upgrade_dialog_title)) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
+                        Text(
+                            text = stringResource(R.string.settings_sync_upgrade_dialog_body),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (state.otherActiveDevices > 0) {
+                            Text(
+                                text = stringResource(
+                                    R.string.settings_sync_upgrade_other_devices_warning,
+                                    state.otherActiveDevices
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                        RecoveryCodeBox(code = state.newRecoveryCode)
+                        LutealSecondaryButton(
+                            text = if (copied) stringResource(R.string.settings_sync_account_code_copied)
+                            else stringResource(R.string.settings_sync_account_code_copy),
+                            onClick = {
+                                copySensitiveRecoveryCode(context, codeLabel, state.newRecoveryCode)
+                                copied = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        LutealCheckboxRow(
+                            title = stringResource(R.string.settings_sync_upgrade_checkbox),
+                            checked = acknowledged,
+                            onCheckedChange = { acknowledged = it }
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = onConfirm,
+                        enabled = acknowledged
+                    ) {
+                        Text(stringResource(R.string.settings_sync_upgrade_confirm))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.action_close))
+                    }
+                }
+            )
+        }
+        is AccountUpgradeState.Upgrading -> AlertDialog(
+            onDismissRequest = {},
+            title = { Text(stringResource(R.string.settings_sync_upgrade_title)) },
+            text = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(LutealSpacing.sm)
+                ) {
+                    CircularProgressIndicator()
+                    Text(
+                        text = stringResource(R.string.settings_sync_upgrade_in_progress),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            },
+            confirmButton = {}
+        )
+        is AccountUpgradeState.Conflict -> AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(R.string.settings_sync_upgrade_title)) },
+            text = {
+                Text(
+                    text = stringResource(R.string.settings_sync_upgrade_conflict),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = onConfirm) {
+                    Text(stringResource(R.string.settings_sync_upgrade_retry))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.action_close))
+                }
+            }
+        )
+        is AccountUpgradeState.Success -> AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(R.string.settings_sync_upgrade_title)) },
+            text = {
+                Text(
+                    text = stringResource(R.string.settings_sync_upgrade_success, state.recordsMigrated),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.action_close))
+                }
+            }
+        )
+        AccountUpgradeState.AlreadyUpgraded -> AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(R.string.settings_sync_upgrade_title)) },
+            text = {
+                Text(
+                    text = stringResource(R.string.settings_sync_upgrade_already_v2),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.action_close))
+                }
+            }
+        )
+        is AccountUpgradeState.Error -> AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(R.string.settings_sync_upgrade_title)) },
+            text = {
+                val errText = state.messageResId?.let { stringResource(it) } ?: state.message.orEmpty()
+                Text(
+                    text = errText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.action_close))
+                }
+            }
+        )
     }
 }
 
@@ -1988,7 +2336,7 @@ private fun AccountRecoverySection(
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             label = { Text(stringResource(R.string.settings_recovery_label)) },
-            placeholder = { Text("LTL-XXXXX-XXXXX-XXXXX-XXXXX") }
+            placeholder = { Text("LTL2-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX") }
         )
         LutealSecondaryButton(
             text = stringResource(R.string.settings_recovery_action),

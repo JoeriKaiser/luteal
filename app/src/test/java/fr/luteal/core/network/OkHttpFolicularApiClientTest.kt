@@ -1,5 +1,6 @@
 package fr.luteal.core.network
 
+import fr.luteal.core.network.auth.AuthVersion
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -33,6 +34,7 @@ class OkHttpFolicularApiClientTest {
             MockResponse().setResponseCode(201).setBody(
                 """
                 {"account":{"id":"019832e0-6c14-7000-8000-0000000000aa",
+                            "auth_version":1,
                             "code":"LTL-8K3FQ-Z2WNT-7HJMC-4XRDB"},
                  "device":{"id":"019832e0-6c14-7000-8000-0000000000bb",
                            "name":"Pixel 9","token":"ltok_abc"},
@@ -53,11 +55,46 @@ class OkHttpFolicularApiClientTest {
     }
 
     @Test
+    fun `registerV2 posts auth_key and parses v2 response`() = runTest {
+        server.enqueue(
+            MockResponse().setResponseCode(201).setBody(
+                """
+                {"account":{"id":"019832e0-6c14-7000-8000-0000000000aa","auth_version":2},
+                 "device":{"id":"019832e0-6c14-7000-8000-0000000000bb","name":"Pixel 9","token":"ltok_v2"},
+                 "warning":"Conservez votre code."}
+                """.trimIndent()
+            )
+        )
+
+        val authKeyHex = "a".repeat(64)
+        val result = client.registerV2(authKeyHex, "Pixel 9")
+
+        assertEquals("019832e0-6c14-7000-8000-0000000000aa", result.accountId)
+        assertEquals(AuthVersion.V2, result.authVersion)
+        assertEquals("ltok_v2", result.deviceToken)
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(body.contains("\"auth_key\":\"$authKeyHex\""))
+    }
+
+    @Test
+    fun `registerV2 maps legacy server unknown field 400 to LegacyServerUnsupportedException`() = runTest {
+        server.enqueue(
+            MockResponse().setResponseCode(400).setBody(
+                """{"type":"about:blank","title":"Corps invalide","status":400,"detail":"JSON invalide : json: unknown field \"auth_key\""}"""
+            )
+        )
+
+        val err = runCatching { client.registerV2("a".repeat(64), "Pixel 9") }.exceptionOrNull()
+        assertTrue("expected LegacyServerUnsupportedException, got $err", err is LegacyServerUnsupportedException)
+    }
+
+    @Test
     fun `register sends invite code when provided`() = runTest {
         server.enqueue(
             MockResponse().setResponseCode(201).setBody(
                 """
                 {"account":{"id":"019832e0-6c14-7000-8000-0000000000aa",
+                            "auth_version":1,
                             "code":"LTL-8K3FQ-Z2WNT-7HJMC-4XRDB"},
                  "device":{"id":"019832e0-6c14-7000-8000-0000000000bb",
                            "name":"Pixel 9","token":"ltok_abc"},

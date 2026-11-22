@@ -11,7 +11,9 @@ import fr.luteal.core.network.ConflictWire
 import fr.luteal.core.network.PullChangeWire
 import fr.luteal.core.network.PullResultWire
 import fr.luteal.core.network.PushResultWire
+import fr.luteal.core.network.auth.AuthVersion
 import fr.luteal.core.network.auth.SyncCredentials
+import fr.luteal.core.network.crypto.AccountCodeV2
 import fr.luteal.core.network.crypto.RecordSealer
 import fr.luteal.core.network.contract.models.AppliedChange
 import fr.luteal.core.network.contract.models.RejectedChange
@@ -44,9 +46,12 @@ class CycleSyncEngineTest {
     private val cycleId: UUID = UUID.fromString("019832e0-6c14-7000-8000-000000000001")
     private val startDate: LocalDate = LocalDate.of(2026, 6, 30)
 
+    private val v2TestCode: String = AccountCodeV2.encode(ByteArray(16) { (it + 3).toByte() })
+
     private val registerResponse = Register201Response(
         account = Register201ResponseAccount(
             id = UUID.fromString("019832e0-6c14-7000-8000-0000000000aa"),
+            authVersion = 1,
             code = "LTL-8K3FQ-Z2WNT-7HJMC-4XRDB"
         ),
         device = NewDevice(
@@ -120,21 +125,28 @@ class CycleSyncEngineTest {
         credentialStore = creds,
         apiClientFactory = FolicularApiClientFactory { api },
         cursorStore = cursor,
-        recordSealer = RecordSealer(creds)
+        recordSealer = RecordSealer(creds),
+        codeGenerator = { v2TestCode }
     )
 
-    /**
-     * A sealer holding the credentials the engine ends up with after
-     * registering, so fixtures are sealed under the same key the engine will
-     * derive. Pull tests then exercise the real decrypt path rather than a
-     * plaintext shortcut.
-     */
     private val fixtureSealer = RecordSealer(
         FakeCredentialStore(
             SyncCredentials(
                 accountId = registerResponse.account.id.toString(),
-                accountCode = registerResponse.account.code,
-                deviceToken = registerResponse.device.token
+                accountCode = registerResponse.account.code!!,
+                deviceToken = registerResponse.device.token,
+                authVersion = AuthVersion.V1
+            )
+        )
+    )
+
+    private val fixtureSealerV2 = RecordSealer(
+        FakeCredentialStore(
+            SyncCredentials(
+                accountId = registerResponse.account.id.toString(),
+                accountCode = v2TestCode,
+                deviceToken = registerResponse.device.token,
+                authVersion = AuthVersion.V2
             )
         )
     )
@@ -163,7 +175,8 @@ class CycleSyncEngineTest {
         entityType: EntityType,
         entityId: UUID,
         payload: JsonElement,
-        clientRev: UUID = UUID.randomUUID()
+        clientRev: UUID = UUID.randomUUID(),
+        sealer: RecordSealer = fixtureSealer
     ) = PullChangeWire(
         seq = seq,
         entityType = entityType,
@@ -171,7 +184,7 @@ class CycleSyncEngineTest {
         clientRev = clientRev,
         deleted = false,
         updatedAt = now,
-        ciphertext = fixtureSealer.seal(
+        ciphertext = sealer.seal(
             entityType.value, entityId.toString(), clientRev.toString(), payload
         )
     )
@@ -192,14 +205,16 @@ class CycleSyncEngineTest {
             )
             pullResults += PullResultWire(
                 changes = listOf(
-                    sealedPull(3L, EntityType.CYCLE, cycleId, cycleData().toJsonElement()),
+                    sealedPull(3L, EntityType.CYCLE, cycleId, cycleData().toJsonElement(), sealer = fixtureSealerV2),
                     sealedPull(
                         4L, EntityType.BLEEDING_OBSERVATION, UUID.randomUUID(),
-                        bleedingData(startDate, Flow.MEDIUM).toJsonElement()
+                        bleedingData(startDate, Flow.MEDIUM).toJsonElement(),
+                        sealer = fixtureSealerV2
                     ),
                     sealedPull(
                         5L, EntityType.BLEEDING_OBSERVATION, UUID.randomUUID(),
-                        bleedingData(startDate.plusDays(1), Flow.LIGHT).toJsonElement()
+                        bleedingData(startDate.plusDays(1), Flow.LIGHT).toJsonElement(),
+                        sealer = fixtureSealerV2
                     )
                 ),
                 cursor = 5L,
@@ -209,11 +224,14 @@ class CycleSyncEngineTest {
 
         val report = engine(repo, stateDao, creds, cursor, api).sync()
 
-        // Registered and stored credentials (device token reused next time).
+        // Registered in operator-blind v2 mode and stored credentials.
         assertTrue(report.registered)
         assertNotNull(creds.load())
+        assertEquals(AuthVersion.V2, creds.load()!!.authVersion)
+        assertEquals(v2TestCode, creds.load()!!.accountCode)
         assertEquals("ltok_test_token", creds.load()!!.deviceToken)
         assertEquals(1, api.registerCalls)
+        assertEquals(1, api.registerV2AuthKeys.size)
 
         // Pushed one cycle plus one bleeding observation per period day.
         val pushed = api.pushCalls.single()
@@ -405,7 +423,7 @@ class CycleSyncEngineTest {
     fun `push 401 surfaces terminal auth error and keeps credentials`() = runTest {
         val existing = SyncCredentials(
             accountId = registerResponse.account.id.toString(),
-            accountCode = registerResponse.account.code,
+            accountCode = registerResponse.account.code!!,
             deviceToken = "ltok_stale"
         )
         val stateDao = FakeSyncStateDao().apply { upsert(dirtyState()) }
@@ -428,7 +446,7 @@ class CycleSyncEngineTest {
     fun `pull 401 surfaces terminal auth error and keeps credentials`() = runTest {
         val existing = SyncCredentials(
             accountId = registerResponse.account.id.toString(),
-            accountCode = registerResponse.account.code,
+            accountCode = registerResponse.account.code!!,
             deviceToken = "ltok_stale"
         )
         val creds = FakeCredentialStore(existing)
@@ -454,7 +472,7 @@ class CycleSyncEngineTest {
         val creds = FakeCredentialStore(
             SyncCredentials(
                 accountId = registerResponse.account.id.toString(),
-                accountCode = registerResponse.account.code,
+                accountCode = registerResponse.account.code!!,
                 deviceToken = registerResponse.device.token
             )
         )
@@ -485,7 +503,7 @@ class CycleSyncEngineTest {
         val creds = FakeCredentialStore(
             SyncCredentials(
                 accountId = registerResponse.account.id.toString(),
-                accountCode = registerResponse.account.code,
+                accountCode = registerResponse.account.code!!,
                 deviceToken = registerResponse.device.token
             )
         )
@@ -641,7 +659,7 @@ class CycleSyncEngineTest {
         val creds = FakeCredentialStore(
             SyncCredentials(
                 accountId = registerResponse.account.id.toString(),
-                accountCode = registerResponse.account.code,
+                accountCode = registerResponse.account.code!!,
                 deviceToken = registerResponse.device.token
             )
         )
@@ -699,7 +717,7 @@ class CycleSyncEngineTest {
         val creds = FakeCredentialStore(
             SyncCredentials(
                 accountId = registerResponse.account.id.toString(),
-                accountCode = registerResponse.account.code,
+                accountCode = registerResponse.account.code!!,
                 deviceToken = registerResponse.device.token
             )
         )

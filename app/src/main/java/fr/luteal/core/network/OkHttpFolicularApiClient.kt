@@ -1,5 +1,6 @@
 package fr.luteal.core.network
 
+import fr.luteal.core.network.auth.AuthVersion
 import fr.luteal.core.network.contract.models.AcceptLink201Response
 import fr.luteal.core.network.contract.models.AcceptLinkRequest
 import fr.luteal.core.network.contract.models.DuoView
@@ -12,10 +13,12 @@ import fr.luteal.core.network.contract.models.Register201Response
 import fr.luteal.core.network.contract.models.RegisterRequest
 import fr.luteal.core.network.contract.models.SupportKind
 import fr.luteal.core.network.contract.models.SupportRequest
-import java.util.UUID
 import java.io.IOException
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -23,9 +26,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
  * OkHttp-backed [FolicularApiClient]. All (de)serialization goes through
- * [ContractJson] and the generated DTOs. Cleartext HTTP is only reachable in
- * the debug build (see `app/src/debug` network security config); the release
- * build declares no network permission at all.
+ * [ContractJson] and the generated DTOs / wire mirrors. Cleartext HTTP is
+ * debug-only; release builds sync over HTTPS only.
  */
 class OkHttpFolicularApiClient(
     private val baseUrl: String,
@@ -39,28 +41,62 @@ class OkHttpFolicularApiClient(
         val EMPTY_BODY = "".toRequestBody(null)
     }
 
-    override suspend fun register(deviceName: String, inviteCode: String?): Register201Response = withContext(Dispatchers.IO) {
+    override suspend fun register(deviceName: String, inviteCode: String?): Register201Response =
+        withContext(Dispatchers.IO) {
+            val body = ContractJson.encodeToString(
+                RegisterRequest.serializer(),
+                RegisterRequest(deviceName = deviceName, inviteCode = inviteCode?.ifBlank { null })
+            )
+            val request = Request.Builder()
+                .url("$root/v1/auth/register")
+                .post(body.toRequestBody(jsonMediaType))
+                .build()
+            httpClient.newCall(request).execute().use { resp ->
+                val text = resp.body.string()
+                if (!resp.isSuccessful) throw resp.toApiException(text)
+                ContractJson.decodeFromString(Register201Response.serializer(), text)
+            }
+        }
+
+    override suspend fun registerV2(
+        authKeyHex: String,
+        deviceName: String,
+        inviteCode: String?
+    ): RegisterV2Result = withContext(Dispatchers.IO) {
         val body = ContractJson.encodeToString(
-            RegisterRequest.serializer(),
-            RegisterRequest(deviceName = deviceName, inviteCode = inviteCode?.ifBlank { null })
+            RegisterV2RequestWire.serializer(),
+            RegisterV2RequestWire(
+                deviceName = deviceName,
+                authKey = authKeyHex,
+                inviteCode = inviteCode?.ifBlank { null }
+            )
         )
         val request = Request.Builder()
             .url("$root/v1/auth/register")
             .post(body.toRequestBody(jsonMediaType))
             .build()
-        val response = httpClient.newCall(request).execute()
-        response.use { resp ->
+        httpClient.newCall(request).execute().use { resp ->
             val text = resp.body.string()
-            if (!resp.isSuccessful) throw resp.toApiException(text)
-            ContractJson.decodeFromString(Register201Response.serializer(), text)
+            if (!resp.isSuccessful) {
+                if (resp.code == 400 && text.contains("unknown field", ignoreCase = true)) {
+                    throw LegacyServerUnsupportedException()
+                }
+                throw resp.toApiException(text)
+            }
+            val parsed = ContractJson.decodeFromString(RegisterV2ResponseWire.serializer(), text)
+            RegisterV2Result(
+                accountId = parsed.account.id,
+                authVersion = AuthVersion.fromInt(parsed.account.authVersion),
+                deviceToken = parsed.device.token
+            )
         }
     }
 
     override suspend fun addDevice(accountCode: String, deviceName: String): AddDeviceResult =
         withContext(Dispatchers.IO) {
             val body = ContractJson.encodeToString(
-                AddDeviceRequestWire.serializer(),
-                AddDeviceRequestWire(code = accountCode, deviceName = deviceName)
+                AddDeviceCodeRequestWire.serializer(),
+                AddDeviceCodeRequestWire(code = accountCode, deviceName = deviceName)
             )
             val request = Request.Builder()
                 .url("$root/v1/auth/devices")
@@ -72,10 +108,121 @@ class OkHttpFolicularApiClient(
                 val parsed = ContractJson.decodeFromString(AddDeviceResponseWire.serializer(), text)
                 AddDeviceResult(
                     accountId = parsed.accountId,
-                    deviceToken = parsed.device.token
+                    deviceToken = parsed.device.token,
+                    authVersion = AuthVersion.fromInt(parsed.authVersion ?: 1)
                 )
             }
         }
+
+    override suspend fun addDeviceV2(authKeyHex: String, deviceName: String): AddDeviceResult =
+        withContext(Dispatchers.IO) {
+            val body = ContractJson.encodeToString(
+                AddDeviceAuthKeyRequestWire.serializer(),
+                AddDeviceAuthKeyRequestWire(authKey = authKeyHex, deviceName = deviceName)
+            )
+            val request = Request.Builder()
+                .url("$root/v1/auth/devices")
+                .post(body.toRequestBody(jsonMediaType))
+                .build()
+            httpClient.newCall(request).execute().use { resp ->
+                val text = resp.body.string()
+                if (!resp.isSuccessful) {
+                    if (resp.code == 400 && text.contains("unknown field", ignoreCase = true)) {
+                        throw LegacyServerUnsupportedException()
+                    }
+                    throw resp.toApiException(text)
+                }
+                val parsed = ContractJson.decodeFromString(AddDeviceResponseWire.serializer(), text)
+                AddDeviceResult(
+                    accountId = parsed.accountId,
+                    deviceToken = parsed.device.token,
+                    authVersion = AuthVersion.fromInt(parsed.authVersion ?: 2)
+                )
+            }
+        }
+
+    override suspend fun getMe(deviceToken: String): AccountMeResult =
+        withContext(Dispatchers.IO) {
+            val request = Request.Builder()
+                .url("$root/v1/me")
+                .header("Authorization", "Bearer $deviceToken")
+                .get()
+                .build()
+            httpClient.newCall(request).execute().use { resp ->
+                val text = resp.body.string()
+                if (!resp.isSuccessful) throw resp.toApiException(text)
+                val parsed = ContractJson.decodeFromString(MeResponseWire.serializer(), text)
+                AccountMeResult(
+                    accountId = parsed.account.id,
+                    authVersion = AuthVersion.fromInt(parsed.account.authVersion ?: 1),
+                    status = parsed.account.status
+                )
+            }
+        }
+
+    override suspend fun listDevices(deviceToken: String): List<RemoteDevice> =
+        withContext(Dispatchers.IO) {
+            val request = Request.Builder()
+                .url("$root/v1/auth/devices")
+                .header("Authorization", "Bearer $deviceToken")
+                .get()
+                .build()
+            httpClient.newCall(request).execute().use { resp ->
+                val text = resp.body.string()
+                if (!resp.isSuccessful) throw resp.toApiException(text)
+                val parsed = ContractJson.decodeFromString(ListDevicesResponseWire.serializer(), text)
+                parsed.devices.map {
+                    RemoteDevice(
+                        id = it.id,
+                        name = it.name,
+                        revoked = it.revoked,
+                        current = it.current
+                    )
+                }
+            }
+        }
+
+    override suspend fun getExport(deviceToken: String): SealedExportResult =
+        withContext(Dispatchers.IO) {
+            val request = Request.Builder()
+                .url("$root/v1/export")
+                .header("Authorization", "Bearer $deviceToken")
+                .get()
+                .build()
+            httpClient.newCall(request).execute().use { resp ->
+                val text = resp.body.string()
+                if (!resp.isSuccessful) throw resp.toApiException(text)
+                val parsed = ContractJson.decodeFromString(ExportResponseWire.serializer(), text)
+                SealedExportResult(
+                    accountId = parsed.account.id,
+                    authVersion = AuthVersion.fromInt(parsed.account.authVersion ?: 1),
+                    settingsCiphertext = parsed.settings?.settings?.takeIf { it.isNotBlank() },
+                    records = parsed.records
+                )
+            }
+        }
+
+    override suspend fun upgradeAccount(
+        deviceToken: String,
+        request: AccountUpgradeRequestWire
+    ): AccountUpgradeResultWire = withContext(Dispatchers.IO) {
+        val body = ContractJson.encodeToString(AccountUpgradeRequestWire.serializer(), request)
+        val httpReq = Request.Builder()
+            .url("$root/v1/auth/upgrade")
+            .header("Authorization", "Bearer $deviceToken")
+            .post(body.toRequestBody(jsonMediaType))
+            .build()
+        httpClient.newCall(httpReq).execute().use { resp ->
+            val text = resp.body.string()
+            if (!resp.isSuccessful) {
+                if (resp.code == 404 || resp.code == 405) {
+                    throw LegacyServerUnsupportedException()
+                }
+                throw resp.toApiException(text)
+            }
+            ContractJson.decodeFromString(AccountUpgradeResultWire.serializer(), text)
+        }
+    }
 
     override suspend fun syncPush(deviceToken: String, changes: List<PushChangeWire>): PushResultWire =
         withContext(Dispatchers.IO) {
@@ -85,8 +232,7 @@ class OkHttpFolicularApiClient(
                 .header("Authorization", "Bearer $deviceToken")
                 .post(body.toRequestBody(jsonMediaType))
                 .build()
-            val response = httpClient.newCall(request).execute()
-            response.use { resp ->
+            httpClient.newCall(request).execute().use { resp ->
                 val text = resp.body.string()
                 if (!resp.isSuccessful) throw resp.toApiException(text)
                 text.toPushResultWire()
@@ -100,8 +246,7 @@ class OkHttpFolicularApiClient(
                 .header("Authorization", "Bearer $deviceToken")
                 .get()
                 .build()
-            val response = httpClient.newCall(request).execute()
-            response.use { resp ->
+            httpClient.newCall(request).execute().use { resp ->
                 val text = resp.body.string()
                 if (!resp.isSuccessful) throw resp.toApiException(text)
                 text.toPullResultWire()
@@ -184,6 +329,7 @@ class OkHttpFolicularApiClient(
                 if (!resp.isSuccessful) throw resp.toApiException(text)
             }
         }
+
     override suspend fun duoView(deviceToken: String): DuoView =
         withContext(Dispatchers.IO) {
             val request = Request.Builder()
@@ -194,9 +340,6 @@ class OkHttpFolicularApiClient(
             httpClient.newCall(request).execute().use { resp ->
                 val text = resp.body.string()
                 if (!resp.isSuccessful) throw resp.toApiException(text)
-                // The generated DuoView cannot decode the base64 payload and
-                // message ciphertexts (see DuoWire.kt); go through the wire
-                // mirror instead.
                 ContractJson.decodeFromString(DuoViewWire.serializer(), text).toModel()
             }
         }
@@ -215,6 +358,7 @@ class OkHttpFolicularApiClient(
                 if (!resp.isSuccessful) throw resp.toApiException(resp.body.string())
             }
         }
+
     override suspend fun createSupportRequest(
         deviceToken: String, linkId: String, kind: SupportKind, sealedMessage: String
     ): SupportRequest = withContext(Dispatchers.IO) {
@@ -241,9 +385,9 @@ class OkHttpFolicularApiClient(
                 .header("Authorization", "Bearer $deviceToken")
                 .patch(EMPTY_BODY)
                 .build()
-        httpClient.newCall(request).execute().use { resp ->
-            val text = resp.body.string()
-            if (!resp.isSuccessful) throw resp.toApiException(text)
+            httpClient.newCall(request).execute().use { resp ->
+                val text = resp.body.string()
+                if (!resp.isSuccessful) throw resp.toApiException(text)
             }
         }
 
@@ -255,8 +399,7 @@ class OkHttpFolicularApiClient(
         val detail = problem?.detail?.takeIf { it.isNotBlank() }
             ?: problem?.title
             ?: body.takeIf { it.isNotBlank() }
-            ?: message
-            ?: "request failed"
+            ?: message.ifBlank { "request failed" }
         return FolicularApiException(code, type, detail)
     }
 }
@@ -264,26 +407,87 @@ class OkHttpFolicularApiClient(
 /** Thrown when the device cannot reach the server at all (DNS, refused, timeout). */
 class SyncTransportException(message: String, cause: Throwable? = null) : IOException(message, cause)
 
-/** Request body for PUT /v1/duo/payload. The payload is base64 ciphertext. */
-@kotlinx.serialization.Serializable
+@Serializable
 private data class PutDuoPayloadRequest(
-    @kotlinx.serialization.SerialName("payload") val payload: String
+    @SerialName("payload") val payload: String
 )
 
-/** Request body for POST /v1/auth/devices (account recovery). */
-@kotlinx.serialization.Serializable
-private data class AddDeviceRequestWire(
-    @kotlinx.serialization.SerialName("code") val code: String,
-    @kotlinx.serialization.SerialName("device_name") val deviceName: String
+@Serializable
+private data class RegisterV2RequestWire(
+    @SerialName("device_name") val deviceName: String,
+    @SerialName("auth_key") val authKey: String,
+    @SerialName("invite_code") val inviteCode: String? = null
 )
 
-@kotlinx.serialization.Serializable
+@Serializable
+private data class RegisterV2AccountWire(
+    @SerialName("id") val id: String,
+    @SerialName("auth_version") val authVersion: Int = 2
+)
+
+@Serializable
+private data class RegisterV2ResponseWire(
+    @SerialName("account") val account: RegisterV2AccountWire,
+    @SerialName("device") val device: AddedDeviceWire
+)
+
+@Serializable
+private data class AddDeviceCodeRequestWire(
+    @SerialName("code") val code: String,
+    @SerialName("device_name") val deviceName: String
+)
+
+@Serializable
+private data class AddDeviceAuthKeyRequestWire(
+    @SerialName("auth_key") val authKey: String,
+    @SerialName("device_name") val deviceName: String
+)
+
+@Serializable
 private data class AddDeviceResponseWire(
-    @kotlinx.serialization.SerialName("account_id") val accountId: String,
-    @kotlinx.serialization.SerialName("device") val device: AddedDeviceWire
+    @SerialName("account_id") val accountId: String,
+    @SerialName("auth_version") val authVersion: Int? = null,
+    @SerialName("device") val device: AddedDeviceWire
 )
 
-@kotlinx.serialization.Serializable
+@Serializable
 private data class AddedDeviceWire(
-    @kotlinx.serialization.SerialName("token") val token: String
+    @SerialName("token") val token: String
+)
+
+@Serializable
+private data class MeAccountWire(
+    @SerialName("id") val id: String,
+    @SerialName("auth_version") val authVersion: Int? = null,
+    @SerialName("status") val status: String
+)
+
+@Serializable
+private data class MeResponseWire(
+    @SerialName("account") val account: MeAccountWire
+)
+
+@Serializable
+private data class DeviceItemWire(
+    @SerialName("id") val id: String,
+    @SerialName("name") val name: String,
+    @SerialName("revoked") val revoked: Boolean,
+    @SerialName("current") val current: Boolean
+)
+
+@Serializable
+private data class ListDevicesResponseWire(
+    @SerialName("devices") val devices: List<DeviceItemWire>
+)
+
+@Serializable
+private data class ExportSettingsWire(
+    @SerialName("settings") val settings: String? = null
+)
+
+@Serializable
+private data class ExportResponseWire(
+    @SerialName("account") val account: MeAccountWire,
+    @SerialName("settings") val settings: ExportSettingsWire? = null,
+    @SerialName("records") val records: List<ExportedRecordWire> = emptyList()
 )

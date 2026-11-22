@@ -16,8 +16,13 @@ import fr.luteal.core.network.FolicularApiException
 import fr.luteal.core.network.FolicularApiClient
 import fr.luteal.core.network.PushChangeWire
 import fr.luteal.core.network.PullChangeWire
+import fr.luteal.core.network.auth.AuthVersion
 import fr.luteal.core.network.auth.SyncCredentialStore
+import fr.luteal.core.network.crypto.AccountCodeV2
+import fr.luteal.core.network.crypto.RecordCrypto
 import fr.luteal.core.network.crypto.RecordSealer
+import fr.luteal.core.network.crypto.UnsupportedRecordSchemaException
+import kotlinx.coroutines.sync.withLock
 import fr.luteal.core.network.toPushChange
 import fr.luteal.core.network.openPayload
 import fr.luteal.core.network.openCurrent
@@ -144,12 +149,19 @@ class CycleSyncEngine(
     private val revisionClock: SyncRevisionClock = SyncRevisionClock(
         MemoryRevisionWatermarkStore(),
         Clock.systemUTC()
-    )
+    ),
+    private val syncLock: SyncLock = SyncLock(),
+    private val codeGenerator: () -> String = AccountCodeV2::generate
 ) {
 
-    suspend fun sync(): SyncReport {
+    suspend fun sync(): SyncReport = syncLock.mutex.withLock {
+        syncUnlocked()
+    }
+
+    internal suspend fun syncUnlocked(): SyncReport {
         val client = apiClientFactory.create(cursorStore.getBaseUrl())
         try {
+            reconcilePendingUpgrade(client)
             val (credentials, registered) = ensureRegistered(client)
             val token = credentials.deviceToken
 
@@ -164,11 +176,34 @@ class CycleSyncEngine(
                 pulledChanges = pull.pulledChanges,
                 recordsApplied = pull.recordsApplied,
                 tombstonesApplied = pull.tombstonesApplied,
-                cursor = pull.cursor
+                cursor = maxOf(push.cursor, pull.cursor)
             )
         } catch (e: FolicularApiException) {
             if (e.status == 401) throw SyncAuthException()
             throw e
+        }
+    }
+
+    private suspend fun reconcilePendingUpgrade(client: FolicularApiClient) {
+        val pendingCode = credentialStore.loadPendingUpgradeCode() ?: return
+        val creds = credentialStore.load()
+        if (creds == null || creds.authVersion == AuthVersion.V2) {
+            credentialStore.clearPendingUpgradeCode()
+            return
+        }
+        val me = client.getMe(creds.deviceToken)
+        if (me.authVersion == AuthVersion.V2) {
+            credentialStore.save(
+                creds.copy(
+                    accountCode = pendingCode,
+                    authVersion = AuthVersion.V2
+                )
+            )
+            credentialStore.clearPendingUpgradeCode()
+            recordSealer.invalidate()
+            cursorStore.setCursor(0L)
+        } else {
+            credentialStore.clearPendingUpgradeCode()
         }
     }
 
@@ -184,13 +219,20 @@ class CycleSyncEngine(
             return existing to false
         }
         if (cursorStore.getDatasetAccountId() != null) throw SyncDatasetBlockedException()
-        val response = client.register(cursorStore.getDeviceLabel())
+        val recoveryCode = codeGenerator()
+        val authKeyHex = RecordCrypto.deriveV2AuthKeyHex(recoveryCode)
+        val response = client.registerV2(
+            authKeyHex = authKeyHex,
+            deviceName = cursorStore.getDeviceLabel()
+        )
         val credentials = SyncCredentials(
-            accountId = response.account.id.toString(),
-            accountCode = response.account.code,
-            deviceToken = response.device.token
+            accountId = response.accountId,
+            accountCode = recoveryCode,
+            deviceToken = response.deviceToken,
+            authVersion = AuthVersion.V2
         )
         credentialStore.save(credentials)
+        recordSealer.invalidate()
         cursorStore.setDatasetAccountId(credentials.accountId)
         cursorStore.setBoundBaseUrl(cursorStore.getBaseUrl())
         return credentials to true
@@ -209,12 +251,13 @@ class CycleSyncEngine(
         val pushedRecords: Int,
         val appliedByServer: Int,
         val rejectedDetails: List<String>,
-        val conflictsAdopted: Int
+        val conflictsAdopted: Int,
+        val cursor: Long
     )
 
     private suspend fun pushDirty(client: FolicularApiClient, token: String): PushOutcome {
         val dirtyStates = syncStateDao.getDirtyStates()
-        if (dirtyStates.isEmpty()) return PushOutcome(0, 0, emptyList(), 0)
+        if (dirtyStates.isEmpty()) return PushOutcome(0, 0, emptyList(), 0, cursorStore.getCursor())
 
         val changes = mutableListOf<PushChangeWire>()
         val pushedIds = mutableSetOf<String>()
@@ -253,7 +296,7 @@ class CycleSyncEngine(
             }
         }
 
-        if (changes.isEmpty()) return PushOutcome(0, 0, emptyList(), 0)
+        if (changes.isEmpty()) return PushOutcome(0, 0, emptyList(), 0, cursorStore.getCursor())
         for (state in dirtyStates) {
             wireIdFor(state)?.let {
                 localIdByWireId[it] = state.entityId
@@ -264,12 +307,14 @@ class CycleSyncEngine(
         var appliedCount = 0
         val rejectedDetails = mutableListOf<String>()
         var conflictsAdopted = 0
+        var latestPushCursor = cursorStore.getCursor()
 
         for (chunk in changes.chunked(500)) {
             // No runCatching here: a 401 propagates to [sync], which converts it
             // into a terminal SyncAuthException without touching stored
             // credentials.
             val result = client.syncPush(token, chunk)
+            if (result.cursor > latestPushCursor) latestPushCursor = result.cursor
 
             for (applied in result.applied) {
                 val localId = localIdByWireId[applied.entityId] ?: applied.entityId.toString()
@@ -372,7 +417,7 @@ class CycleSyncEngine(
             }
         }
 
-        return PushOutcome(pushedIds.size, appliedCount, rejectedDetails, conflictsAdopted)
+        return PushOutcome(pushedIds.size, appliedCount, rejectedDetails, conflictsAdopted, latestPushCursor)
     }
 
     private suspend fun pushCycleTombstone(
@@ -898,6 +943,8 @@ class CycleSyncEngine(
         return try {
             change.openPayload(recordSealer) ?: throw SyncPageIncomplete("missing ciphertext")
         } catch (e: SyncPageIncomplete) {
+            throw e
+        } catch (e: UnsupportedRecordSchemaException) {
             throw e
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e

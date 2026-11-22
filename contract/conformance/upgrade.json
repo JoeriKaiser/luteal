@@ -1,0 +1,13 @@
+{
+  "name": "upgrade",
+  "method": "POST",
+  "path": "/v1/auth/upgrade",
+  "status": 200,
+  "body": {
+    "account_id": "019832e0-6c14-7000-8000-000000000001",
+    "auth_version": 2,
+    "cursor": 42,
+    "records_migrated": 12,
+    "revoked_devices": 1
+  }
+}
