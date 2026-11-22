@@ -11,6 +11,8 @@ import fr.luteal.core.data.datastore.SyncDataStore
 import fr.luteal.core.data.datastore.UserPreferencesDataStore
 import fr.luteal.core.model.SyncMode
 import fr.luteal.core.network.FolicularApiException
+import fr.luteal.core.network.LegacyServerUnsupportedException
+import fr.luteal.core.network.crypto.UnsupportedRecordSchemaException
 import fr.luteal.core.network.sync.CycleSyncEngine
 import fr.luteal.core.network.sync.SyncAuthException
 import fr.luteal.core.network.sync.SyncDatasetBlockedException
@@ -69,6 +71,12 @@ class SyncWorker @AssistedInject constructor(
             throw ce
         } catch (e: SyncDatasetBlockedException) {
             syncDataStore.recordError(appContext.getString(R.string.sync_error_dataset_blocked))
+            Result.failure()
+        } catch (e: UnsupportedRecordSchemaException) {
+            syncDataStore.recordError(appContext.getString(R.string.sync_error_unsupported_schema))
+            Result.failure()
+        } catch (e: LegacyServerUnsupportedException) {
+            syncDataStore.recordError(appContext.getString(R.string.sync_error_legacy_server))
             Result.failure()
         } catch (e: SyncPageIncomplete) {
             syncDataStore.recordError(appContext.getString(R.string.sync_error_incomplete))

@@ -18,12 +18,14 @@ import fr.luteal.core.network.OkHttpFolicularApiClient
 import fr.luteal.core.network.auth.EncryptedSyncCredentialStore
 import fr.luteal.core.network.auth.SyncCredentialStore
 import fr.luteal.core.network.crypto.RecordSealer
+import fr.luteal.core.network.sync.AccountUpgradeManager
 import fr.luteal.core.network.sync.CycleSyncEngine
 import fr.luteal.core.network.sync.DataStoreRevisionWatermarkStore
 import fr.luteal.core.network.sync.DataStoreSyncCursorStore
 import fr.luteal.core.network.sync.FolicularApiClientFactory
 import fr.luteal.core.network.sync.RevisionWatermarkStore
 import fr.luteal.core.network.sync.SyncCursorStore
+import fr.luteal.core.network.sync.SyncLock
 import fr.luteal.core.network.sync.SyncRevisionClock
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
@@ -88,7 +90,8 @@ abstract class SyncModule {
             cursorStore: SyncCursorStore,
             recordSealer: RecordSealer,
             database: LutealDatabase,
-            revisionClock: SyncRevisionClock
+            revisionClock: SyncRevisionClock,
+            syncLock: SyncLock
         ): CycleSyncEngine = CycleSyncEngine(
             cycleRepository = cycleRepository,
             syncStateDao = syncStateDao,
@@ -100,7 +103,8 @@ abstract class SyncModule {
             cursorStore = cursorStore,
             recordSealer = recordSealer,
             database = database,
-            revisionClock = revisionClock
+            revisionClock = revisionClock,
+            syncLock = syncLock
         )
     }
 }

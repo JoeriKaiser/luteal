@@ -18,8 +18,8 @@ android {
         applicationId = "fr.luteal.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 17
-        versionName = "1.11.0"
+        versionCode = 18
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

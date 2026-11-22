@@ -1,0 +1,4 @@
+- Chiffrement aveugle à l'opérateur (v2) : les nouveaux comptes génèrent un code de récupération 128 bits (LTL2-...) sur l'appareil, jamais envoyé au serveur.
+- Mise à niveau fluide : les comptes v1 continuent de synchroniser et peuvent passer en v2 depuis Réglages > Synchronisation sans couper le lien Duo.
+- Détection hors-ligne des erreurs de saisie sur les codes LTL2 avant tout appel réseau.
+- Confirmation du code à la création et versionnage de schéma dans les enveloppes v2.

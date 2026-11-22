@@ -1,27 +1,20 @@
 # End-to-End Encryption Design
 
-Status: sealing is implemented and live. Operator blindness is not.
+Status: operator-blind `v2` sealing and dual-mode `v1` compatibility are implemented.
 
-Registration returns a server-minted account code, and adding a device sends
-that code to the server. A ciphertext-only database file does not prove the
-operator never held the key. Sentences below that say the server cannot
-decrypt are not current. The correction list is
-`docs/architecture/OPEN_WORK.md`.
+New accounts generate a 128-bit recovery code (`LTL2-...`) on device, derive
+authentication (`K_auth`) and encryption (`K_master` -> `K_record`, `K_settings`)
+keys via domain-separated HKDF-SHA256, and send only `K_auth` (`auth_key`) to
+`folicular`. The server hashes `auth_key` with a domain-separated SHA-256
+verifier before storing or querying `accounts.code_hash` (preventing
+pass-the-hash on database leaks) and never observes the recovery code or record
+encryption keys.
 
-Key hierarchy, record sealing, the folicular schema and handler migration,
-client sync integration, Duo key agreement, and account-code recovery are in
-place, covered by tests, and shipping behind `SyncMode.ONLINE_CLOUD`.
-
-Verified against a live server on 2026-07-25 (`E2eRoundTripTest`, opt-in via
-`-Pfolicular.e2e.url`): register, seal, push, pull and decrypt round-trips; a
-second device recovers the account from the code alone and reads the first
-device's record. Inspecting the resulting SQLite file directly found **no
-plaintext at all**, no notes, dates, or enum values, only the `0x01` version
-byte and ciphertext. The Compose app itself has since run against a real
-server on a device (see `BACKEND_INTEGRATION.md`, current state). `sync_transport_notice`
-and `settings_sync_account_code_body` now state plainly that the server created
-the account code and receives it again on `addDevice`, so the app does not claim
-operator blindness. See `docs/architecture/OPEN_WORK.md`.
+Existing `v1` accounts (`LTL-...`, `0x01` envelopes) continue syncing seamlessly
+and can upgrade in place to `v2` via `POST /v1/auth/upgrade`, which atomically
+rotates `accounts.code_hash`, replaces records with `0x02` ciphertext, purges
+legacy `0x01` rows from `sync_changes` (zero-filled via `PRAGMA secure_delete = ON`),
+revokes other devices, and preserves `account_id` and active Duo links.
 
 This document is the single design reference for both repositories. The Android
 client is `luteal`; the Go backend is
@@ -152,8 +145,12 @@ never match. Both are covered by tests.
 AES-256-GCM, fresh random 96-bit nonce per record, 128-bit tag.
 
 ```
-wire format:  0x01 || nonce(12) || ciphertext || tag(16)
-associated data:  "<entity_type> <entity_id> <client_rev>"
+v1 wire format:      0x01 || nonce(12) || ciphertext || tag(16)
+v1 associated data:  "<entity_type>\0<entity_id>\0<client_rev>"
+
+v2 wire format:      0x02 || nonce(12) || ciphertext || tag(16)
+v2 associated data:  "v2\0<account_id>\0<entity_type>\0<entity_id>\0<client_rev>"
+v2 plaintext frame:  {"schema_version": 1, "payload": <record JSON>}
 ```
 
 Binding the routing metadata as AEAD associated data means a server that swaps

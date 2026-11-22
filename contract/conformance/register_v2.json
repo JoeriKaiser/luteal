@@ -1,0 +1,11 @@
+{
+  "name": "register_v2",
+  "method": "POST",
+  "path": "/v1/auth/register",
+  "status": 201,
+  "body": {
+    "account": { "id": "019832e0-6c14-7000-8000-000000000001", "auth_version": 2 },
+    "device": { "id": "019832e0-6c14-7000-8000-000000000002", "name": "Pixel 9", "token": "ltok_Ab3-ExampleToken" },
+    "warning": "Conservez votre code de recuperation en lieu sur : ce serveur ne l'a jamais recu et ne peut pas le reinitialiser."
+  }
+}

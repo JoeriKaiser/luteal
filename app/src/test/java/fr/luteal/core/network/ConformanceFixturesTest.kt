@@ -45,6 +45,25 @@ class ConformanceFixturesTest {
     }
 
     @Test
+    fun `register v2 and upgrade fixtures decode cleanly`() {
+        val regV2 = ContractJson.decodeFromJsonElement(
+            Register201Response.serializer(),
+            body("register_v2")
+        )
+        assertNull(regV2.account.code)
+        assertEquals("ltok_Ab3-ExampleToken", regV2.device.token)
+
+        val upgrade = ContractJson.decodeFromJsonElement(
+            AccountUpgradeResultWire.serializer(),
+            body("upgrade")
+        )
+        assertEquals(2, upgrade.authVersion)
+        assertEquals(42L, upgrade.cursor)
+        assertEquals(12, upgrade.recordsMigrated)
+        assertEquals(1L, upgrade.revokedDevices)
+    }
+
+    @Test
     fun `sync push response decodes applied rejected and sealed conflict state`() {
         val result = ContractJson.decodeFromJsonElement(PushResultWire.serializer(), body("sync_push"))
 

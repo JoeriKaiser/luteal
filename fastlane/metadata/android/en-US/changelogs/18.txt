@@ -1,0 +1,4 @@
+- Operator-blind encryption (v2): new sync accounts generate a 128-bit recovery code (LTL2-...) on your device and never send it to the server.
+- Seamless upgrade: existing v1 accounts keep syncing and can upgrade in place to v2 from Settings > Sync while keeping Duo links active.
+- Offline typo detection on LTL2 recovery codes via a 12-bit checksum before contacting the server.
+- First-run recovery code confirmation flow and per-record schema versioning inside v2 envelopes.

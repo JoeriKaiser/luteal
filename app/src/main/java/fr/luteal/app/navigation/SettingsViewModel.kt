@@ -1,5 +1,6 @@
 package fr.luteal.app.navigation
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -11,8 +12,15 @@ import fr.luteal.core.data.seed.TestDataSeeder
 import fr.luteal.core.model.AgeBand
 import fr.luteal.core.model.SyncMode
 import fr.luteal.core.model.TrackingContext
+import fr.luteal.core.network.LegacyServerUnsupportedException
+import fr.luteal.core.network.auth.AuthVersion
 import fr.luteal.core.network.auth.SyncCredentialStore
 import fr.luteal.core.network.auth.SyncCredentials
+import fr.luteal.core.network.crypto.AccountCodeV2
+import fr.luteal.core.network.crypto.RecordCrypto
+import fr.luteal.core.network.crypto.RecordSealer
+import fr.luteal.core.network.sync.AccountUpgradeManager
+import fr.luteal.core.network.sync.AccountUpgradeOutcome
 import fr.luteal.core.network.sync.FolicularApiClientFactory
 import fr.luteal.core.network.sync.SyncCursorStore
 import javax.inject.Inject
@@ -68,6 +76,7 @@ import java.time.LocalDate
  */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
+    private val savedStateHandle: SavedStateHandle,
     private val userRepository: UserRepository,
     private val syncDataStore: SyncDataStore,
     private val syncScheduler: SyncScheduler,
@@ -75,6 +84,8 @@ class SettingsViewModel @Inject constructor(
     private val credentialStore: SyncCredentialStore,
     private val apiClientFactory: FolicularApiClientFactory,
     private val cursorStore: SyncCursorStore,
+    private val recordSealer: RecordSealer,
+    private val accountUpgradeManager: AccountUpgradeManager,
     private val dataExportManager: DataExportManager,
     private val dataImportManager: DataImportManager,
     private val localDataPurgeManager: LocalDataPurgeManager,
@@ -85,15 +96,24 @@ class SettingsViewModel @Inject constructor(
     private val notificationScheduler: NotificationScheduler,
     private val duoProjectionSynchronizer: DuoProjectionSynchronizer
 ) : ViewModel() {
+    private companion object {
+        const val KEY_REG_DRAFT_CODE = "v2_reg_draft_code"
+        const val KEY_UPGRADE_DRAFT_CODE = "v2_upgrade_draft_code"
+        const val KEY_UPGRADE_OTHER_DEVICES = "v2_upgrade_other_devices"
+    }
+
     private val syncCursorStore: SyncCursorStore get() = cursorStore
 
     private val _syncUiState = MutableStateFlow(
-        SettingsSyncUiState(
-            hasAccount = credentialStore.load() != null,
-            isLinked = credentialStore.load() != null,
-            accountCode = credentialStore.load()?.accountCode,
-            deviceToken = credentialStore.load()?.deviceToken
-        )
+        credentialStore.load().let { creds ->
+            SettingsSyncUiState(
+                hasAccount = creds != null,
+                isLinked = creds != null,
+                accountCode = creds?.accountCode,
+                deviceToken = creds?.deviceToken,
+                authVersion = creds?.authVersion
+            )
+        }
     )
     val syncUiState: StateFlow<SettingsSyncUiState> = _syncUiState.asStateFlow()
 
@@ -106,6 +126,22 @@ class SettingsViewModel @Inject constructor(
     private val recoveryCodeDraft = MutableStateFlow("")
     private val recoveryState = MutableStateFlow<RecoveryState>(RecoveryState.Idle)
 
+    private val registrationState = MutableStateFlow<V2RegistrationState>(
+        savedStateHandle.get<String>(KEY_REG_DRAFT_CODE)
+            ?.let { V2RegistrationState.ReviewCode(it) }
+            ?: V2RegistrationState.Idle
+    )
+    private val upgradeState = MutableStateFlow<AccountUpgradeState>(
+        savedStateHandle.get<String>(KEY_UPGRADE_DRAFT_CODE)
+            ?.let {
+                AccountUpgradeState.ConfirmCode(
+                    newRecoveryCode = it,
+                    otherActiveDevices = savedStateHandle.get<Int>(KEY_UPGRADE_OTHER_DEVICES) ?: 0
+                )
+            }
+            ?: AccountUpgradeState.Idle
+    )
+
     private val exportState = MutableStateFlow<DataExportState>(DataExportState.Idle)
     private val wipeState = MutableStateFlow<DataWipeState>(DataWipeState.Idle)
     private val importState = MutableStateFlow<DataImportState>(DataImportState.Idle)
@@ -117,10 +153,39 @@ class SettingsViewModel @Inject constructor(
             FileOps(export, wipe, importOp, report)
         }
 
-    private val drafts: Flow<Drafts> =
-        combine(fileOps, _syncUiState) { files, syncUi ->
-            Drafts(files.export, files.wipe, files.importOp, files.report, syncUi)
+    private val syncFlows: Flow<SyncActionStates> =
+        combine(_syncUiState, registrationState, upgradeState) { syncUi, reg, up ->
+            SyncActionStates(syncUi, reg, up)
         }
+
+    private val drafts: Flow<Drafts> =
+        combine(fileOps, syncFlows) { files, sync ->
+            Drafts(files.export, files.wipe, files.importOp, files.report, sync.syncUi, sync.registration, sync.upgrade)
+        }
+
+    init {
+        viewModelScope.launch {
+            if (credentialStore.loadPendingUpgradeCode() != null) {
+                runCatching { accountUpgradeManager.reconcilePendingUpgradeIfNeeded() }
+                    .onSuccess { promoted ->
+                        if (promoted) refreshCredentialsSnapshot()
+                    }
+            }
+        }
+    }
+
+    private fun refreshCredentialsSnapshot() {
+        val creds = credentialStore.load()
+        _syncUiState.update {
+            it.copy(
+                hasAccount = creds != null,
+                isLinked = creds != null,
+                accountCode = creds?.accountCode,
+                deviceToken = creds?.deviceToken,
+                authVersion = creds?.authVersion
+            )
+        }
+    }
     val uiState: StateFlow<SettingsSyncUiState> = combine(
         userRepository.getUserPreferences(),
         syncDataStore.syncPreferencesFlow,
@@ -148,6 +213,9 @@ class SettingsViewModel @Inject constructor(
             isLinked = isLinked,
             accountCode = creds?.accountCode,
             deviceToken = creds?.deviceToken,
+            authVersion = creds?.authVersion,
+            registrationState = draft.registrationState,
+            upgradeState = draft.upgradeState,
             declaredContexts = preferences.declaredContexts,
             ageBand = AgeBand.fromId(preferences.ageBand),
             isAppLockEnabled = preferences.isAppLockEnabled,
@@ -224,7 +292,158 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun syncNow() {
-        syncScheduler.syncNow()
+        if (credentialStore.load() == null) {
+            beginV2Registration()
+        } else {
+            syncScheduler.syncNow()
+        }
+    }
+
+    // --- First-run operator-blind v2 registration ---------------------------
+
+    fun beginV2Registration() {
+        val code = savedStateHandle.get<String>(KEY_REG_DRAFT_CODE) ?: AccountCodeV2.generate().also {
+            savedStateHandle[KEY_REG_DRAFT_CODE] = it
+        }
+        registrationState.value = V2RegistrationState.ReviewCode(code)
+    }
+
+    fun confirmV2Registration() {
+        val code = (registrationState.value as? V2RegistrationState.ReviewCode)?.recoveryCode
+            ?: savedStateHandle.get<String>(KEY_REG_DRAFT_CODE)
+            ?: return
+        viewModelScope.launch {
+            registrationState.value = V2RegistrationState.Submitting(code)
+            runCatching {
+                val boundAccount = cursorStore.getDatasetAccountId()
+                if (boundAccount != null) {
+                    throw ForeignAccountRestore()
+                }
+                val normalized = AccountCodeV2.normalizeDisplay(code)
+                val authKeyHex = RecordCrypto.deriveV2AuthKeyHex(normalized)
+                val client = apiClientFactory.create(cursorStore.getBaseUrl())
+                val result = client.registerV2(
+                    authKeyHex = authKeyHex,
+                    deviceName = cursorStore.getDeviceLabel()
+                )
+                credentialStore.save(
+                    SyncCredentials(
+                        accountId = result.accountId,
+                        accountCode = normalized,
+                        deviceToken = result.deviceToken,
+                        authVersion = AuthVersion.V2
+                    )
+                )
+                recordSealer.invalidate()
+                cursorStore.setDatasetAccountId(result.accountId)
+                cursorStore.setBoundBaseUrl(cursorStore.getBaseUrl())
+                userRepository.updateSyncMode(SyncMode.ONLINE_CLOUD)
+            }.onSuccess {
+                savedStateHandle.remove<String>(KEY_REG_DRAFT_CODE)
+                registrationState.value = V2RegistrationState.Idle
+                refreshCredentialsSnapshot()
+                syncScheduler.syncNow()
+            }.onFailure { err ->
+                registrationState.value = when (err) {
+                    is ForeignAccountRestore -> V2RegistrationState.Error(
+                        recoveryCode = code,
+                        messageResId = R.string.settings_recovery_error_foreign_account
+                    )
+                    is LegacyServerUnsupportedException -> V2RegistrationState.Error(
+                        recoveryCode = code,
+                        messageResId = R.string.sync_error_legacy_server
+                    )
+                    else -> V2RegistrationState.Error(
+                        recoveryCode = code,
+                        message = err.message,
+                        messageResId = if (err.message.isNullOrBlank()) R.string.settings_recovery_error_failed else null
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissV2Registration() {
+        savedStateHandle.remove<String>(KEY_REG_DRAFT_CODE)
+        registrationState.value = V2RegistrationState.Idle
+    }
+
+    // --- In-place v1 -> v2 account upgrade ----------------------------------
+
+    fun startAccountUpgrade() {
+        viewModelScope.launch {
+            upgradeState.value = AccountUpgradeState.Preparing
+            runCatching {
+                syncScheduler.cancelAndJoin()
+                accountUpgradeManager.prepareUpgrade()
+            }.onSuccess { prepared ->
+                savedStateHandle[KEY_UPGRADE_DRAFT_CODE] = prepared.newRecoveryCode
+                savedStateHandle[KEY_UPGRADE_OTHER_DEVICES] = prepared.otherActiveDeviceCount
+                upgradeState.value = AccountUpgradeState.ConfirmCode(
+                    newRecoveryCode = prepared.newRecoveryCode,
+                    otherActiveDevices = prepared.otherActiveDeviceCount
+                )
+            }.onFailure { err ->
+                upgradeState.value = when (err) {
+                    is LegacyServerUnsupportedException -> AccountUpgradeState.Error(
+                        messageResId = R.string.sync_error_legacy_server
+                    )
+                    else -> AccountUpgradeState.Error(
+                        message = err.message,
+                        messageResId = if (err.message.isNullOrBlank()) R.string.settings_recovery_error_failed else null
+                    )
+                }
+            }
+        }
+    }
+
+    fun confirmAccountUpgrade() {
+        val code = when (val cur = upgradeState.value) {
+            is AccountUpgradeState.ConfirmCode -> cur.newRecoveryCode
+            is AccountUpgradeState.Conflict -> cur.newRecoveryCode
+            else -> savedStateHandle.get<String>(KEY_UPGRADE_DRAFT_CODE)
+        } ?: return
+        viewModelScope.launch {
+            upgradeState.value = AccountUpgradeState.Upgrading(code)
+            runCatching {
+                syncScheduler.cancelAndJoin()
+                accountUpgradeManager.executeUpgrade(code)
+            }.onSuccess { outcome ->
+                when (outcome) {
+                    is AccountUpgradeOutcome.Success -> {
+                        savedStateHandle.remove<String>(KEY_UPGRADE_DRAFT_CODE)
+                        savedStateHandle.remove<Int>(KEY_UPGRADE_OTHER_DEVICES)
+                        refreshCredentialsSnapshot()
+                        upgradeState.value = AccountUpgradeState.Success(outcome.recordsMigrated)
+                    }
+                    AccountUpgradeOutcome.AlreadyUpgraded -> {
+                        savedStateHandle.remove<String>(KEY_UPGRADE_DRAFT_CODE)
+                        savedStateHandle.remove<Int>(KEY_UPGRADE_OTHER_DEVICES)
+                        refreshCredentialsSnapshot()
+                        upgradeState.value = AccountUpgradeState.AlreadyUpgraded
+                    }
+                    AccountUpgradeOutcome.ConcurrentChangeConflict -> {
+                        upgradeState.value = AccountUpgradeState.Conflict(code)
+                    }
+                }
+            }.onFailure { err ->
+                upgradeState.value = when (err) {
+                    is LegacyServerUnsupportedException -> AccountUpgradeState.Error(
+                        messageResId = R.string.sync_error_legacy_server
+                    )
+                    else -> AccountUpgradeState.Error(
+                        message = err.message,
+                        messageResId = if (err.message.isNullOrBlank()) R.string.settings_recovery_error_failed else null
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissAccountUpgrade() {
+        savedStateHandle.remove<String>(KEY_UPGRADE_DRAFT_CODE)
+        savedStateHandle.remove<Int>(KEY_UPGRADE_OTHER_DEVICES)
+        upgradeState.value = AccountUpgradeState.Idle
     }
 
     fun seedMockData() {
@@ -268,9 +487,11 @@ class SettingsViewModel @Inject constructor(
     fun unlinkSync() {
         viewModelScope.launch {
             syncScheduler.cancelAndJoin()
+            credentialStore.clearPendingUpgradeCode()
             credentialStore.clear()
+            recordSealer.invalidate()
             syncDataStore.setCursor(0)
-            _syncUiState.update { it.copy(isLinked = false, accountCode = null, deviceToken = null) }
+            refreshCredentialsSnapshot()
         }
     }
 
@@ -285,57 +506,68 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
-     * Attaches this device to an existing account by sending the account code.
-     *
-     * The code decrypts synced records. The server issued it, so this is not a
-     * claim that the operator has never seen it. On success the credentials are
-     * stored and the next sync pulls the account history. A device that already
-     * holds another account's records is refused.
+     * Attaches this device to an existing v2 (`LTL2-...`) or legacy v1
+     * (`LTL-...`) account. For v2 codes, the 12-bit checksum is checked
+     * offline before deriving `K_auth` and calling `POST /v1/auth/devices`;
+     * the recovery code itself never leaves the device.
      */
     fun recoverAccount(accountCode: String) {
-        val code = accountCode.trim()
-        if (code.isBlank()) return
+        val rawCode = accountCode.trim()
+        if (rawCode.isBlank()) return
         viewModelScope.launch {
             recoveryState.value = RecoveryState.Loading
             runCatching {
+                val detectedVersion = AccountCodeV2.detectVersion(rawCode)
                 val client = apiClientFactory.create(cursorStore.getBaseUrl())
-                val result = client.addDevice(code, cursorStore.getDeviceLabel())
+                val (canonicalCode, result) = when (detectedVersion) {
+                    AuthVersion.V2 -> {
+                        val normalized = AccountCodeV2.normalizeDisplay(rawCode)
+                        val authKeyHex = RecordCrypto.deriveV2AuthKeyHex(normalized)
+                        normalized to client.addDeviceV2(authKeyHex, cursorStore.getDeviceLabel())
+                    }
+                    AuthVersion.V1 -> {
+                        rawCode to client.addDevice(rawCode, cursorStore.getDeviceLabel())
+                    }
+                }
                 val bound = cursorStore.getDatasetAccountId()
                 if (bound != null && bound != result.accountId) {
                     throw ForeignAccountRestore()
                 }
+                credentialStore.clearPendingUpgradeCode()
                 credentialStore.clear()
                 credentialStore.save(
                     SyncCredentials(
                         accountId = result.accountId,
-                        accountCode = code,
-                        deviceToken = result.deviceToken
+                        accountCode = canonicalCode,
+                        deviceToken = result.deviceToken,
+                        authVersion = result.authVersion
                     )
                 )
-                // A restored device starts from cursor zero so it pulls the
-                // whole history rather than resuming someone else's position.
+                recordSealer.invalidate()
                 syncDataStore.setCursor(0L)
                 cursorStore.setDatasetAccountId(result.accountId)
                 cursorStore.setBoundBaseUrl(cursorStore.getBaseUrl())
-                result
-            }.onSuccess { result ->
+                canonicalCode to result
+            }.onSuccess {
                 recoveryState.value = RecoveryState.Success
                 recoveryCodeDraft.value = ""
-                _syncUiState.update {
-                    it.copy(
-                        isLinked = true,
-                        accountCode = code,
-                        deviceToken = result.deviceToken
-                    )
-                }
+                refreshCredentialsSnapshot()
                 syncScheduler.syncNow()
             }.onFailure { err ->
-                recoveryState.value = if (err is ForeignAccountRestore) {
-                    RecoveryState.Error(
+                recoveryState.value = when (err) {
+                    is AccountCodeV2.InvalidAccountCodeException -> RecoveryState.Error(
+                        messageResId = when (err.reason) {
+                            AccountCodeV2.ErrorReason.CHECKSUM_MISMATCH -> R.string.settings_recovery_error_checksum
+                            AccountCodeV2.ErrorReason.INVALID_FORMAT -> R.string.settings_recovery_error_format
+                        }
+                    )
+                    is ForeignAccountRestore -> RecoveryState.Error(
                         messageResId = R.string.settings_recovery_error_foreign_account
                     )
-                } else {
-                    RecoveryState.Error(
+                    is LegacyServerUnsupportedException -> RecoveryState.Error(
+                        messageResId = R.string.sync_error_legacy_server
+                    )
+                    else -> RecoveryState.Error(
                         message = err.message,
                         messageResId = if (err.message.isNullOrBlank()) R.string.settings_recovery_error_failed else null
                     )
@@ -671,6 +903,28 @@ class SettingsViewModel @Inject constructor(
     suspend fun verifyPin(pin: String): Boolean = pinCryptoManager.verifyPin(pin)
 }
 
+sealed interface V2RegistrationState {
+    data object Idle : V2RegistrationState
+    data class ReviewCode(val recoveryCode: String) : V2RegistrationState
+    data class Submitting(val recoveryCode: String) : V2RegistrationState
+    data class Error(
+        val recoveryCode: String,
+        val message: String? = null,
+        @param:StringRes val messageResId: Int? = null
+    ) : V2RegistrationState
+}
+
+sealed interface AccountUpgradeState {
+    data object Idle : AccountUpgradeState
+    data object Preparing : AccountUpgradeState
+    data class ConfirmCode(val newRecoveryCode: String, val otherActiveDevices: Int) : AccountUpgradeState
+    data class Upgrading(val newRecoveryCode: String) : AccountUpgradeState
+    data class Conflict(val newRecoveryCode: String) : AccountUpgradeState
+    data class Success(val recordsMigrated: Int) : AccountUpgradeState
+    data object AlreadyUpgraded : AccountUpgradeState
+    data class Error(val message: String? = null, @param:StringRes val messageResId: Int? = null) : AccountUpgradeState
+}
+
 sealed interface RecoveryState {
     data object Idle : RecoveryState
     data object Loading : RecoveryState
@@ -719,6 +973,9 @@ data class SettingsSyncUiState(
     val isLinked: Boolean = false,
     val accountCode: String? = null,
     val deviceToken: String? = null,
+    val authVersion: AuthVersion? = null,
+    val registrationState: V2RegistrationState = V2RegistrationState.Idle,
+    val upgradeState: AccountUpgradeState = AccountUpgradeState.Idle,
     /** Contexts the user has declared, editable after onboarding. */
     val declaredContexts: Set<TrackingContext> = emptySet(),
     /** Null means no band declared, which is a valid state. */
@@ -755,12 +1012,20 @@ private data class FileOps(
     val report: DataExportState
 )
 
+private data class SyncActionStates(
+    val syncUi: SettingsSyncUiState,
+    val registration: V2RegistrationState,
+    val upgrade: AccountUpgradeState
+)
+
 private data class Drafts(
     val exportState: DataExportState,
     val wipeState: DataWipeState,
     val importState: DataImportState,
     val reportExportState: DataExportState,
-    val syncUi: SettingsSyncUiState = SettingsSyncUiState()
+    val syncUi: SettingsSyncUiState = SettingsSyncUiState(),
+    val registrationState: V2RegistrationState = V2RegistrationState.Idle,
+    val upgradeState: AccountUpgradeState = AccountUpgradeState.Idle
 )
 
 sealed interface TestDataActionState {

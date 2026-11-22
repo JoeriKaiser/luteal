@@ -1,0 +1,4 @@
+- Cifrado ciego al operador (v2): las nuevas cuentas generan un código de recuperación de 128 bits (LTL2-...) en el dispositivo, sin enviarlo nunca al servidor.
+- Actualización fluida: las cuentas v1 siguen sincronizando y pueden pasar a v2 desde Ajustes > Sincronización manteniendo activo el enlace Duo.
+- Detección sin conexión de errores al escribir códigos LTL2 antes de contactar al servidor.
+- Confirmación del código al crear cuenta y versionado de esquema en sobres v2.

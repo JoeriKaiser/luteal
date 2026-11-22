@@ -93,11 +93,15 @@ paths:
       tags: [auth]
       operationId: register
       security: []
-      summary: Create an anonymous account and register the first device
+      summary: Create a pseudonymous account and register the first device
       description: |
-        The account code is shown exactly once; only its SHA-256 hash is
-        stored. Losing it means losing the account - no email recovery
-        exists.
+        When auth_key is provided, the client derives K_auth and encryption
+        keys locally from a device-generated recovery secret so the server
+        never observes the recovery code or encryption key (auth_version = 2).
+        The server hashes auth_key with a domain-separated SHA-256 verifier
+        before storing it. Otherwise, a legacy v1 account code is generated
+        and shown once (auth_version = 1). Losing the recovery credential
+        means losing the account - no email recovery exists.
       requestBody:
         required: true
         content:
@@ -112,6 +116,19 @@ paths:
                     Invite code required when registration is gated (closed
                     rollout). Ignored when registration is open.
                   example: LTL-BETA-0001
+                auth_key:
+                  type: string
+                  description: >
+                    Client-derived 32-byte authentication key (K_auth, hex or
+                    base64). The server hashes it with SHA-256 before storing.
+                    Mutually exclusive with code.
+                  example: 7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069
+                code:
+                  type: string
+                  description: >
+                    Optional client-generated legacy v1 account code
+                    (LTL-XXXXX-XXXXX-XXXXX-XXXXX). Mutually exclusive with auth_key.
+                  example: LTL-8K3FQ-Z2WNT-7HJMC-4XRDB
       responses:
         "201":
           description: Account and first device created
@@ -123,17 +140,23 @@ paths:
                 properties:
                   account:
                     type: object
-                    required: [id, code]
+                    required: [id, auth_version]
                     properties:
                       id: { $ref: "#/components/schemas/UUID" }
+                      auth_version:
+                        type: integer
+                        minimum: 1
+                        maximum: 2
+                        description: Account auth/encryption protocol version (1 = legacy, 2 = operator-blind)
                       code:
                         type: string
-                        description: Account code, shown once (LTL-XXXXX-XXXXX-XXXXX-XXXXX)
+                        description: Legacy v1 account code, shown once (LTL-XXXXX-XXXXX-XXXXX-XXXXX). Omitted when auth_key is provided.
                         example: LTL-8K3FQ-Z2WNT-7HJMC-4XRDB
                   device: { $ref: "#/components/schemas/NewDevice" }
                   warning:
                     type: string
-                    description: French user-facing notice about keeping the code safe
+                    description: French user-facing notice about keeping credentials safe
+        "409": { $ref: "#/components/responses/Problem" }
         default: { $ref: "#/components/responses/Problem" }
 
   /v1/auth/devices:
@@ -141,7 +164,7 @@ paths:
       tags: [auth]
       operationId: addDevice
       security: []
-      summary: Register an additional device using the account code
+      summary: Register an additional device using a v2 auth_key or legacy v1 code
       description: Rate limited per client IP. Failures are generic (no enumeration).
       requestBody:
         required: true
@@ -149,9 +172,17 @@ paths:
           application/json:
             schema:
               type: object
-              required: [code]
               properties:
-                code: { type: string, example: LTL-8K3FQ-Z2WNT-7HJMC-4XRDB }
+                code:
+                  type: string
+                  description: Legacy v1 account code (LTL-XXXXX-XXXXX-XXXXX-XXXXX)
+                  example: LTL-8K3FQ-Z2WNT-7HJMC-4XRDB
+                auth_key:
+                  type: string
+                  description: >
+                    Client-derived 32-byte authentication key (K_auth, hex or base64)
+                    for operator-blind v2 accounts.
+                  example: 7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069
                 device_name: { type: string, maxLength: 120 }
       responses:
         "201":
@@ -160,14 +191,18 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [account_id, device]
+                required: [account_id, auth_version, device]
                 properties:
                   account_id:
                     allOf: [{ $ref: "#/components/schemas/UUID" }]
                     description: |
-                      Needed by the client to derive its encryption keys (HKDF
-                      salt). Not a secret, and the caller has just proved
-                      possession of the account code to reach this point.
+                      Needed by the client to derive its encryption keys. Not a
+                      secret, and the caller has just proved possession of the
+                      account credential to reach this point.
+                  auth_version:
+                    type: integer
+                    minimum: 1
+                    maximum: 2
                   device: { $ref: "#/components/schemas/NewDevice" }
         "401": { $ref: "#/components/responses/Problem" }
         "429": { $ref: "#/components/responses/Problem" }
@@ -188,6 +223,32 @@ paths:
                   devices:
                     type: array
                     items: { $ref: "#/components/schemas/Device" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /v1/auth/upgrade:
+    post:
+      tags: [auth]
+      operationId: upgradeAccount
+      summary: Atomically upgrade a legacy v1 account in place to operator-blind v2 encryption
+      description: |
+        Rotates accounts.code_hash to the server-hashed v2 auth_key verifier,
+        sets auth_version = 2, replaces all records with 0x02 ciphertext, purges
+        legacy 0x01 rows from sync_changes, preserves account_id and Duo links,
+        and revokes other devices by default. Idempotent if retried with the
+        same auth_key after commit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccountUpgradeInput" }
+      responses:
+        "200":
+          description: Account upgraded to v2
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountUpgradeResult" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
         default: { $ref: "#/components/responses/Problem" }
 
   /v1/auth/devices/{deviceID}:
@@ -599,15 +660,57 @@ components:
           type: array
           items: { $ref: "#/components/schemas/TrackingFocus" }
 
+    AccountUpgradeInput:
+      type: object
+      required: [auth_key, expected_cursor, records]
+      properties:
+        auth_key:
+          type: string
+          description: Client-derived 32-byte v2 authentication key (hex or base64)
+        expected_cursor:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Latest server sync cursor known by the upgrading device
+        revoke_other_devices:
+          type: boolean
+          default: true
+          description: Whether to revoke all other devices on the account
+        settings:
+          type: string
+          format: byte
+          nullable: true
+          description: Re-sealed 0x02 settings blob (required if the account already has sealed settings)
+        records:
+          type: array
+          items: { $ref: "#/components/schemas/SyncChangeInput" }
+
+    AccountUpgradeResult:
+      type: object
+      required: [account_id, auth_version, cursor, records_migrated, revoked_devices]
+      properties:
+        account_id: { $ref: "#/components/schemas/UUID" }
+        auth_version:
+          type: integer
+          minimum: 2
+          maximum: 2
+        cursor: { type: integer, format: int64 }
+        records_migrated: { type: integer }
+        revoked_devices: { type: integer, format: int64 }
+
     Me:
       type: object
       required: [account, device, settings]
       properties:
         account:
           type: object
-          required: [id, status, created_at]
+          required: [id, auth_version, status, created_at]
           properties:
             id: { $ref: "#/components/schemas/UUID" }
+            auth_version:
+              type: integer
+              minimum: 1
+              maximum: 2
             status: { type: string, enum: [active, disabled, deleted] }
             created_at: { type: string, format: date-time }
         device:
@@ -660,9 +763,9 @@ components:
           format: byte
           nullable: true
           description: |
-            Base64 of `0x01 || nonce(12) || AES-256-GCM(record JSON) || tag(16)`.
-            Associated data binds "<entity_type> <entity_id> <client_rev>", so
-            relocating a payload onto another record fails authentication.
+            Base64 of `version(1) || nonce(12) || AES-256-GCM(payload) || tag(16)`.
+            Legacy v1 accounts use version 0x01; operator-blind v2 accounts use
+            version 0x02 with AAD binding account_id and routing metadata.
 
     AppliedChange:
       type: object
