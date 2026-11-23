@@ -7,6 +7,36 @@ updates:
     labels:
       - "dependencies"
       - "kotlin"
+    groups:
+      # Coupled build toolchain: keep separate from app libraries so AGP/Kotlin/KSP/Hilt/Room
+      # bumps do not block routine library updates.
+      toolchain:
+        patterns:
+          - "com.android.application"
+          - "com.android.tools.build:*"
+          - "org.jetbrains.kotlin*"
+          - "com.google.devtools.ksp*"
+          - "com.google.dagger:*"
+          - "androidx.room:*"
+          - "gradle-wrapper"
+        update-types:
+          - "minor"
+          - "patch"
+      # Routine minor/patch updates for AndroidX and third-party libraries.
+      libraries:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "com.android.application"
+          - "com.android.tools.build:*"
+          - "org.jetbrains.kotlin*"
+          - "com.google.devtools.ksp*"
+          - "com.google.dagger:*"
+          - "androidx.room:*"
+          - "gradle-wrapper"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -15,3 +45,10 @@ updates:
     labels:
       - "dependencies"
       - "ci"
+    groups:
+      actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
