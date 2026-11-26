@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import fr.luteal.app.sync.AutoSyncCoordinator
 import fr.luteal.app.sync.SyncScheduler
 import fr.luteal.core.data.datastore.SyncDataStore
 import fr.luteal.core.data.repository.DuoProjectionSynchronizer
@@ -80,6 +81,7 @@ class SettingsViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val syncDataStore: SyncDataStore,
     private val syncScheduler: SyncScheduler,
+    private val autoSyncCoordinator: AutoSyncCoordinator,
     private val testDataSeeder: TestDataSeeder,
     private val credentialStore: SyncCredentialStore,
     private val apiClientFactory: FolicularApiClientFactory,
@@ -185,6 +187,7 @@ class SettingsViewModel @Inject constructor(
                 authVersion = creds?.authVersion
             )
         }
+        autoSyncCoordinator.reconcile()
     }
     val uiState: StateFlow<SettingsSyncUiState> = combine(
         userRepository.getUserPreferences(),

@@ -109,6 +109,9 @@ class FakeSyncStateDao : SyncStateDao {
     override suspend fun getDirtyStates(): List<SyncStateEntity> =
         states.values.filter { it.dirty }
 
+    override fun observeDirtyRevisions(): Flow<List<String>> =
+        flowOf(states.values.filter { it.dirty }.map { it.clientRev })
+
     override suspend fun getDirtyStatesByType(entityType: String): List<SyncStateEntity> =
         states.values.filter { it.dirty && it.entityType == entityType }
 

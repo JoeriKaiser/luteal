@@ -25,6 +25,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import fr.luteal.app.navigation.AppLockResolvingBarrier
 import fr.luteal.app.navigation.AppLockScreen
 import fr.luteal.app.navigation.LutealMainScaffold
+import fr.luteal.app.sync.AutoSyncCoordinator
 import fr.luteal.core.data.datastore.UserPreferencesDataStore
 import fr.luteal.core.data.security.AppLockManager
 import fr.luteal.core.designsystem.theme.LutealTheme
@@ -41,6 +42,9 @@ class MainActivity : FragmentActivity() {
     @Inject
     lateinit var userPreferencesDataStore: UserPreferencesDataStore
 
+    @Inject
+    lateinit var autoSyncCoordinator: AutoSyncCoordinator
+
     private var widgetDestination by mutableStateOf<String?>(null)
     private var bufferedImportJson by mutableStateOf<String?>(null)
 
@@ -51,6 +55,7 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
 
         lifecycle.addObserver(appLockManager)
+        lifecycle.addObserver(autoSyncCoordinator)
 
         // Observe screen masking preference and apply/clear FLAG_SECURE
         lifecycleScope.launch {
