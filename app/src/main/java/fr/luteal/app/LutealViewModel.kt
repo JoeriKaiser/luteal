@@ -198,11 +198,25 @@ class LutealViewModel @Inject constructor(
     fun completeOnboarding(
         role: UserRole = UserRole.PRIMARY_TRACKER,
         disorderTracking: Map<String, Boolean> = emptyMap(),
-        ageBandId: String? = null
+        ageBandId: String? = null,
+        duoEnabled: Boolean = false
     ) {
         viewModelScope.launch {
-            runCatching { userRepository.completeOnboarding(role, disorderTracking, ageBandId) }
+            runCatching { userRepository.completeOnboarding(role, disorderTracking, ageBandId, duoEnabled) }
                 .onFailure { operationState.update { state -> state.copy(failed = true) } }
+        }
+    }
+
+    fun setDuoEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            runCatching { userRepository.setDuoEnabled(enabled) }
+                .onFailure { operationState.update { state -> state.copy(failed = true) } }
+        }
+    }
+
+    fun dismissDuoMovedNotice() {
+        viewModelScope.launch {
+            runCatching { userRepository.dismissDuoMovedNotice() }
         }
     }
 

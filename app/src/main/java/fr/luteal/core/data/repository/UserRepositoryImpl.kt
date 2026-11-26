@@ -53,13 +53,15 @@ class UserRepositoryImpl @Inject constructor(
     override suspend fun completeOnboarding(
         role: UserRole,
         disorderTracking: Map<String, Boolean>,
-        ageBandId: String?
+        ageBandId: String?,
+        duoEnabled: Boolean
     ) {
         updateUserRole(role)
         for ((disorderId, enabled) in disorderTracking) {
             userPreferencesDataStore.setDisorderTracking(disorderId, enabled)
         }
         userPreferencesDataStore.setAgeBand(ageBandId)
+        userPreferencesDataStore.setDuoEnabled(duoEnabled || role == UserRole.PARTNER_VIEWER)
         userPreferencesDataStore.setCompletedOnboarding(true)
     }
 
@@ -85,6 +87,14 @@ class UserRepositoryImpl @Inject constructor(
 
     override suspend fun setDuoPartnerPillTakenAlertEnabled(enabled: Boolean) {
         userPreferencesDataStore.setDuoPartnerPillTakenAlertEnabled(enabled)
+    }
+
+    override suspend fun setDuoEnabled(enabled: Boolean) {
+        userPreferencesDataStore.setDuoEnabled(enabled)
+    }
+
+    override suspend fun dismissDuoMovedNotice() {
+        userPreferencesDataStore.dismissDuoMovedNotice()
     }
 
     override suspend fun setCouplePairing(pairingCode: String?, partnerName: String?) {

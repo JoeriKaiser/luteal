@@ -233,6 +233,15 @@
     <string name="duo_preview_body">This preview shows only the categories you allowed. No data is sent.</string>
     <string name="duo_error_invalid_pairing_link">Incomplete sharing link. Paste the full link provided by your partner.</string>
     <string name="duo_private_notes_never_shared">Private notes are never included in Duo sharing.</string>
+    <string name="settings_duo_enabled_title">Show the Duo tab</string>
+    <string name="settings_duo_enabled_body">Duo lets you share parts of your cycle with a partner. Turning this off only hides the tab: it does not end your Duo link or change what you share.</string>
+    <string name="settings_duo_disable_dialog_title">Hide the Duo tab?</string>
+    <string name="settings_duo_disable_dialog_body">You are still in a Duo. Hiding the tab does not revoke the link, so your partner keeps seeing what you share. To end the Duo, revoke the link in the Duo tab first.</string>
+    <string name="settings_duo_disable_dialog_confirm">Hide tab</string>
+    <string name="today_duo_moved_title">Duo is now in settings</string>
+    <string name="today_duo_moved_body">You were not using Duo, so its tab is now hidden. You can turn it back on at any time in Settings.</string>
+    <string name="today_duo_moved_enable">Turn on Duo</string>
+    <string name="today_duo_moved_dismiss">Got it</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_subtitle">Control how Luteal works locally and how it handles your privacy.</string>
@@ -330,6 +339,8 @@
     <string name="onboarding_role_tracker_desc">Record my cycles and symptoms, and see my estimates.</string>
     <string name="onboarding_role_partner_title">Duo partner</string>
     <string name="onboarding_role_partner_desc">Support the person I am in a Duo with and receive what they share.</string>
+    <string name="onboarding_role_share_with_partner">Share with my partner</string>
+    <string name="onboarding_role_share_with_partner_desc">Adds the Duo tab so you can invite your partner. Off by default; you can turn it on later in settings.</string>
     <string name="onboarding_focus_step_title">Areas of focus (optional)</string>
     <string name="onboarding_focus_step_body">Select the topics you want to follow closely, so the observation categories can adapt. Luteal makes no medical diagnosis.</string>
     <string name="onboarding_focus_pms">Premenstrual syndrome (PMS)</string>

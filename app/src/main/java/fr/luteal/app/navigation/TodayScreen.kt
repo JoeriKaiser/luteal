@@ -82,7 +82,9 @@ fun TodayScreen(
     onStartPeriod: () -> Unit,
     onEditToday: () -> Unit,
     onBackfillCycle: () -> Unit,
-    onTogglePillTakenToday: (Boolean) -> Unit = {}
+    onTogglePillTakenToday: (Boolean) -> Unit = {},
+    onEnableDuo: () -> Unit = {},
+    onDismissDuoMovedNotice: () -> Unit = {}
 ) {
     val locale = LocalConfiguration.current.locales[0]
     Column(
@@ -96,6 +98,10 @@ fun TodayScreen(
             title = stringResource(R.string.today_title),
             subtitle = LocalizedDateFormatter.formatFullDate(state.today, locale)
         )
+
+        if (state.preferences.showDuoMovedNotice && state.preferences.duoEnabled != true) {
+            DuoMovedNoticeCard(onEnableDuo = onEnableDuo, onDismiss = onDismissDuoMovedNotice)
+        }
 
         CycleHeroCard(state)
 
@@ -139,6 +145,35 @@ fun TodayScreen(
         }
 
         Spacer(Modifier.height(LutealSpacing.lg))
+    }
+}
+
+/** Shown once to updated installs whose Duo tab was hidden by the migration. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DuoMovedNoticeCard(onEnableDuo: () -> Unit, onDismiss: () -> Unit) {
+    LutealCard(
+        modifier = Modifier.fillMaxWidth(),
+        emphasis = LutealCardEmphasis.QUIET
+    ) {
+        Text(
+            text = stringResource(R.string.today_duo_moved_title),
+            style = MaterialTheme.typography.titleMedium
+        )
+        Spacer(Modifier.height(LutealSpacing.xs))
+        Text(
+            text = stringResource(R.string.today_duo_moved_body),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
+            TextButton(onClick = onEnableDuo) {
+                Text(text = stringResource(R.string.today_duo_moved_enable))
+            }
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(R.string.today_duo_moved_dismiss))
+            }
+        }
     }
 }
 

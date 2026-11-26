@@ -67,6 +67,9 @@ fun LutealMainScaffold(
     val context = LocalContext.current
     val saveError = stringResource(R.string.save_error)
     val saveSuccess = stringResource(R.string.save_success_local)
+    val isDuoEnabled = uiState.preferences.duoEnabled == true
+    val destinations = visibleDestinations(isDuoEnabled)
+    val currentDestination = selectedDestination.takeIf { it in destinations } ?: LutealDestination.TODAY
 
     LaunchedEffect(pendingImportJson, uiState.preferences.hasCompletedOnboarding) {
         val json = pendingImportJson ?: return@LaunchedEffect
@@ -92,7 +95,11 @@ fun LutealMainScaffold(
                 viewModel.clearEntrySaveState()
                 editorRequest = EditorRequest(uiState.today, startPeriodIntent = false)
             }
+            // The Duo widget and partner alerts only exist for someone in a
+            // Duo, so opening one turns the tab back on rather than landing
+            // on a destination that is not there.
             fr.luteal.app.MainActivity.WIDGET_DESTINATION_DUO -> {
+                if (!isDuoEnabled) viewModel.setDuoEnabled(true)
                 selectedDestination = LutealDestination.DUO
             }
         }
@@ -118,8 +125,8 @@ fun LutealMainScaffold(
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { }
     } else if (!uiState.preferences.hasCompletedOnboarding) {
         OnboardingScreen(
-            onComplete = { role, focusMap, ageBandId ->
-                viewModel.completeOnboarding(role, focusMap, ageBandId)
+            onComplete = { role, focusMap, ageBandId, duoEnabled ->
+                viewModel.completeOnboarding(role, focusMap, ageBandId, duoEnabled)
             }
         )
     } else {
@@ -129,8 +136,9 @@ fun LutealMainScaffold(
                 snackbarHost = { SnackbarHost(snackbarHostState) },
                 bottomBar = {
                     LutealBottomNavigationBar(
-                        selectedDestination = selectedDestination,
-                        onSelectDestination = { selectedDestination = it }
+                        selectedDestination = currentDestination,
+                        onSelectDestination = { selectedDestination = it },
+                        destinations = destinations
                     )
                 }
             ) { contentPadding ->
@@ -141,7 +149,7 @@ fun LutealMainScaffold(
                     contentAlignment = Alignment.TopCenter
                 ) {
                     Box(modifier = Modifier.fillMaxSize().widthIn(max = 760.dp)) {
-                        when (selectedDestination) {
+                        when (currentDestination) {
                             LutealDestination.TODAY -> TodayScreen(
                                 state = uiState,
                                 onStartPeriod = {
@@ -153,7 +161,12 @@ fun LutealMainScaffold(
                                     editorRequest = EditorRequest(uiState.today, startPeriodIntent = false)
                                 },
                                 onBackfillCycle = { showBackfillDialog = true },
-                                onTogglePillTakenToday = viewModel::setPillTakenToday
+                                onTogglePillTakenToday = viewModel::setPillTakenToday,
+                                onEnableDuo = {
+                                    viewModel.setDuoEnabled(true)
+                                    selectedDestination = LutealDestination.DUO
+                                },
+                                onDismissDuoMovedNotice = viewModel::dismissDuoMovedNotice
                             )
                             LutealDestination.JOURNAL -> JournalScreen(
                                 state = uiState,
@@ -230,7 +243,8 @@ fun LutealMainScaffold(
 internal fun LutealBottomNavigationBar(
     selectedDestination: LutealDestination,
     onSelectDestination: (LutealDestination) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    destinations: List<LutealDestination> = LutealDestination.entries
 ) {
     val currentDensity = LocalDensity.current
     val useCompactNavigationLabels = currentDensity.fontScale >= 1.5f
@@ -249,7 +263,7 @@ internal fun LutealBottomNavigationBar(
             containerColor = MaterialTheme.colorScheme.surface,
             modifier = modifier
         ) {
-            LutealDestination.entries.forEach { destination ->
+            destinations.forEach { destination ->
                 val visibleLabelRes = if (
                     useCompactNavigationLabels && destination == LutealDestination.TODAY
                 ) {
@@ -286,6 +300,9 @@ internal fun LutealBottomNavigationBar(
         }
     }
 }
+
+internal fun visibleDestinations(isDuoEnabled: Boolean): List<LutealDestination> =
+    LutealDestination.entries.filter { it != LutealDestination.DUO || isDuoEnabled }
 
 private data class EditorRequest(
     val date: LocalDate,

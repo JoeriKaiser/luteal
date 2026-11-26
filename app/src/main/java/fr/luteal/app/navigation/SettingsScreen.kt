@@ -318,6 +318,12 @@ fun SettingsScreen(
             onConfirm = viewModel::confirmAccountUpgrade,
             onDismiss = viewModel::dismissAccountUpgrade
         )
+
+        DuoSettingsCard(
+            isDuoEnabled = syncState.isDuoEnabled,
+            hasDuoLink = syncState.hasDuoLink,
+            onSetDuoEnabled = viewModel::setDuoEnabled
+        )
         if (BuildConfig.DEBUG) {
             TestDataCard(
                 state = syncState.testDataState,
@@ -1571,6 +1577,58 @@ private fun ClearAllDataDialog(
             }
         }
     )
+}
+
+/**
+ * Hiding the tab never touches the link, so someone still in a Duo is told
+ * their partner keeps seeing what they share before the tab disappears.
+ */
+@Composable
+private fun DuoSettingsCard(
+    isDuoEnabled: Boolean,
+    hasDuoLink: Boolean,
+    onSetDuoEnabled: (Boolean) -> Unit
+) {
+    var showDisableDialog by remember { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.xs)) {
+        SettingsSectionHeader(title = stringResource(R.string.duo_title))
+
+        LutealCard(modifier = Modifier.fillMaxWidth()) {
+            LutealToggleRow(
+                title = stringResource(R.string.settings_duo_enabled_title),
+                description = stringResource(R.string.settings_duo_enabled_body),
+                checked = isDuoEnabled,
+                onCheckedChange = { enabled ->
+                    if (!enabled && hasDuoLink) showDisableDialog = true
+                    else onSetDuoEnabled(enabled)
+                }
+            )
+        }
+    }
+
+    if (showDisableDialog) {
+        AlertDialog(
+            onDismissRequest = { showDisableDialog = false },
+            title = { Text(stringResource(R.string.settings_duo_disable_dialog_title)) },
+            text = { Text(stringResource(R.string.settings_duo_disable_dialog_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDisableDialog = false
+                        onSetDuoEnabled(false)
+                    }
+                ) {
+                    Text(stringResource(R.string.settings_duo_disable_dialog_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDisableDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
 }
 
 @Composable
