@@ -239,6 +239,12 @@
     <string name="settings_title">Réglages</string>
     <string name="settings_subtitle">Contrôlez le fonctionnement local et la confidentialité de Luteal.</string>
     <string name="settings_privacy_title">Données et confidentialité</string>
+    <string name="settings_privacy_details_title">Comment Luteal traite vos données</string>
+    <string name="settings_privacy_details_summary">Stockage local, sauvegarde, widgets et données de santé</string>
+    <string name="settings_privacy_details_show">Afficher les détails</string>
+    <string name="settings_privacy_details_hide">Masquer les détails</string>
+    <string name="settings_privacy_details_expanded">Développé</string>
+    <string name="settings_privacy_details_collapsed">Réduit</string>
     <string name="settings_storage_title">Stockage local</string>
     <string name="settings_storage_body">Les données de suivi sont conservées dans la base locale de l’application. Aucun serveur n’est contacté tant que vous n’activez pas la synchronisation ou le Duo.</string>
     <string name="settings_backup_title">Sauvegarde système désactivée</string>
