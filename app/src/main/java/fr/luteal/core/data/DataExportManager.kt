@@ -142,6 +142,7 @@ class DataExportManager @Inject constructor(
             trackPerimenopause = prefs.trackPerimenopause,
             trackThyroid = prefs.trackThyroid,
             ageBand = prefs.ageBand,
+            isDuoEnabled = prefs.duoEnabled,
             temperatureUnit = prefs.temperatureUnit,
             isPillRegimenEnabled = prefs.isPillRegimenEnabled,
             pillActiveDays = prefs.pillActiveDays,

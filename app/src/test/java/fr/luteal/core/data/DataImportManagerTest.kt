@@ -367,6 +367,7 @@ class DataImportManagerTest {
         )
         userPreferencesDataStore.setDisorderTracking("pmdd", true)
         userPreferencesDataStore.setAgeBand("AGE_30_34")
+        userPreferencesDataStore.setDuoEnabled(true)
 
         // Export to stream
         val outStream = ByteArrayOutputStream()
@@ -382,6 +383,7 @@ class DataImportManagerTest {
         val inspectResult = importManager.inspectBackup(inStream)
         assertTrue(inspectResult.isSuccess)
         val (_, payload) = inspectResult.getOrThrow()
+        assertEquals(true, payload.preferences.isDuoEnabled)
 
         val restoreResult = importManager.restoreBackup(payload, ImportStrategy.REPLACE_ALL)
         assertTrue(restoreResult.isSuccess)
@@ -405,6 +407,57 @@ class DataImportManagerTest {
         val prefs = userPreferencesDataStore.userPreferencesFlow.first()
         assertTrue(prefs.trackPmdd)
         assertEquals("AGE_30_34", prefs.ageBand)
+        assertEquals(true, prefs.duoEnabled)
+    }
+
+    @Test
+    fun replaceAllRestoresTheDuoChoiceFromTheBackup() = runTest {
+        userPreferencesDataStore.clear()
+        val payload = LutealBackupPayload(
+            exportedAt = "2026-08-15T12:00:00Z",
+            appVersion = "2.0.0",
+            preferences = UserPreferencesBackupDto(isDuoEnabled = true)
+        )
+
+        assertTrue(importManager.restoreBackup(payload, ImportStrategy.REPLACE_ALL).isSuccess)
+
+        assertEquals(true, userPreferencesDataStore.userPreferencesFlow.first().duoEnabled)
+    }
+
+    @Test
+    fun replaceAllWithBackupWithoutDuoChoiceFollowsTheRole() = runTest {
+        userPreferencesDataStore.clear()
+        val json = """
+            {
+              "schema_version": 1,
+              "exported_at": "2026-08-15T12:00:00Z",
+              "app_version": "1.10.0",
+              "preferences": { "user_role": "PARTNER_VIEWER" }
+            }
+        """.trimIndent()
+        val (_, payload) = importManager.inspectBackup(ByteArrayInputStream(json.toByteArray())).getOrThrow()
+        assertEquals(null, payload.preferences.isDuoEnabled)
+
+        assertTrue(importManager.restoreBackup(payload, ImportStrategy.REPLACE_ALL).isSuccess)
+
+        val prefs = userPreferencesDataStore.userPreferencesFlow.first()
+        assertEquals(true, prefs.duoEnabled)
+        assertEquals(false, prefs.showDuoMovedNotice)
+    }
+
+    @Test
+    fun replaceAllWithBackupWithoutDuoChoiceKeepsTheDeviceChoice() = runTest {
+        userPreferencesDataStore.clear()
+        userPreferencesDataStore.setDuoEnabled(true)
+        val payload = LutealBackupPayload(
+            exportedAt = "2026-08-15T12:00:00Z",
+            appVersion = "1.10.0",
+            preferences = UserPreferencesBackupDto(userRole = "PRIMARY_TRACKER")
+        )
+
+        assertTrue(importManager.restoreBackup(payload, ImportStrategy.REPLACE_ALL).isSuccess)
+
+        assertEquals(true, userPreferencesDataStore.userPreferencesFlow.first().duoEnabled)
     }
 
     @Test
