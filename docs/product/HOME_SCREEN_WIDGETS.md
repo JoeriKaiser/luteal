@@ -30,6 +30,10 @@ The Duo widget never advances a cached shared cycle day locally. Doing that
 would assume no new cycle was recorded and would create information that was
 not actually shared.
 
+The Duo tab is optional (Settings > Duo). Tapping the Duo widget while the tab
+is hidden turns it back on and opens it, since the widget only makes sense for
+someone using Duo.
+
 ## Responsive layouts
 
 Glance uses a bounded `SizeMode.Responsive` set:
