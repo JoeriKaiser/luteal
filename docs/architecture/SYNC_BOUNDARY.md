@@ -17,8 +17,15 @@ conflict questions remain open.
 - Synced entity types: `cycle`, `bleeding_observation` (fanned out of cycles
   and of daily entries), `daily_entry`, `symptom_log`. Deletions propagate as
   tombstones in both directions.
-- Sync runs through an on-demand `WorkManager` worker (`app/sync`). There is
-  no periodic schedule yet; see `BACKEND_INTEGRATION.md` Milestone 1.
+- Sync runs through a `WorkManager` worker (`app/sync`). Besides "Sync now",
+  `AutoSyncCoordinator` triggers it when the app comes to the foreground (at
+  most once per `APP_OPEN_MIN_INTERVAL`), `LOCAL_CHANGE_DEBOUNCE` after the
+  last local edit (a new dirty `clientRev` in `sync_state`), and every
+  `PERIODIC_INTERVAL` with a network constraint. The intervals live in
+  `SyncScheduler`. Automatic runs only happen with `ONLINE_CLOUD` on and an
+  account linked, never register an account, and are cancelled when sync is
+  turned off or the account is unlinked. `SyncLock` serializes overlapping
+  runs.
 - Duo is live: invite, accept-by-paste of the full pairing link, per-field
   grants, revocation, and sealed support messages. The tracker's device
   composes and seals the projection; the server relays ciphertext only.
@@ -116,7 +123,9 @@ verification record live in `E2EE_DESIGN.md`. Summary of what the server can
 still see, by design: account and device existence, `entity_id`/`entity_type`,
 `seq`, the `deleted` flag, minute-truncated `updated_at`, ciphertext length,
 the Duo link graph, and request timing/volume/IP. Honest copy about this lives
-in `sync_transport_notice`.
+in `sync_transport_notice`. With automatic sync, request timing roughly
+follows local edits (within the debounce window), so it says more than the
+minute-truncated `updated_at` does on its own.
 
 Remaining crypto-adjacent product work: Duo link-key loss requires re-pairing
 (reinstall loses the key), account-code loss is unrecoverable by construction,
