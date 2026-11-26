@@ -19,6 +19,7 @@ class NotificationChannelManager @Inject constructor(
         const val CHANNEL_PERIOD_WINDOW = "channel_period_window"
         const val CHANNEL_LATE_CYCLE = "channel_late_cycle"
         const val CHANNEL_PILL_REMINDER = "channel_pill_reminder"
+        const val CHANNEL_APP_UPDATES = "channel_app_updates"
     }
 
     fun registerChannels() {
@@ -61,7 +62,18 @@ class NotificationChannelManager @Inject constructor(
                 setShowBadge(true)
             }
 
-            notificationManager.createNotificationChannels(listOf(dailyChannel, windowChannel, lateChannel, pillChannel))
+            val updatesChannel = NotificationChannel(
+                CHANNEL_APP_UPDATES,
+                context.getString(R.string.notif_channel_updates_title),
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = context.getString(R.string.notif_channel_updates_desc)
+                setShowBadge(false)
+            }
+
+            notificationManager.createNotificationChannels(
+                listOf(dailyChannel, windowChannel, lateChannel, pillChannel, updatesChannel)
+            )
         }
     }
 }

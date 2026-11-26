@@ -135,3 +135,24 @@ Network permissions are declared in the main manifest (both build types can
 sync); cleartext HTTP is debug-only, and sync runs only when
 `SyncMode.ONLINE_CLOUD` is enabled. The sync UI is available in all builds;
 the local base-URL editor and demo-data tools are debug-gated.
+
+## Other network connections
+
+Sync is the only connection that carries user data. The only other one is the
+optional GitHub updater (`app/update`):
+
+- Off by default and enabled through a consent dialog in Settings > Updates.
+  Hidden when the installer of record is an F-Droid client or Google Play
+  (`InstallerPolicy`). The F-Droid build is the same signed APK as the GitHub
+  release, so this is decided at run time, not with a build flavor.
+- While enabled, a daily `WorkManager` job sends one unauthenticated
+  `GET https://api.github.com/repos/JoeriKaiser/luteal/releases/latest` with a
+  `Luteal/<version>` User-Agent. A newer stable release shows a local
+  notification; nothing is downloaded in the background.
+- When the user taps install, the `luteal-vX.Y.Z.apk` asset is downloaded into
+  `cacheDir/updates/`. It goes to `PackageInstaller` only if its SHA-256 equals
+  the asset's `digest` and its package name, a higher version code and its
+  signing certificate match the installed app. Releases without a digest are
+  never installed in-app. The APK is deleted once the session is committed or
+  a check fails.
+- The updater has its own `OkHttpClient` and never sends sync credentials.

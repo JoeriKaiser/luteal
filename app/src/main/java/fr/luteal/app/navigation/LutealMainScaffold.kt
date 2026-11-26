@@ -95,6 +95,9 @@ fun LutealMainScaffold(
             fr.luteal.app.MainActivity.WIDGET_DESTINATION_DUO -> {
                 selectedDestination = LutealDestination.DUO
             }
+            fr.luteal.app.MainActivity.WIDGET_DESTINATION_SETTINGS -> {
+                selectedDestination = LutealDestination.SETTINGS
+            }
         }
         onWidgetDestinationConsumed()
     }
