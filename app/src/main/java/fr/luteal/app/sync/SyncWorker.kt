@@ -12,6 +12,7 @@ import fr.luteal.core.data.datastore.UserPreferencesDataStore
 import fr.luteal.core.model.SyncMode
 import fr.luteal.core.network.FolicularApiException
 import fr.luteal.core.network.LegacyServerUnsupportedException
+import fr.luteal.core.network.auth.SyncCredentialStore
 import fr.luteal.core.network.crypto.UnsupportedRecordSchemaException
 import fr.luteal.core.network.sync.CycleSyncEngine
 import fr.luteal.core.network.sync.SyncAuthException
@@ -25,7 +26,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 /**
- * On-demand background sync. Local writes never wait on this; it reconciles
+ * Background sync, run on demand or by [SyncScheduler]. Local writes never wait on this; it reconciles
  * Room with the server. It only does network work when the user has enabled
  * [SyncMode.ONLINE_CLOUD]; otherwise it is a no-op, so the offline app is
  * unaffected. All outcome state is written to [SyncDataStore] for the UI to
@@ -38,12 +39,16 @@ class SyncWorker @AssistedInject constructor(
     private val syncEngine: CycleSyncEngine,
     private val userPreferencesDataStore: UserPreferencesDataStore,
     private val syncDataStore: SyncDataStore,
+    private val credentialStore: SyncCredentialStore,
     private val clock: Clock
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
         /** Transient failures (transport, 5xx) retry with backoff, then give up. */
         const val MAX_TRANSIENT_ATTEMPTS = 3
+
+        /** Set by scheduled runs, which must never register a new account. */
+        const val KEY_AUTOMATIC = "automatic"
 
         /** Pre-existing user-visible fallback; localised at render time upstream. */
         private const val GENERIC_SYNC_ERROR = "erreur de synchronisation"
@@ -53,6 +58,9 @@ class SyncWorker @AssistedInject constructor(
         val syncMode = userPreferencesDataStore.userPreferencesFlow.first().syncMode
         if (syncMode != SyncMode.ONLINE_CLOUD.name) {
             // Offline mode: nothing to do. Keeps the offline path pristine.
+            return Result.success()
+        }
+        if (inputData.getBoolean(KEY_AUTOMATIC, false) && credentialStore.load() == null) {
             return Result.success()
         }
 

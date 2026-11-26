@@ -7,6 +7,7 @@ import androidx.work.WorkerFactory
 import fr.luteal.app.R
 import androidx.work.testing.TestListenableWorkerBuilder
 import androidx.work.WorkerParameters
+import androidx.work.workDataOf
 import fr.luteal.core.data.entity.SyncStateEntity
 import fr.luteal.core.model.Cycle
 import fr.luteal.core.data.datastore.SyncDataStore
@@ -125,10 +126,13 @@ class SyncWorkerTest {
 
     private suspend fun buildWorker(
         engine: CycleSyncEngine,
-        runAttemptCount: Int = 0
+        runAttemptCount: Int = 0,
+        credentialStore: FakeCredentialStore = FakeCredentialStore(null),
+        automatic: Boolean = false
     ): SyncWorker {
         val builder = TestListenableWorkerBuilder<SyncWorker>(context)
             .setRunAttemptCount(runAttemptCount)
+            .setInputData(workDataOf(SyncWorker.KEY_AUTOMATIC to automatic))
             .setWorkerFactory(object : WorkerFactory() {
                 override fun createWorker(
                     appContext: Context,
@@ -140,6 +144,7 @@ class SyncWorkerTest {
                     engine,
                     userPreferencesDataStore,
                     syncDataStore,
+                    credentialStore,
                     fixedClock
                 )
             })
@@ -178,6 +183,20 @@ class SyncWorkerTest {
 
         assertTrue(result is ListenableWorker.Result.Success)
         assertNull(syncDataStore.syncPreferencesFlow.first().lastError)
+    }
+
+    @Test
+    fun automaticRunWithoutAccountNeverRegisters() = runTest {
+        val api = api()
+        val (engine, creds) = buildEngine(api)
+        val worker = buildWorker(engine, credentialStore = creds, automatic = true)
+
+        val result = worker.doWork()
+
+        assertTrue(result is ListenableWorker.Result.Success)
+        assertTrue(api.registerV2AuthKeys.isEmpty())
+        assertNull(creds.credentials)
+        assertNull(syncDataStore.syncPreferencesFlow.first().lastSyncedEpochMillis)
     }
 
     @Test
