@@ -36,6 +36,9 @@ open class DuoKeyStore @Inject constructor(
     open fun load(linkId: String): ByteArray? =
         store.get(linkId)?.let { runCatching { DuoCrypto.decodeKey(it) }.getOrNull() }
 
+    /** True while at least one link key is stored, i.e. the device is in a Duo. */
+    open fun hasLinkKeys(): Boolean = store.keys().isNotEmpty()
+
     open fun remove(linkId: String) {
         store.remove(linkId)
     }

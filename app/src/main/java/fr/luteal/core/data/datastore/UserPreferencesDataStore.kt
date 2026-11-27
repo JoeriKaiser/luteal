@@ -42,6 +42,12 @@ data class UserPreferences(
     /** Optional; null means the user did not declare one. */
     val ageBand: String? = null,
     val couplePairingCode: String? = null,
+    /**
+     * Whether the Duo tab is shown. Null only on installs that finished
+     * onboarding before the setting existed, until [DuoTabMigrator] decides.
+     */
+    val duoEnabled: Boolean? = null,
+    val showDuoMovedNotice: Boolean = false,
     val duoSharing: DuoSharingPreferences = DuoSharingPreferences(),
     val isAppLockEnabled: Boolean = false,
     val isBiometricEnabled: Boolean = false,
@@ -135,6 +141,8 @@ class UserPreferencesDataStore @Inject constructor(
         val TRACK_THYROID = booleanPreferencesKey("track_thyroid")
         val AGE_BAND = stringPreferencesKey("age_band")
         val COUPLE_PAIRING_CODE = stringPreferencesKey("couple_pairing_code")
+        val DUO_ENABLED = booleanPreferencesKey("duo_enabled")
+        val DUO_MOVED_NOTICE_PENDING = booleanPreferencesKey("duo_moved_notice_pending")
         val SHARE_CYCLE_DAY = booleanPreferencesKey("share_cycle_day")
         val SHARE_PERIOD_ESTIMATE = booleanPreferencesKey("share_period_estimate")
         val SHARE_MOOD = booleanPreferencesKey("share_mood")
@@ -190,6 +198,8 @@ class UserPreferencesDataStore @Inject constructor(
                 trackThyroid = preferences[TRACK_THYROID] ?: false,
                 ageBand = preferences[AGE_BAND],
                 couplePairingCode = preferences[COUPLE_PAIRING_CODE],
+                duoEnabled = preferences[DUO_ENABLED],
+                showDuoMovedNotice = preferences[DUO_MOVED_NOTICE_PENDING] ?: false,
                 duoSharing = DuoSharingPreferences(
                     // All off by default: sharing is opt-in and the server is
                     // the source of truth for grants. These keys mirror the
@@ -266,6 +276,24 @@ class UserPreferencesDataStore @Inject constructor(
         if (code == null) preferences.remove(COUPLE_PAIRING_CODE)
         else preferences[COUPLE_PAIRING_CODE] = code
     }
+
+    /** Turning Duo on also retires the moved-to-settings notice. */
+    suspend fun setDuoEnabled(enabled: Boolean) = edit { preferences ->
+        preferences[DUO_ENABLED] = enabled
+        if (enabled) preferences.remove(DUO_MOVED_NOTICE_PENDING)
+    }
+
+    /**
+     * Writes the migration outcome only while [DUO_ENABLED] is still unset, so
+     * a choice made in the meantime (onboarding, settings, import) wins.
+     */
+    suspend fun applyDuoTabMigration(enabled: Boolean, showMovedNotice: Boolean) = edit { preferences ->
+        if (preferences[DUO_ENABLED] != null) return@edit
+        preferences[DUO_ENABLED] = enabled
+        if (showMovedNotice) preferences[DUO_MOVED_NOTICE_PENDING] = true
+    }
+
+    suspend fun dismissDuoMovedNotice() = edit { it.remove(DUO_MOVED_NOTICE_PENDING) }
 
 
     suspend fun setAppLockEnabled(enabled: Boolean) = edit { it[IS_APP_LOCK_ENABLED] = enabled }

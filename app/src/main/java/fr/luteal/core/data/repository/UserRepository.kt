@@ -17,7 +17,8 @@ interface UserRepository {
     suspend fun completeOnboarding(
         role: UserRole,
         disorderTracking: Map<String, Boolean>,
-        ageBandId: String? = null
+        ageBandId: String? = null,
+        duoEnabled: Boolean = false
     )
 
     /**
@@ -35,4 +36,8 @@ interface UserRepository {
     suspend fun setPillTakenOnDate(date: String, taken: Boolean) = Unit
     suspend fun setDuoPartnerPillReminderEnabled(enabled: Boolean) = Unit
     suspend fun setDuoPartnerPillTakenAlertEnabled(enabled: Boolean) = Unit
+
+    /** Shows or hides the Duo tab. Links and grants are left untouched. */
+    suspend fun setDuoEnabled(enabled: Boolean) = Unit
+    suspend fun dismissDuoMovedNotice() = Unit
 }

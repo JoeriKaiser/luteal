@@ -83,6 +83,8 @@ data class UserPreferencesBackupDto(
     @SerialName("track_perimenopause") val trackPerimenopause: Boolean = false,
     @SerialName("track_thyroid") val trackThyroid: Boolean = false,
     @SerialName("age_band") val ageBand: String? = null,
+    /** Null in backups made before the Duo tab became optional. */
+    @SerialName("duo_enabled") val isDuoEnabled: Boolean? = null,
     @SerialName("temperature_unit") val temperatureUnit: String = "CELSIUS",
     @SerialName("pill_regimen_enabled") val isPillRegimenEnabled: Boolean = false,
     @SerialName("pill_active_days") val pillActiveDays: Int = 21,

@@ -17,6 +17,7 @@ import fr.luteal.core.network.auth.AuthVersion
 import fr.luteal.core.network.auth.SyncCredentialStore
 import fr.luteal.core.network.auth.SyncCredentials
 import fr.luteal.core.network.crypto.AccountCodeV2
+import fr.luteal.core.network.crypto.DuoKeyStore
 import fr.luteal.core.network.crypto.RecordCrypto
 import fr.luteal.core.network.crypto.RecordSealer
 import fr.luteal.core.network.sync.AccountUpgradeManager
@@ -94,7 +95,8 @@ class SettingsViewModel @Inject constructor(
     private val appLockManager: AppLockManager,
     private val clinicalReportAggregator: ClinicalReportAggregator,
     private val notificationScheduler: NotificationScheduler,
-    private val duoProjectionSynchronizer: DuoProjectionSynchronizer
+    private val duoProjectionSynchronizer: DuoProjectionSynchronizer,
+    private val duoKeyStore: DuoKeyStore
 ) : ViewModel() {
     private companion object {
         const val KEY_REG_DRAFT_CODE = "v2_reg_draft_code"
@@ -239,7 +241,9 @@ class SettingsViewModel @Inject constructor(
             notificationVisibilityMode = NotificationVisibility.fromName(preferences.notificationVisibilityMode),
             notificationCustomTitle = preferences.notificationCustomTitle,
             notificationCustomBody = preferences.notificationCustomBody,
-            temperatureUnit = preferences.temperatureUnit
+            temperatureUnit = preferences.temperatureUnit,
+            isDuoEnabled = preferences.duoEnabled == true,
+            hasDuoLink = duoKeyStore.hasLinkKeys()
         )
     }.stateIn(
         scope = viewModelScope,
@@ -264,6 +268,12 @@ class SettingsViewModel @Inject constructor(
     fun setAgeBand(band: AgeBand?) {
         viewModelScope.launch {
             userRepository.setAgeBand(band?.id)
+        }
+    }
+
+    fun setDuoEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userRepository.setDuoEnabled(enabled)
         }
     }
 
@@ -1001,7 +1011,10 @@ data class SettingsSyncUiState(
     val notificationVisibilityMode: NotificationVisibility = NotificationVisibility.CONCEALED,
     val notificationCustomTitle: String = "",
     val notificationCustomBody: String = "",
-    val temperatureUnit: String = "CELSIUS"
+    val temperatureUnit: String = "CELSIUS",
+    val isDuoEnabled: Boolean = false,
+    /** A link key is stored locally, so hiding the tab leaves a live Duo behind. */
+    val hasDuoLink: Boolean = false
 )
 
 /** Text drafts held together so [combine] stays within its five-flow limit. */

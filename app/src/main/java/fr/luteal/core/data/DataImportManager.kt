@@ -18,7 +18,9 @@ import fr.luteal.core.model.ImportStrategy
 import fr.luteal.core.model.ImportSummary
 import fr.luteal.core.model.LutealBackupPayload
 import fr.luteal.core.model.LutealBackupPreview
+import fr.luteal.core.model.UserRole
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -389,6 +391,12 @@ class DataImportManager @Inject constructor(
                     userPreferencesDataStore.setDisorderTracking("perimenopause", prefs.trackPerimenopause)
                     userPreferencesDataStore.setDisorderTracking("thyroid", prefs.trackThyroid)
                     userPreferencesDataStore.setAgeBand(prefs.ageBand)
+                    // Older backups carry no Duo choice: keep this device's,
+                    // or fall back to the role the way onboarding does.
+                    val currentDuoEnabled = userPreferencesDataStore.userPreferencesFlow.first().duoEnabled
+                    userPreferencesDataStore.setDuoEnabled(
+                        prefs.isDuoEnabled ?: currentDuoEnabled ?: (prefs.userRole == UserRole.PARTNER_VIEWER.name)
+                    )
                     userPreferencesDataStore.setTemperatureUnit(prefs.temperatureUnit)
                     userPreferencesDataStore.setPillRegimenEnabled(prefs.isPillRegimenEnabled)
                     userPreferencesDataStore.setPillActiveDays(prefs.pillActiveDays)

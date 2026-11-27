@@ -45,7 +45,7 @@ class WidgetSnapshotRepositoryTest {
         override suspend fun updateUserRole(role: UserRole) {}
         override suspend fun updateDuoSharing(field: DuoSharingField, enabled: Boolean) {}
         override suspend fun setCouplePairing(pairingCode: String?, partnerName: String?) {}
-        override suspend fun completeOnboarding(role: UserRole, disorderTracking: Map<String, Boolean>, ageBandId: String?) {}
+        override suspend fun completeOnboarding(role: UserRole, disorderTracking: Map<String, Boolean>, ageBandId: String?, duoEnabled: Boolean) {}
         override suspend fun setTrackingContext(contextId: String, enabled: Boolean) {}
         override suspend fun setAgeBand(ageBandId: String?) {}
         override suspend fun setPillLastTakenDate(date: String?) {}

@@ -53,12 +53,14 @@ fun OnboardingScreen(
     onComplete: (
         role: UserRole,
         disorderTracking: Map<String, Boolean>,
-        ageBandId: String?
+        ageBandId: String?,
+        duoEnabled: Boolean
     ) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var step by remember { mutableIntStateOf(0) }
     var selectedRole by remember { mutableStateOf(UserRole.PRIMARY_TRACKER) }
+    var shareWithPartner by remember { mutableStateOf(false) }
     // Null is a real answer here, not an unset value: declining to give an age
     // band is offered as an explicit option.
     var selectedAgeBand by remember { mutableStateOf<AgeBand?>(null) }
@@ -133,7 +135,12 @@ fun OnboardingScreen(
                     Column(modifier = Modifier.padding(vertical = LutealSpacing.lg)) {
                         when (step) {
                             0 -> WelcomeStep()
-                            1 -> RoleStep(selectedRole) { selectedRole = it }
+                            1 -> RoleStep(
+                                currentRole = selectedRole,
+                                shareWithPartner = shareWithPartner,
+                                onRoleSelected = { selectedRole = it },
+                                onShareWithPartnerChange = { shareWithPartner = it }
+                            )
                             2 -> FocusStep(focusMap) { key, value -> focusMap[key] = value }
                             3 -> AgeBandStep(selectedAgeBand) { selectedAgeBand = it }
                             4 -> PrivacySummaryStep()
@@ -151,7 +158,7 @@ fun OnboardingScreen(
                         },
                         onClick = {
                             if (step == totalSteps - 1) {
-                                onComplete(selectedRole, focusMap.toMap(), selectedAgeBand?.id)
+                                onComplete(selectedRole, focusMap.toMap(), selectedAgeBand?.id, shareWithPartner)
                             } else {
                                 step++
                             }
@@ -174,7 +181,7 @@ fun OnboardingScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             TextButton(
-                                onClick = { onComplete(selectedRole, focusMap.toMap(), selectedAgeBand?.id) }
+                                onClick = { onComplete(selectedRole, focusMap.toMap(), selectedAgeBand?.id, shareWithPartner) }
                             ) {
                                 Text(
                                     text = stringResource(R.string.onboarding_button_skip),
@@ -222,7 +229,9 @@ private fun WelcomeStep() {
 @Composable
 private fun RoleStep(
     currentRole: UserRole,
-    onRoleSelected: (UserRole) -> Unit
+    shareWithPartner: Boolean,
+    onRoleSelected: (UserRole) -> Unit,
+    onShareWithPartnerChange: (Boolean) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.sm)) {
         Text(
@@ -251,6 +260,19 @@ private fun RoleStep(
             selected = currentRole == UserRole.PARTNER_VIEWER,
             onClick = { onRoleSelected(UserRole.PARTNER_VIEWER) }
         )
+
+        // Below both cards so switching role never moves the partner card.
+        // A partner always gets the Duo tab; a tracker opts in here.
+        if (currentRole == UserRole.PRIMARY_TRACKER) {
+            LutealCard(modifier = Modifier.fillMaxWidth()) {
+                LutealCheckboxRow(
+                    title = stringResource(R.string.onboarding_role_share_with_partner),
+                    description = stringResource(R.string.onboarding_role_share_with_partner_desc),
+                    checked = shareWithPartner,
+                    onCheckedChange = onShareWithPartnerChange
+                )
+            }
+        }
     }
 }
 
