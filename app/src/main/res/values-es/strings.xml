@@ -239,6 +239,12 @@
     <string name="settings_title">Ajustes</string>
     <string name="settings_subtitle">Controla cómo funciona Luteal en local y cómo trata tu privacidad.</string>
     <string name="settings_privacy_title">Datos y privacidad</string>
+    <string name="settings_privacy_details_title">Cómo trata Luteal tus datos</string>
+    <string name="settings_privacy_details_summary">Almacenamiento local, copia de seguridad, widgets y datos de salud</string>
+    <string name="settings_privacy_details_show">Mostrar detalles</string>
+    <string name="settings_privacy_details_hide">Ocultar detalles</string>
+    <string name="settings_privacy_details_expanded">Desplegado</string>
+    <string name="settings_privacy_details_collapsed">Plegado</string>
     <string name="settings_storage_title">Almacenamiento local</string>
     <string name="settings_storage_body">Los datos de seguimiento se guardan en la base de datos local de la aplicación. No se contacta con ningún servidor salvo que actives la sincronización o Duo.</string>
     <string name="settings_backup_title">Copia de seguridad del sistema desactivada</string>

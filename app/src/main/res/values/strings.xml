@@ -237,6 +237,12 @@
     <string name="settings_title">Settings</string>
     <string name="settings_subtitle">Control how Luteal works locally and how it handles your privacy.</string>
     <string name="settings_privacy_title">Data and privacy</string>
+    <string name="settings_privacy_details_title">How Luteal handles your data</string>
+    <string name="settings_privacy_details_summary">Local storage, backup, widgets, and health data</string>
+    <string name="settings_privacy_details_show">Show details</string>
+    <string name="settings_privacy_details_hide">Hide details</string>
+    <string name="settings_privacy_details_expanded">Expanded</string>
+    <string name="settings_privacy_details_collapsed">Collapsed</string>
     <string name="settings_storage_title">Local storage</string>
     <string name="settings_storage_body">Tracking data is kept in the app’s local database. No server is contacted unless you turn on sync or Duo.</string>
     <string name="settings_backup_title">System backup disabled</string>

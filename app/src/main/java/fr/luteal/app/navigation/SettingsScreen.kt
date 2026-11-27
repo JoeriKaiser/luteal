@@ -7,6 +7,16 @@ import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,6 +27,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
@@ -25,6 +36,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.HealthAndSafety
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Shield
@@ -60,15 +72,20 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import fr.luteal.app.BuildConfig
@@ -80,6 +97,7 @@ import fr.luteal.core.designsystem.component.LutealPrimaryButton
 import fr.luteal.core.designsystem.component.LutealRadioRow
 import fr.luteal.core.designsystem.component.LutealSecondaryButton
 import fr.luteal.core.designsystem.component.LutealToggleRow
+import fr.luteal.core.designsystem.theme.LocalReducedMotion
 import fr.luteal.core.designsystem.theme.LutealSpacing
 import fr.luteal.core.model.AgeBand
 import fr.luteal.core.model.AutoLockTimeout
@@ -268,30 +286,7 @@ fun SettingsScreen(
 
         SettingsSectionHeader(title = stringResource(R.string.settings_privacy_title))
 
-        LutealCard(modifier = Modifier.fillMaxWidth()) {
-            Column(verticalArrangement = Arrangement.spacedBy(LutealSpacing.md)) {
-                SettingsInformationRow(
-                    icon = Icons.Rounded.PhoneAndroid,
-                    title = stringResource(R.string.settings_storage_title),
-                    body = stringResource(R.string.settings_storage_body)
-                )
-                SettingsInformationRow(
-                    icon = Icons.Rounded.Shield,
-                    title = stringResource(R.string.settings_backup_title),
-                    body = stringResource(R.string.settings_backup_body)
-                )
-                SettingsInformationRow(
-                    icon = Icons.Rounded.VisibilityOff,
-                    title = stringResource(R.string.settings_widgets_privacy_title),
-                    body = stringResource(R.string.widget_privacy_notice)
-                )
-                SettingsInformationRow(
-                    icon = Icons.Rounded.HealthAndSafety,
-                    title = stringResource(R.string.settings_health_data_notice_title),
-                    body = stringResource(R.string.settings_health_data_notice_body)
-                )
-            }
-        }
+        PrivacyDetailsCard()
 
         // Online cloud sync
         SyncCard(
@@ -2412,6 +2407,93 @@ private fun formatSyncInstant(epochMillis: Long, locale: Locale): String {
         .atZone(ZoneId.systemDefault())
         .toLocalDate()
     return LocalizedDateFormatter.formatFullDate(date, locale)
+}
+
+
+@Composable
+private fun PrivacyDetailsCard() {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val reducedMotion = LocalReducedMotion.current
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(durationMillis = 150, easing = EaseOut),
+        label = "privacy_details_rotation"
+    )
+    val stateLabel = stringResource(
+        if (expanded) R.string.settings_privacy_details_expanded else R.string.settings_privacy_details_collapsed
+    )
+
+    LutealCard(modifier = Modifier.fillMaxWidth()) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = stringResource(
+                            if (expanded) R.string.settings_privacy_details_hide else R.string.settings_privacy_details_show
+                        ),
+                        onClick = { expanded = !expanded }
+                    )
+                    .semantics { stateDescription = stateLabel },
+                horizontalArrangement = Arrangement.spacedBy(LutealSpacing.md),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = stringResource(R.string.settings_privacy_details_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_privacy_details_summary),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Rounded.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.rotate(if (reducedMotion) (if (expanded) 180f else 0f) else chevronRotation)
+                )
+            }
+
+            AnimatedVisibility(
+                visible = expanded,
+                enter = if (reducedMotion) EnterTransition.None else expandVertically() + fadeIn(),
+                exit = if (reducedMotion) ExitTransition.None else shrinkVertically() + fadeOut()
+            ) {
+                Column(
+                    modifier = Modifier.padding(top = LutealSpacing.md),
+                    verticalArrangement = Arrangement.spacedBy(LutealSpacing.md)
+                ) {
+                    SettingsInformationRow(
+                        icon = Icons.Rounded.PhoneAndroid,
+                        title = stringResource(R.string.settings_storage_title),
+                        body = stringResource(R.string.settings_storage_body)
+                    )
+                    SettingsInformationRow(
+                        icon = Icons.Rounded.Shield,
+                        title = stringResource(R.string.settings_backup_title),
+                        body = stringResource(R.string.settings_backup_body)
+                    )
+                    SettingsInformationRow(
+                        icon = Icons.Rounded.VisibilityOff,
+                        title = stringResource(R.string.settings_widgets_privacy_title),
+                        body = stringResource(R.string.widget_privacy_notice)
+                    )
+                    SettingsInformationRow(
+                        icon = Icons.Rounded.HealthAndSafety,
+                        title = stringResource(R.string.settings_health_data_notice_title),
+                        body = stringResource(R.string.settings_health_data_notice_body)
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
