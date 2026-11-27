@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import fr.luteal.app.sync.AutoSyncCoordinator
 import fr.luteal.app.widget.WidgetDataObserver
 import fr.luteal.app.widget.WidgetWorkScheduler
 import fr.luteal.app.notification.NotificationChannelManager
@@ -30,6 +31,9 @@ class LutealApp : Application(), Configuration.Provider {
 
     @Inject
     lateinit var notificationChannelManager: NotificationChannelManager
+
+    @Inject
+    lateinit var autoSyncCoordinator: AutoSyncCoordinator
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
@@ -68,6 +72,7 @@ class LutealApp : Application(), Configuration.Provider {
         widgetDataObserver.start(applicationScope)
         widgetWorkScheduler.reconcileSchedules()
         notificationChannelManager.registerChannels()
+        autoSyncCoordinator.start(applicationScope)
     }
 
     @Inject

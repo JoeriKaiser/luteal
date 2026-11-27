@@ -17,7 +17,8 @@ adoption, device-token reuse). Synced types: `cycle`, `bleeding_observation`
 (fanned out of cycles and of daily entries), `daily_entry`, `symptom_log`.
 Duo is live end to end (invite, accept-by-paste, per-field grants, revocation,
 sealed support thread). Build gating, Keystore credentials, the OkHttp
-transport, an on-demand `WorkManager` sync, and the account-code surface in
+transport, a `WorkManager` sync (on demand, on app open, after local edits,
+and periodic), and the account-code surface in
 Settings are in place; see `AGENTS.md` §5 for how to run against a local
 server. The milestones below are the remaining work.
 
@@ -116,10 +117,10 @@ no silent loss. Status per item:
   out to `bleeding_observation` rows.
 - [x] **Deletions:** local deletes push tombstones in both directions and
   incoming tombstones delete local rows (cycles, daily entries, symptom logs).
-- [ ] **Periodic + connectivity-aware sync:** add a scheduled `WorkManager`
-  job with a network constraint alongside the existing on-demand trigger;
-  local writes still never wait on network and the UI still observes Room
-  only.
+- [x] **Periodic + connectivity-aware sync:** a periodic `WorkManager` job
+  with a network constraint runs alongside the on-demand trigger, plus syncs
+  on app open and after local edits (`app/sync/AutoSyncCoordinator`); local
+  writes still never wait on network and the UI still observes Room only.
 - [ ] **Account settings:** `account_settings` should round-trip via
   `PATCH /v1/me`; today the client never calls it.
 - [ ] **Biomarkers and medication:** `biomarker_observation` and

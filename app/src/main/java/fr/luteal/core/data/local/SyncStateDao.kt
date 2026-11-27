@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import fr.luteal.core.data.entity.SyncStateEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SyncStateDao {
@@ -14,6 +15,10 @@ interface SyncStateDao {
 
     @Query("SELECT * FROM sync_state WHERE dirty = 1")
     suspend fun getDirtyStates(): List<SyncStateEntity>
+
+    /** Every local edit writes a fresh clientRev, so a new value means a new edit. */
+    @Query("SELECT clientRev FROM sync_state WHERE dirty = 1")
+    fun observeDirtyRevisions(): Flow<List<String>>
 
     @Query("SELECT * FROM sync_state WHERE dirty = 1 AND entityType = :entityType")
     suspend fun getDirtyStatesByType(entityType: String): List<SyncStateEntity>
