@@ -392,6 +392,8 @@ fun SettingsScreen(
             onSelectAgeBand = viewModel::setAgeBand
         )
 
+        UpdateSettingsCard()
+
         SettingsSectionHeader(title = stringResource(R.string.settings_appearance_title))
 
         LutealCard(modifier = Modifier.fillMaxWidth()) {
@@ -1701,7 +1703,7 @@ private fun settingsAgeBandLabel(band: AgeBand): Int = when (band) {
 }
 
 @Composable
-private fun SettingsSectionHeader(title: String) {
+internal fun SettingsSectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleMedium,

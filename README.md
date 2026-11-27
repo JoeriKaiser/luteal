@@ -26,6 +26,12 @@ default, with optional end-to-end encrypted sync.
   code and receives that code again when a device is added, so the app does
   not claim the operator has never seen the key. See
   [docs/architecture/E2EE_DESIGN.md](docs/architecture/E2EE_DESIGN.md).
+- An optional updater (Settings > Updates) checks GitHub releases once a day.
+  It is off by default, needs explicit consent, and is hidden when the app was
+  installed by F-Droid or Google Play. It sends no cycle data or identifiers,
+  and only installs an APK whose SHA-256 matches the release digest and whose
+  package name, version code and signing certificate match this app. See
+  [docs/architecture/SYNC_BOUNDARY.md](docs/architecture/SYNC_BOUNDARY.md#other-network-connections).
 
 ## Building
 

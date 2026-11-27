@@ -156,5 +156,6 @@ class MainActivity : FragmentActivity() {
         const val WIDGET_DESTINATION_TODAY = "today"
         const val WIDGET_DESTINATION_TODAY_EDITOR = "today_editor"
         const val WIDGET_DESTINATION_DUO = "duo"
+        const val WIDGET_DESTINATION_SETTINGS = "settings"
     }
 }
